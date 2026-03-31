@@ -1,0 +1,113 @@
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: github-clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-github_analyzer}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_MODULE: ${APP_MODULE:-src.presentation.api.routes:app}
+    container_name: github-api
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      CLICKHOUSE_HOST: clickhouse
+      TRACING_EXPORTER_OTLP_ENDPOINT: ${TRACING_EXPORTER_OTLP_ENDPOINT:-http://tempo:4318}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./scripts:/app/scripts
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    container_name: github-frontend
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+  grafana:
+    image: grafana/grafana:10.4.6
+    container_name: github-grafana
+    depends_on:
+      - loki
+      - tempo
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./observability/grafana_provisioning:/etc/grafana/provisioning
+
+  loki:
+    image: grafana/loki:3.1.1
+    container_name: github-loki
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+
+  promtail:
+    image: grafana/promtail:3.1.1
+    container_name: github-promtail
+    depends_on:
+      - loki
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - ./observability/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  tempo:
+    image: grafana/tempo:2.5.0
+    container_name: github-tempo
+    command: ["-config.file=/etc/tempo.yml"]
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./observability/tempo.yml:/etc/tempo.yml:ro
+      - tempo_data:/var/tempo
+
+  ollama:
+    image: ollama/ollama:0.3.12
+    container_name: github-ollama
+    profiles: ["ai"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+volumes:
+  clickhouse_data:
+  loki_data:
+  ollama_data:
+  tempo_data:
+
