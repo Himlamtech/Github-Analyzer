@@ -1,0 +1,452 @@
+{
+  "__inputs": [],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.4.0" },
+    {
+      "type": "datasource",
+      "id": "grafana-clickhouse-datasource",
+      "name": "ClickHouse",
+      "version": "4.0.0"
+    }
+  ],
+  "annotations": { "list": [] },
+  "description": "Detailed ClickHouse overview for raw GitHub event storage, freshness, event shape, and repository activity.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "ClickHouse State",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "id": 10,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+          "format": 0,
+          "queryType": "table",
+          "rawSql": "SELECT count() AS value FROM github_analyzer.github_data",
+          "refId": "A"
+        }
+      ],
+      "title": "github_data Rows",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "id": 11,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+          "format": 0,
+          "queryType": "table",
+          "rawSql": "SELECT uniqExact(repo_name) AS value FROM github_analyzer.github_data",
+          "refId": "A"
+        }
+      ],
+      "title": "Tracked Repositories",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 180 },
+              { "color": "red", "value": 300 }
+            ]
+          },
+          "unit": "s"
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "id": 12,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+          "format": 0,
+          "queryType": "table",
+          "rawSql": "SELECT dateDiff('second', max(created_at), now()) AS value FROM github_analyzer.github_data",
+          "refId": "A"
+        }
+      ],
+      "title": "ClickHouse Freshness",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "id": 13,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+          "format": 0,
+          "queryType": "table",
+          "rawSql": "SELECT count() AS value FROM github_analyzer.github_data WHERE created_at >= now() - INTERVAL 24 HOUR",
+          "refId": "A"
+        }
+      ],
+      "title": "Events Last 24h",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "dateTimeAsIso"
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "id": 14,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+          "format": 0,
+          "queryType": "table",
+          "rawSql": "SELECT toUnixTimestamp(max(created_at)) * 1000 AS value FROM github_analyzer.github_data",
+          "refId": "A"
+        }
+      ],
+      "title": "Latest Event Timestamp",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "id": 15,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+          "format": 0,
+          "queryType": "table",
+          "rawSql": "SELECT uniqExact(event_type) AS value FROM github_analyzer.github_data WHERE created_at >= now() - INTERVAL 7 DAY",
+          "refId": "A"
+        }
+      ],
+      "title": "Event Types Seen (7d)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 2,
+      "title": "Volume And Shape",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 20,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+          "format": 1,
+          "queryType": "timeSeriesQuery",
+          "rawSql": "SELECT toStartOfHour(created_at) AS time, count() AS value FROM github_analyzer.github_data WHERE created_at >= now() - INTERVAL 72 HOUR GROUP BY time ORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "title": "Events By Hour (72h)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 21,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+          "format": 1,
+          "queryType": "timeSeriesQuery",
+          "rawSql": "SELECT toStartOfHour(created_at) AS time, uniqExact(repo_name) AS value FROM github_analyzer.github_data WHERE created_at >= now() - INTERVAL 72 HOUR GROUP BY time ORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "title": "Active Repositories By Hour (72h)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "id": 22,
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "tooltip": { "mode": "single", "sort": "none" },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+          "format": 0,
+          "queryType": "table",
+          "rawSql": "SELECT event_type AS metric, count() AS value FROM github_analyzer.github_data WHERE created_at >= now() - INTERVAL 7 DAY GROUP BY event_type ORDER BY value DESC LIMIT 10",
+          "refId": "A"
+        }
+      ],
+      "title": "Top Event Types (7d)",
+      "type": "barchart"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "id": 23,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right" },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+          "format": 0,
+          "queryType": "table",
+          "rawSql": "SELECT if(empty(repo_primary_language), 'unknown', repo_primary_language) AS metric, count() AS value FROM github_analyzer.github_data WHERE created_at >= now() - INTERVAL 7 DAY GROUP BY metric ORDER BY value DESC LIMIT 8",
+          "refId": "A"
+        }
+      ],
+      "title": "Primary Language Mix (7d)",
+      "type": "piechart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+      "id": 3,
+      "title": "Repository Observation",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 23 },
+      "id": 30,
+      "options": { "cellHeight": "sm", "footer": { "show": false }, "showHeader": true },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+          "format": 0,
+          "queryType": "table",
+          "rawSql": "SELECT repo_name, count() AS events, max(created_at) AS last_event_at, max(repo_stargazers_count) AS latest_stars FROM github_analyzer.github_data WHERE created_at >= now() - INTERVAL 7 DAY GROUP BY repo_name ORDER BY events DESC, last_event_at DESC LIMIT 15",
+          "refId": "A"
+        }
+      ],
+      "title": "Top Repositories By Event Volume (7d)",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "dateTimeAsIso"
+        }
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 23 },
+      "id": 31,
+      "options": { "cellHeight": "sm", "footer": { "show": false }, "showHeader": true },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+          "format": 0,
+          "queryType": "table",
+          "rawSql": "SELECT repo_name, max(created_at) AS last_seen_at, count() AS lifetime_events, max(repo_primary_language) AS language FROM github_analyzer.github_data GROUP BY repo_name ORDER BY last_seen_at DESC LIMIT 15",
+          "refId": "A"
+        }
+      ],
+      "title": "Most Recent Repository Activity",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "id": 32,
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "tooltip": { "mode": "single", "sort": "none" },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+          "format": 0,
+          "queryType": "table",
+          "rawSql": "SELECT arrayJoin(repo_topics) AS metric, count() AS value FROM github_analyzer.github_data WHERE created_at >= now() - INTERVAL 7 DAY AND length(repo_topics) > 0 GROUP BY metric ORDER BY value DESC LIMIT 12",
+          "refId": "A"
+        }
+      ],
+      "title": "Top Topics (7d)",
+      "type": "barchart"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "id": 33,
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "tooltip": { "mode": "single", "sort": "none" },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
+          "format": 0,
+          "queryType": "table",
+          "rawSql": "SELECT repo_name AS metric, max(repo_stargazers_count) AS value FROM github_analyzer.github_data GROUP BY repo_name ORDER BY value DESC LIMIT 12",
+          "refId": "A"
+        }
+      ],
+      "title": "Most Starred Repositories",
+      "type": "barchart"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["database", "clickhouse", "observability"],
+  "templating": { "list": [] },
+  "time": { "from": "now-7d", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Database Overview",
+  "uid": "database-overview",
+  "version": 1,
+  "weekStart": ""
+}

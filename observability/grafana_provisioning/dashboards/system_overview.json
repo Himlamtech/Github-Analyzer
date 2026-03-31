@@ -11,7 +11,7 @@
     }
   ],
   "annotations": { "list": [] },
-  "description": "Primary observability dashboard for GHA with system, database, and tracing sections.",
+  "description": "Detailed system overview for API, pipeline, ClickHouse, and tracing health across the GitHub analyzer stack.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -292,11 +292,11 @@
           "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
           "format": 0,
           "queryType": "table",
-          "rawSql": "SELECT dateDiff('second', max(created_at), now()) AS value FROM github_analyzer.github_data",
+          "rawSql": "SELECT dateDiff('second', max(ingested_at), now()) AS value FROM github_analyzer.github_data",
           "refId": "A"
         }
       ],
-      "title": "ClickHouse Freshness",
+      "title": "ClickHouse Ingest Freshness",
       "type": "stat"
     },
     {
@@ -316,7 +316,7 @@
           "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
           "format": 0,
           "queryType": "table",
-          "rawSql": "SELECT count() AS value FROM github_analyzer.github_data WHERE created_at >= now() - INTERVAL 24 HOUR",
+          "rawSql": "SELECT count() AS value FROM github_analyzer.github_data WHERE ingested_at >= now() - INTERVAL 24 HOUR",
           "refId": "A"
         }
       ],
@@ -334,7 +334,7 @@
           "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
           "format": 1,
           "queryType": "table",
-          "rawSql": "SELECT toStartOfHour(created_at) AS time, count() AS value FROM github_analyzer.github_data WHERE created_at >= now() - INTERVAL 24 HOUR GROUP BY time ORDER BY time",
+          "rawSql": "SELECT toStartOfHour(ingested_at) AS time, count() AS value FROM github_analyzer.github_data WHERE ingested_at >= now() - INTERVAL 24 HOUR GROUP BY time ORDER BY time",
           "refId": "A"
         }
       ],
@@ -352,7 +352,7 @@
           "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_ds" },
           "format": 0,
           "queryType": "table",
-          "rawSql": "SELECT event_type AS metric, count() AS value FROM github_analyzer.github_data WHERE created_at >= now() - INTERVAL 7 DAY GROUP BY event_type ORDER BY value DESC LIMIT 8",
+          "rawSql": "SELECT event_type AS metric, count() AS value FROM github_analyzer.github_data WHERE ingested_at >= now() - INTERVAL 7 DAY GROUP BY event_type ORDER BY value DESC LIMIT 8",
           "refId": "A"
         }
       ],
@@ -453,8 +453,8 @@
   "time": { "from": "now-24h", "to": "now" },
   "timepicker": {},
   "timezone": "",
-  "title": "GHA Observability Overview",
-  "uid": "gha-observability-overview",
+  "title": "System Overview",
+  "uid": "system-overview",
   "version": 1,
   "weekStart": ""
 }

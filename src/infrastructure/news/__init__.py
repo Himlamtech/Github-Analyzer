@@ -1,4 +1,3 @@
-"""External news adapters used by dashboard storytelling surfaces."""
+"""News integrations package."""
 
 from __future__ import annotations
-

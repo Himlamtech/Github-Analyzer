@@ -20,8 +20,8 @@ datasources:
       streamingEnabled:
         search: true
       traceQuery:
-        spanEndTimeShift: 1h
-        spanStartTimeShift: -1h
+        spanEndTimeShift: 5m
+        spanStartTimeShift: -5m
         timeShiftEnabled: true
       tracesToLogsV2:
         customQuery: true
@@ -29,8 +29,8 @@ datasources:
         filterBySpanID: false
         filterByTraceID: true
         query: '{compose_service=~".+"} |= "$${__trace.traceId}"'
-        spanEndTimeShift: 10m
-        spanStartTimeShift: -10m
+        spanEndTimeShift: 2m
+        spanStartTimeShift: -2m
         tags:
           - key: service.name
             value: compose_service
@@ -40,11 +40,19 @@ datasources:
         datasourceUid: prometheus_ds
         queries:
           - name: API Request Rate
-            query: 'sum by (route) (rate(api_requests_total{$$__tags}[5m]))'
+            query: 'sum by (route) (rate(api_requests_total{$$__tags}[10s]))'
           - name: API Latency P95
-            query: 'histogram_quantile(0.95, sum by (le, route) (rate(api_request_duration_seconds_bucket{$$__tags}[5m])))'
-        spanEndTimeShift: 15m
-        spanStartTimeShift: -15m
+            query: 'histogram_quantile(0.95, sum by (le, route) (rate(api_request_duration_seconds_bucket{$$__tags}[30s])))'
+          - name: Business Freshness
+            query: 'max(data_freshness_seconds{job="github_analyzer_api"})'
+          - name: Kafka Produced 10s
+            query: 'sum(rate(kafka_messages_produced_total{job="github_analyzer_poller"}[10s]))'
+          - name: Spark Processed 10s
+            query: 'sum(rate(spark_records_processed_total{job="github_analyzer_processor",sink="clickhouse"}[10s]))'
+          - name: Spark Fracture Gap
+            query: 'clamp_min(sum(rate(kafka_messages_produced_total{job="github_analyzer_poller"}[10s])) - sum(rate(spark_records_processed_total{job="github_analyzer_processor",sink="clickhouse"}[10s])), 0)'
+        spanEndTimeShift: 5m
+        spanStartTimeShift: -5m
         tags:
           - key: http.method
             value: method
