@@ -1,0 +1,53 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python caches and tooling
+__pycache__/
+*.py[cod]
+*.so
+.python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Node and Next.js
+node_modules/
+frontend/node_modules/
+.next/
+frontend/.next/
+frontend/tsconfig.tsbuildinfo
+
+# Local data and logs
+data/
+tmpdata/
+scheduler/logs/
+*.log
+
+# Docker and runtime leftovers
+*.pid
+*.seed
+*.out
+
