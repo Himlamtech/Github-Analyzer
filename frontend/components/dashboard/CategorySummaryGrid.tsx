@@ -6,6 +6,10 @@ import { useCategorySummary } from "@/hooks/useDashboard";
 import { CATEGORY_COLORS, CATEGORY_LABELS } from "@/lib/types";
 import { formatNumber, formatDelta } from "@/lib/utils";
 
+interface Props {
+  days: number;
+}
+
 function SkeletonCard() {
   return (
     <div className="animate-pulse rounded-2xl border border-border bg-background/60 p-4">
@@ -16,8 +20,8 @@ function SkeletonCard() {
   );
 }
 
-export function CategorySummaryGrid() {
-  const { data, isLoading } = useCategorySummary();
+export function CategorySummaryGrid({ days }: Props) {
+  const { data, isLoading } = useCategorySummary(days);
   const categories = [...(data ?? [])].sort((left, right) => {
     return right.total_stars - left.total_stars;
   });
@@ -56,7 +60,7 @@ export function CategorySummaryGrid() {
             </p>
           </div>
           <div className="rounded-full border border-border bg-background/80 px-3 py-1 text-xs text-muted-foreground">
-            {categories.length} tracked
+            last {days}d · top {categories.length}
           </div>
         </div>
       </div>

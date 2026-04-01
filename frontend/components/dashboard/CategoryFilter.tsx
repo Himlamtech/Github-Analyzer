@@ -1,9 +1,10 @@
 "use client";
 
+import { useCategorySummary } from "@/hooks/useDashboard";
 import { cn } from "@/lib/utils";
 import { CATEGORY_COLORS, CATEGORY_LABELS, type Category } from "@/lib/types";
 
-const CATEGORIES: Category[] = [
+const FALLBACK_CATEGORIES: Category[] = [
   "all",
   "LLM",
   "Agent",
@@ -33,11 +34,18 @@ export function CategoryFilter({
   onCategoryChange,
   onDaysChange,
 }: Props) {
+  const { data } = useCategorySummary(days);
+  const dynamicCategories = (data ?? []).map((item) => item.category);
+  const categories = [
+    "all",
+    ...new Set([...dynamicCategories, ...FALLBACK_CATEGORIES.filter((item) => item !== "all")]),
+  ];
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       {/* Category pills */}
       <div className="flex flex-wrap gap-1.5">
-        {CATEGORIES.map((cat) => {
+        {categories.map((cat) => {
           const isActive = category === cat;
           const color = cat === "all" ? "#3b82f6" : CATEGORY_COLORS[cat] ?? "#6b7280";
           const label =

@@ -1,14 +1,7 @@
 // TypeScript interfaces — mirrors backend DTOs in src/application/dtos/repo_metadata_dto.py
 // Keep in sync with backend when adding new fields.
 
-export type Category =
-  | "LLM"
-  | "Agent"
-  | "Diffusion"
-  | "Multimodal"
-  | "DataEng"
-  | "Other"
-  | "all";
+export type Category = string;
 
 export interface RepoMetadata {
   repo_id: number;
@@ -46,13 +39,13 @@ export interface TrendingRepo {
 
 export interface TopicBreakdown {
   topic: string;
-  event_count: number;
+  star_count: number;
   repo_count: number;
 }
 
 export interface LanguageBreakdown {
   language: string;
-  event_count: number;
+  star_count: number;
   repo_count: number;
 }
 

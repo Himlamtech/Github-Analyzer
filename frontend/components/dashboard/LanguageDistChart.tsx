@@ -21,8 +21,8 @@ const LANG_COLORS = [
 export function LanguageDistChart({ days }: Props) {
   const { data, isLoading } = useLanguageBreakdown(days);
   const languages = (data ?? []).slice(0, 20);
-  const total = languages.reduce((acc, item) => acc + item.event_count, 0);
-  const maxValue = Math.max(...languages.map((item) => item.event_count), 1);
+  const total = languages.reduce((acc, item) => acc + item.star_count, 0);
+  const maxValue = Math.max(...languages.map((item) => item.star_count), 1);
 
   return (
     <section className="card-glow overflow-hidden rounded-2xl border border-border bg-card">
@@ -62,11 +62,11 @@ export function LanguageDistChart({ days }: Props) {
           languages.map((item, index) => {
             const width = Math.max(
               8,
-              Math.round((item.event_count / maxValue) * 100),
+              Math.round((item.star_count / maxValue) * 100),
             );
             const color = LANG_COLORS[index % LANG_COLORS.length];
             const share =
-              total === 0 ? 0 : Math.round((item.event_count / total) * 100);
+              total === 0 ? 0 : Math.round((item.star_count / total) * 100);
 
             return (
               <div
@@ -89,7 +89,7 @@ export function LanguageDistChart({ days }: Props) {
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-semibold">
-                      {formatNumber(item.event_count)}
+                      {formatNumber(item.star_count)}
                     </div>
                     <div className="text-xs text-muted-foreground">{share}% share</div>
                   </div>

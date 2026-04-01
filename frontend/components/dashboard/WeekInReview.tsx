@@ -24,12 +24,12 @@ export function WeekInReview({ days, onSelectRepo }: Props) {
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Flame className="h-4 w-4 text-blue-500" />
-              This Week Changed
+              Top 20 Rising Repositories in Week
             </div>
             <p className="max-w-3xl text-sm text-muted-foreground">
-              Stop making the viewer guess. Start with the repos gaining the most stars,
-              the repos growing fastest in percentage terms, and the names driving the
-              current cycle.
+              Split the market into two ranked views: the repositories adding the most
+              stars in the current window and the repositories accelerating fastest
+              relative to their previous baseline.
             </p>
           </div>
           <div className="text-xs text-muted-foreground">window: last {days}d</div>
@@ -74,14 +74,14 @@ export function WeekInReview({ days, onSelectRepo }: Props) {
 
       <div className="grid grid-cols-1 gap-4 p-4 sm:p-5 xl:grid-cols-2">
         <MoverColumn
-          title="Most Stars Added"
+          title="Top 20 by Weekly Star Gain"
           icon={<Rocket className="h-4 w-4 text-blue-500" />}
           movers={data?.absolute_movers ?? []}
           isLoading={isLoading}
           onSelectRepo={onSelectRepo}
         />
         <MoverColumn
-          title="Highest % Growth"
+          title="Top 20 by Weekly % Growth"
           icon={<Users className="h-4 w-4 text-cyan-500" />}
           movers={data?.percentage_movers ?? []}
           isLoading={isLoading}

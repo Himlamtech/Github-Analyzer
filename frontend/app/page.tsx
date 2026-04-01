@@ -76,7 +76,7 @@ export default function DashboardPage() {
           }}
         />
 
-        <CategorySummaryGrid />
+        <CategorySummaryGrid days={days} />
         <AISearchPanel
           category={category}
           days={days}

@@ -70,14 +70,14 @@ export const api = {
       days,
     }),
 
-  getCategorySummary: (): Promise<CategorySummary[]> =>
-    apiFetch<CategorySummary[]>("/dashboard/category-summary"),
+  getCategorySummary: (days = 7, limit = 20): Promise<CategorySummary[]> =>
+    apiFetch<CategorySummary[]>("/dashboard/category-summary", { days, limit }),
 
   getShockMovers: (
     days = 7,
-    absolute_limit = 10,
-    percentage_limit = 10,
-    min_baseline_stars = 500,
+    absolute_limit = 20,
+    percentage_limit = 20,
+    min_baseline_stars = 100,
   ): Promise<ShockMoversResponse> =>
     apiFetch<ShockMoversResponse>("/dashboard/shock-movers", {
       days,
@@ -98,7 +98,7 @@ export const api = {
     days = 7,
     language,
     limit = 12,
-    minStars = 10_000,
+    minStars = 1_000,
   }: {
     query: string;
     category?: string;

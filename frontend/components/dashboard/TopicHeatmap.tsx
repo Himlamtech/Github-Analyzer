@@ -77,7 +77,7 @@ export function TopicHeatmap({ days }: Props) {
 
   const treemapData = (data ?? []).map((d) => ({
     name: d.topic,
-    size: d.event_count,
+    size: d.star_count,
     repo_count: d.repo_count,
   }));
 

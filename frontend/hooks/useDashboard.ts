@@ -43,10 +43,10 @@ export function useLanguageBreakdown(days: number) {
 }
 
 /** Per-category aggregate stats (repo count, stars, top repo, weekly delta). */
-export function useCategorySummary() {
+export function useCategorySummary(days: number) {
   return useQuery({
-    queryKey: ["category-summary"],
-    queryFn: api.getCategorySummary,
+    queryKey: ["category-summary", days],
+    queryFn: () => api.getCategorySummary(days),
     staleTime: 300_000,
   });
 }

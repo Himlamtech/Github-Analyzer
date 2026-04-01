@@ -1,0 +1,697 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{fontspec}
+\usepackage[vietnamese]{babel}
+\usepackage[a4paper,margin=1.8cm]{geometry}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{tocloft}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{setspace}
+\usepackage{fancyhdr}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{colortbl}
+\usepackage{pifont}
+\usepackage{tikz}
+
+\setmainfont{DejaVu Serif}
+\setsansfont{DejaVu Sans}
+\setmonofont{DejaVu Sans Mono}
+\renewcommand{\contentsname}{Mục lục}
+\setcounter{tocdepth}{1}
+\setlength{\cftbeforesecskip}{3pt}
+\setlength{\cftbeforesubsecskip}{1pt}
+\setlength{\cftsecnumwidth}{2.8em}
+\setlength{\cftsubsecnumwidth}{3.6em}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  urlcolor=blue!60!black,
+  citecolor=blue!60!black
+}
+
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{darkblue}{RGB}{15,53,87}
+\definecolor{softgray}{RGB}{235,239,244}
+\definecolor{accent}{RGB}{0,102,153}
+\definecolor{okgreen}{RGB}{40,120,80}
+\definecolor{warnorange}{RGB}{184,97,0}
+\definecolor{softred}{RGB}{166,36,36}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  breaklines=true,
+  columns=fullflexible
+}
+
+\setstretch{1.08}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.3em}
+\renewcommand{\arraystretch}{1.15}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{Github AnaGithub Analyzer}
+\rhead{Massive Data Mining}
+\cfoot{\thepage}
+
+\titleformat{\section}{\Large\bfseries\color{darkblue}}{\thesection.}{0.6em}{}
+\titleformat{\subsection}{\large\bfseries\color{accent}}{\thesubsection.}{0.6em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries}{\thesubsubsection.}{0.6em}{}
+
+\newcommand{\currentstate}{\textbf{\textcolor{blue!70!black}{Current state}}}
+\newcommand{\targetstate}{\textbf{\textcolor{okgreen}{Target state}}}
+\newcommand{\gaplabel}{\textbf{\textcolor{softred}{Gap}}}
+\newcommand{\risklabel}{\textbf{\textcolor{warnorange}{Risk}}}
+\newcommand{\assumptionlabel}{\textbf{\textcolor{purple!70!black}{Assumption}}}
+\newcommand{\cmark}{\textcolor{okgreen}{\ding{51}}}
+\newcommand{\xmark}{\textcolor{softred}{\ding{55}}}
+\newcommand{\flowbox}[1]{\fcolorbox{accent}{softgray}{\parbox[c][1.45cm][c]{0.17\textwidth}{\centering\small\textbf{#1}}}}
+\newcommand{\insightbox}[2]{%
+  \fcolorbox{accent}{softgray}{%
+    \parbox[c][3.15cm][t]{0.46\textwidth}{%
+      \textbf{#1}\par\medskip\small #2
+    }%
+  }%
+}
+\newcommand{\metricbox}[2]{%
+  \fcolorbox{accent}{white}{%
+    \parbox[c][1.9cm][c]{0.22\textwidth}{%
+      \centering\bfseries\Large #1\par\smallskip\normalsize #2
+    }%
+  }%
+}
+\newcommand{\reportimage}[2]{%
+  \IfFileExists{#1}{%
+    \includegraphics[width=0.92\textwidth]{#1}%
+  }{%
+    \fbox{\parbox[c][5.2cm][c]{0.88\textwidth}{\centering\small Chua co anh minh hoa\\\texttt{\detokenize{#1}}}}%
+  }%
+  \caption{#2}%
+}
+
+\begin{document}
+\small
+
+\begin{titlepage}
+  \centering
+  {\Large \textbf{HỌC VIỆN CÔNG NGHỆ BƯU CHÍNH VIỄN THÔNG}\par}
+  \vspace{0.4cm}
+  {\large Môn học: \textbf{Massive Data Mining}\par}
+  \vspace{1.2cm}
+
+  {\Huge \textbf{BÁO CÁO HỆ THỐNG VÀ PIPELINE DỮ LIỆU}\par}
+  \vspace{0.35cm}
+  {\Large \textbf{Dự án: Github AnaGithub Analyzer}\par}
+  \vspace{0.15cm}
+  {\large GitHub Data Mining, Fast Search, AI Insight and Observability Platform\par}
+
+  \vspace{1.1cm}
+  \begin{tabular}{>{\bfseries}p{4cm}p{9cm}}
+    Nhóm thực hiện: & Nguyễn Hải Lâm \\
+    & Nguyễn Văn Linh \\
+    & Trần Quang Minh \\
+    Giảng viên: & Đặng Hoàng Long \\
+  \end{tabular}
+
+  \vfill
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\section{Tóm Tắt Đề Tài}
+
+Github AnaGithub Analyzer là một hệ thống khai phá dữ liệu GitHub theo hướng end-to-end. Hệ thống không dừng ở việc thu thập dữ liệu sự kiện, mà tiếp tục chuẩn hóa dữ liệu vào lớp lưu trữ phân tích, phục vụ dashboard, sinh AI insight có kiểm soát và theo dõi sức khỏe vận hành bằng observability stack.
+
+Vấn đề trung tâm của đề tài là: dữ liệu GitHub có khối lượng lớn, nhiều loại sự kiện, biến động liên tục theo thời gian và khó truy vấn hiệu quả nếu chỉ giữ nguyên ở dạng raw events. Vì vậy, hệ thống cần một pipeline dữ liệu rõ ràng, gồm ingestion, storage, enrichment, serving, visualization và monitoring.
+
+Giá trị học thuật của đề tài nằm ở chỗ hệ thống thể hiện đủ các lớp điển hình của Massive Data Mining: thu thập dữ liệu lớn, chuyển đổi sang mô hình phục vụ truy vấn, khai thác tri thức bằng AI trên dữ liệu đã grounding, và đánh giá độ tin cậy vận hành bằng data freshness, throughput và trace.
+
+Điểm cần trình bày trung thực là backend dashboard routes trong tree source hiện tại chưa đồng bộ hoàn toàn với frontend và test. Điều này cho thấy repository đang ở trạng thái chuyển tiếp ở một số điểm tích hợp, nhưng không làm thay đổi bản chất kiến trúc và hướng thiết kế của hệ thống.
+
+\section{Tại Sao Có Đề Tài Này?}
+
+\subsection{Bối cảnh và vấn đề}
+
+\begin{figure}[H]
+  \centering
+  \insightbox{Dữ liệu GitHub có quy mô lớn}{
+    Dữ liệu gồm nhiều loại sự kiện, nhiều repository, nhiều actor và biến động liên tục theo thời gian. Nếu không có mô hình lưu trữ phù hợp, dữ liệu nhanh chóng trở nên khó khai thác.
+  }
+  \hfill
+  \insightbox{Raw events không phù hợp để phục vụ trực tiếp}{
+    Khi chỉ truy vấn từ raw event table, hệ thống khó tổng hợp nhanh theo topic, language, category và time window. Điều này làm dashboard và các phép phân tích xu hướng trở nên chậm và thiếu ổn định.
+  }
+
+  \vspace{0.35cm}
+
+  \insightbox{Dashboard thuần số liệu chưa đủ}{
+    Người dùng thường không chỉ hỏi ``có bao nhiêu sao'' mà còn hỏi ``vì sao repo này nổi lên'' hoặc ``xu hướng nào đang hình thành''. Vì vậy cần thêm lớp diễn giải có kiểm soát.
+  }
+  \hfill
+  \insightbox{Hệ thống dữ liệu cần được quan sát}{
+    Một service có thể vẫn phản hồi bình thường nhưng pipeline dữ liệu đã stale hoặc bị nghẽn ở một công đoạn trung gian. Do đó observability phải theo dõi cả technical health lẫn data health.
+  }
+  \caption{Bốn vấn đề cốt lõi mà đề tài cần giải quyết}
+\end{figure}
+
+\subsection{Đề tài giải quyết vấn đề gì?}
+
+\begin{enumerate}[leftmargin=0.9cm]
+  \item Chuẩn hóa dữ liệu GitHub thành mô hình dễ truy vấn thay vì chỉ giữ raw event.
+  \item Hỗ trợ tìm kiếm repository theo cả lexical matching và semantic reranking.
+  \item Sinh brief, market insight và so sánh repository theo hướng grounded AI.
+  \item Hiển thị dashboard phân tích theo category, language, topic, top repo, trending và timeseries.
+  \item Theo dõi độ khỏe hệ thống bằng logs, traces, data freshness và pipeline throughput.
+\end{enumerate}
+
+\subsection{Quy mô dữ liệu khảo sát}
+
+Số liệu dưới đây được lấy trực tiếp từ ClickHouse runtime tại thời điểm biên soạn báo cáo. Chúng cho thấy bài toán không còn ở mức dữ liệu mẫu nhỏ, mà đã đạt tới quy mô đủ để bàn về tối ưu lưu trữ, aggregate analytics và serving strategy.
+
+\begin{figure}[H]
+  \centering
+  \metricbox{1{,}016{,}880}{dòng trong \texttt{github\_data}}
+  \hfill
+  \metricbox{2{,}199{,}690}{tổng số dòng active parts}
+  \hfill
+  \metricbox{10.97 GiB}{kích thước uncompressed của raw table}
+  \hfill
+  \metricbox{2.07 GiB}{kích thước on-disk của raw table}
+  \caption{Các chỉ số quy mô dữ liệu tại thời điểm khảo sát}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{p{4cm}p{7.7cm}r}
+    \toprule
+    \textbf{Bảng} & \textbf{Biểu diễn tương đối số dòng} & \textbf{Số dòng} \\
+    \midrule
+    \texttt{github\_data} & \textcolor{accent}{\rule{7.1cm}{0.35cm}} & 1,016,880 \\
+    \texttt{repo\_metadata\_history} & \textcolor{okgreen}{\rule{7.1cm}{0.35cm}} & 1,016,853 \\
+    \texttt{repo\_metadata} & \textcolor{warnorange}{\rule{1.15cm}{0.35cm}} & 165,957 \\
+    \bottomrule
+  \end{tabular}
+  \caption{Tương quan số dòng giữa các bảng dữ liệu chính}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{p{4cm}p{7.7cm}r}
+    \toprule
+    \textbf{Lớp lưu trữ} & \textbf{Biểu diễn tương đối dung lượng} & \textbf{Dung lượng} \\
+    \midrule
+    Raw uncompressed & \textcolor{softred}{\rule{7.1cm}{0.35cm}} & 10.97 GiB \\
+    Raw on-disk & \textcolor{accent}{\rule{1.34cm}{0.35cm}} & 2.07 GiB \\
+    Metadata history & \textcolor{okgreen}{\rule{0.15cm}{0.35cm}} & 232.56 MiB \\
+    Metadata snapshot & \textcolor{warnorange}{\rule{0.08cm}{0.35cm}} & 47.27 MiB \\
+    \bottomrule
+  \end{tabular}
+  \caption{So sánh dung lượng giữa raw layer và các lớp dữ liệu phục vụ truy vấn}
+\end{figure}
+
+Nhìn từ các con số trên, có thể thấy giá trị của thiết kế phân tầng dữ liệu: raw layer giữ khối lượng lớn nhất để bảo toàn lịch sử sự kiện, trong khi các lớp metadata và history đóng vai trò nén thông tin thành dạng phục vụ truy vấn nhanh hơn.
+
+\subsection{Trên thế giới đã có ai làm chưa?}
+
+\textbf{Có.} Bài toán khai phá dữ liệu GitHub, phát hiện xu hướng repository và phân tích hành vi cộng đồng phát triển đã xuất hiện dưới nhiều hình thức khác nhau trên thế giới. Tuy nhiên, mỗi hệ thống thường chỉ mạnh ở một vài lát cắt: có hệ thống mạnh về khám phá sản phẩm, có hệ thống mạnh về dữ liệu lịch sử, có hệ thống mạnh về semantic retrieval, nhưng không phải lúc nào cũng trình bày đầy đủ toàn bộ pipeline dữ liệu theo cách phù hợp cho một đồ án học thuật.
+
+\begin{figure}[H]
+  \centering
+  \flowbox{GitHub Explore\\Trending}
+  \hspace{0.015\textwidth}
+  \flowbox{GH Archive\\BigQuery}
+  \hspace{0.015\textwidth}
+  \flowbox{Dev analytics\\platforms}
+  \hspace{0.015\textwidth}
+  \flowbox{AI code\\intelligence}
+  \caption{Các nhóm giải pháp gần với bài toán của đề tài trên thế giới}
+\end{figure}
+
+\begin{table}[H]
+  \centering
+  \caption{Đối chiếu với các nhóm hệ thống tương tự}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{3.3cm}X X}
+    \toprule
+    Nhóm hệ thống & Hướng giải quyết phổ biến & Liên hệ với đề tài \\
+    \midrule
+    GitHub Explore / Trending & Tập trung vào discovery, ranking và bề mặt sản phẩm để giúp người dùng tìm repository nổi bật. & Đề tài kế thừa ý tưởng phát hiện xu hướng, nhưng trình bày rõ hơn data pipeline, storage và observability. \\
+    GH Archive / BigQuery public datasets & Tập trung vào khai thác lịch sử dữ liệu GitHub quy mô lớn bằng data warehouse phục vụ nghiên cứu và truy vấn. & Đề tài đi theo cùng tinh thần khai phá dữ liệu lớn, nhưng ưu tiên local analytical stack để có thể demo trọn vẹn end-to-end. \\
+    Dev analytics platforms & Tập trung vào market intelligence, competitive intelligence hoặc developer intelligence trong môi trường thương mại. & Đề tài đưa bài toán đó về dạng học thuật và mã nguồn có thể giải thích từng lớp. \\
+    AI code intelligence tools & Tập trung vào semantic search, summary và recommendation trên mô tả hoặc mã nguồn. & Đề tài sử dụng AI ở lớp diễn giải, nhưng giữ nguyên tắc grounded generation và fallback khi AI không đáng tin cậy. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\textbf{Kết luận của phần đối chiếu:} đề tài không phải là ý tưởng chưa từng xuất hiện, nhưng hệ thống có đặc điểm riêng ở \textbf{việc kết hợp nhiều lớp vốn thường bị tách rời} thành một kiến trúc thống nhất: data ingestion, analytical storage, AI insight, dashboard analytics và observability.
+
+\section{Use Case và Giá Trị Sử Dụng}
+
+\begin{table}[H]
+  \centering
+  \caption{Các use case chính}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{3cm}p{3cm}X}
+    \toprule
+    Use case & Người dùng hưởng lợi & Giá trị mang lại \\
+    \midrule
+    Search repositories & Người muốn khám phá dự án mới & Tìm repository theo keyword, topic, language, category và tín hiệu phổ biến. \\
+    Repo brief & Người đọc cần tổng hợp nhanh & AI tóm lược dựa trên metadata và metric có thật, tránh bịa thông tin. \\
+    Market brief & Người quan sát xu hướng công nghệ & Xác định nhóm repo nổi lên, category movers, topic shift trong một time window. \\
+    Related repositories & Người cần so sánh hoặc mở rộng danh mục & Gợi ý repo liên quan dựa trên mô tả, chủ đề và tín hiệu hành vi. \\
+    Dashboard analytics & Giảng viên, nhóm dự án, nhà phân tích & Trực quan top repos, trending, topic heatmap, language breakdown, activity timeline. \\
+    Observability & Người vận hành hệ thống & Xác định nhanh hệ thống còn dữ liệu mới hay đã stale, bottleneck ở đâu. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Bức Tranh Tổng Thể Của Hệ Thống}
+
+\subsection{Tech stack tổng quan}
+
+\begin{longtable}{p{2.9cm}p{3cm}p{4cm}p{4.4cm}}
+\caption{Tech stack và vai trò}\\
+\toprule
+\textbf{Lớp} & \textbf{Công nghệ} & \textbf{Lý do chọn} & \textbf{Nếu không dùng công nghệ này} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Lớp} & \textbf{Công nghệ} & \textbf{Lý do chọn} & \textbf{Nếu không dùng công nghệ này} \\
+\midrule
+\endhead
+API / Orchestration & Python 3.12, FastAPI & Phù hợp cho data service, typing tốt, xây API nhanh, dễ tổ chức use case. & Nếu dùng framework nặng hơn sẽ tăng overhead; nếu dùng script rời rạc sẽ khó chuẩn hóa contract và dependency injection. \\
+Analytical storage & ClickHouse 24.8 & Tối ưu aggregate analytics theo thời gian, group by lớn, query nhanh trên dữ liệu sự kiện. & Nếu dùng DB giao dịch thuần túy, dashboard và market query sẽ kém hiệu quả hơn rõ rệt. \\
+Frontend analytics & Next.js, React, TypeScript, Tailwind & Dựng dashboard nhanh, typed contract rõ, component hóa tốt, phù hợp demo trực quan. & Nếu dùng frontend không typed, sai lệch API contract dễ xảy ra hơn và khó mở rộng widget phân tích. \\
+AI layer & Embedding service, generation service, Ollama profile & Bổ sung semantic reranking và AI insight có thể bật tắt theo môi trường. & Nếu bỏ AI, hệ thống vẫn query được nhưng mất lớp diễn giải và semantic search. \\
+Observability & Grafana, Loki, Promtail, Tempo & Bao phủ dashboard, log, trace; hỗ trợ theo dõi technical health lẫn data health. & Nếu thiếu, hệ thống khó đánh giá độ tin cậy vận hành và khó phân tích nguyên nhân sự cố. \\
+Container runtime & Docker Compose & Dựng local mini data platform đồng nhất, dễ demo và dễ tái tạo. & Nếu cài tay từng service, môi trường khó đồng bộ và khó chấm/demo. \\
+\bottomrule
+\end{longtable}
+
+\subsection{So sánh một số lựa chọn công nghệ}
+
+\begin{table}[H]
+  \centering
+  \caption{So sánh lựa chọn công nghệ cốt lõi}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{2.8cm}p{3.4cm}p{3.4cm}X}
+    \toprule
+    Bài toán & Lựa chọn hiện tại & Phương án khác & Nhận xét \\
+    \midrule
+    Query analytics lớn & ClickHouse & PostgreSQL / MySQL & ClickHouse phù hợp hơn cho aggregate, time window và scan analytics trên event data. \\
+    API backend & FastAPI & Flask / Django & FastAPI mạnh ở typing, validation và tốc độ dựng API service gọn. \\
+    Dashboard frontend & Next.js + TypeScript & SPA thuần JavaScript & Next.js giữ cấu trúc tốt hơn cho product dashboard; TypeScript giảm lệch DTO. \\
+    AI local profile & Ollama & Gọi cloud-only model & Ollama thuận tiện cho demo local và tránh phụ thuộc hoàn toàn vào internet trong lúc thuyết trình. \\
+    Observability & Grafana stack & Chỉ log file hoặc console & Grafana stack cho khả năng trình diễn chuyên nghiệp hơn nhiều và phục vụ root-cause analysis. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Luồng Hoạt Động Của Hệ Thống}
+
+\subsection{Sơ đồ pipeline dữ liệu}
+
+\begin{figure}[H]
+  \centering
+  \flowbox{Nguồn dữ liệu\\GitHub events}
+  \hspace{0.008\textwidth}
+  $\Rightarrow$
+  \hspace{0.008\textwidth}
+  \flowbox{Raw ingestion\\\texttt{github\_data}}
+  \hspace{0.008\textwidth}
+  $\Rightarrow$
+  \hspace{0.008\textwidth}
+  \flowbox{Data shaping\\metadata/history}
+  \hspace{0.008\textwidth}
+  $\Rightarrow$
+  \hspace{0.008\textwidth}
+  \flowbox{Serving layer\\FastAPI + AI}
+  \hspace{0.008\textwidth}
+  $\Rightarrow$
+  \hspace{0.008\textwidth}
+  \flowbox{Frontend\\dashboard}
+  \caption{Pipeline dữ liệu chính của hệ thống}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \flowbox{Logs}
+  \hspace{0.02\textwidth}
+  \flowbox{Metrics}
+  \hspace{0.02\textwidth}
+  \flowbox{Traces}
+  \hspace{0.02\textwidth}
+  \flowbox{Freshness\\signals}
+  \vspace{0.25cm}
+
+  $\Downarrow$
+  \vspace{0.2cm}
+
+  \flowbox{Grafana / Loki / Tempo\\Lớp quan sát vận hành}
+  \caption{Pipeline quan sát vận hành chạy song song với pipeline dữ liệu nghiệp vụ}
+\end{figure}
+
+\subsection{Diễn giải pipeline theo từng giai đoạn}
+
+\begin{table}[H]
+  \centering
+  \caption{Các bước xử lý chính}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{0.9cm}p{3cm}X}
+    \toprule
+    Bước & Khối xử lý & Nội dung \\
+    \midrule
+    1 & Data ingestion & Dữ liệu GitHub được thu thập vào lớp raw event. Đây là lớp lưu vết ban đầu của toàn bộ hệ thống. \\
+    2 & Storage foundation & ClickHouse lưu dữ liệu sự kiện để phục vụ scan, aggregate theo thời gian và các truy vấn analytics có khối lượng lớn. \\
+    3 & Data shaping & Từ dữ liệu gốc, hệ thống tạo metadata snapshot, metadata history và các aggregate phục vụ dashboard và AI. \\
+    4 & Query serving & FastAPI phục vụ dashboard và AI use case; nếu serving table chưa sẵn sàng thì fallback về raw table. \\
+    5 & Insight generation & Search kết hợp lexical retrieval và semantic reranking; repo brief và market brief dùng grounded generation. \\
+    6 & Visualization & Frontend hiển thị top repositories, trending, language breakdown, topic heatmap, timeline và các khối summary. \\
+    7 & Runtime monitoring & Grafana, Loki, Promtail, Tempo giám sát health, freshness, throughput, trace và root cause. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Cách pipeline giải quyết bài toán}
+
+Pipeline dữ liệu là phần cốt lõi của hệ thống. Nếu chỉ có crawler và một bảng raw event, dữ liệu sẽ khó tái sử dụng cho dashboard và AI. Vì vậy, hệ thống đưa dữ liệu đi qua ba lớp khác nhau:
+\begin{enumerate}[leftmargin=0.9cm]
+  \item \textbf{Lớp raw}: giữ nguyên lịch sử sự kiện để đảm bảo khả năng truy vết và backfill.
+  \item \textbf{Lớp shaping}: biến sự kiện rời rạc thành metadata, history và aggregate có ý nghĩa phân tích.
+  \item \textbf{Lớp serving}: cung cấp dữ liệu đã tối ưu cho dashboard, search và AI use cases.
+\end{enumerate}
+
+Thiết kế này giúp hệ thống trả lời đồng thời hai nhóm câu hỏi: câu hỏi phân tích dữ liệu như ``repo nào đang tăng nhanh'' và câu hỏi diễn giải như ``vì sao repo này nổi bật trong time window hiện tại''.
+
+\subsection{Luồng request tiêu biểu}
+
+\begin{table}[H]
+  \centering
+  \caption{Ví dụ luồng tìm kiếm repository}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{3.4cm}X}
+    \toprule
+    Giai đoạn & Nội dung xử lý \\
+    \midrule
+    User query & Người dùng nhập keyword hoặc chủ đề cần tìm. \\
+    Candidate retrieval & Backend lấy tập ứng viên từ ClickHouse bằng lexical scoring. \\
+    Semantic reranking & Nếu embedding service sẵn sàng, ứng viên được chấm thêm semantic score. \\
+    Explainability & Kết quả trả về kèm matched terms, why matched, lexical score, semantic score, popularity score. \\
+    Dashboard / AI usage & Kết quả được hiển thị hoặc tiếp tục dùng làm context cho repo brief / compare / related repos. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Các Đóng Góp Kỹ Thuật Chính}
+
+\begin{table}[H]
+  \centering
+  \caption{Các đóng góp kỹ thuật nổi bật của hệ thống}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{4.1cm}X}
+    \toprule
+    Đóng góp & Ý nghĩa kỹ thuật \\
+    \midrule
+    ClickHouse đúng vai trò analytical database & Không chỉ lưu dữ liệu, mà phục vụ aggregate analytics trên event stream và time window với hiệu năng phù hợp cho Massive Data Mining. \\
+    Grounded AI & AI bị ràng buộc bởi metric và metadata thật; khi lỗi thì fallback về template thay vì trả nội dung bịa. \\
+    Graceful degradation & Nếu metadata serving chưa sẵn sàng, backend vẫn fallback về raw table để hệ thống tiếp tục chạy. \\
+    Dashboard đa tầng & Có lớp overview, ranking, breakdown, timeline và heatmap nên câu chuyện dữ liệu đầy đủ hơn nhiều so với một bảng số liệu đơn giản. \\
+    Observability theo data health & Dashboard không chỉ đo CPU/RAM hay uptime; nó đo freshness, throughput, quota và dấu hiệu pipeline stalled. \\
+    Local mini data platform & Docker Compose ghép được API, frontend, ClickHouse, Grafana stack và profile AI thành một môi trường demo hoàn chỉnh. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Cách Hệ Thống Giải Quyết Bài Toán}
+
+\subsection{Mức kiến trúc}
+
+\begin{table}[H]
+  \centering
+  \caption{Từ vấn đề đến giải pháp}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{3.4cm}X X}
+    \toprule
+    Vấn đề & Giải pháp của hệ thống & Tác động \\
+    \midrule
+    Raw event khó dùng trực tiếp & Tách raw storage và serving storage bằng bootstrap metadata/history. & Query nhanh hơn, rõ nghĩa hơn, dễ xây dashboard và AI context. \\
+    Search keyword đơn thuần thiếu chất lượng & Kết hợp lexical scoring và semantic reranking. & Kết quả vừa nhanh vừa có độ liên quan tốt hơn. \\
+    AI dễ hallucinate & Dùng prompt ràng buộc, schema JSON và fallback deterministic template. & Insight an toàn hơn, trình bày chuyên nghiệp hơn. \\
+    Service sống nhưng dữ liệu stale & Dùng observability bám vào freshness, throughput, quota, root cause. & Phản ánh đúng business health thay vì chỉ operational health bề mặt. \\
+    Nhiều thành phần khó dựng demo & Đóng gói bằng Docker Compose và provisioning dashboard từ repo. & Demo dễ, tái tạo dễ, phù hợp môi trường học thuật. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Mức use case}
+
+\begin{table}[H]
+  \centering
+  \caption{Các use case AI và phân tích}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{3cm}X X}
+    \toprule
+    Use case & Cách hoạt động & Giá trị thực tế \\
+    \midrule
+    Search repositories & Lấy candidate theo lexical match, sau đó rerank bằng semantic nếu khả dụng. & Phù hợp bài toán khám phá repo và tìm dự án tương tự. \\
+    Generate repo brief & Dùng metric và metadata có thật để tạo bản tóm lược ngắn, có fallback template. & Người dùng hiểu nhanh một repo mà không cần đọc quá nhiều raw data. \\
+    Build market brief & Tổng hợp movers, breakout repositories và topic shift theo time window. & Phục vụ phân tích xu hướng ở mức thị trường. \\
+    Recommend related repositories & So sánh tín hiệu mô tả, topic và hành vi để gợi ý repo gần nhau. & Hỗ trợ mở rộng discovery graph. \\
+    Dashboard analytics & Kết nối nhiều nguồn dữ liệu để dựng top, trend, heatmap, timeline, language mix. & Tạo góc nhìn trực quan phục vụ demo và phân tích. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Hiện Trạng Dự Án}
+
+\subsection{Current state}
+
+\begin{table}[H]
+  \centering
+  \caption{Hiện trạng xác nhận từ repository}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{3.4cm}X}
+    \toprule
+    Miền & Hiện trạng \\
+    \midrule
+    Runtime stack & Có \texttt{docker-compose.yml} cho ClickHouse, API, frontend, Grafana, Loki, Promtail, Tempo và Ollama profile. \\
+    Backend AI & Có các use case cho search, repo brief, market brief, compare, related repositories và catalog discovery. \\
+    Data shaping & Có bootstrap cho metadata/history và materialized-view style serving flow. \\
+    Frontend & Có dashboard Next.js với typed API client và các widget phân tích chính. \\
+    Observability & Có datasource provisioning, dashboard overview, dashboard database và trace integration. \\
+    Quality tooling & Có \texttt{pyproject.toml} cho ruff, mypy strict, pytest. \\
+    Git history & Có commit history thể hiện quá trình thêm compose, CI, observability và test. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Target state, gap, risk}
+
+\begin{longtable}{p{2.2cm}p{10.8cm}}
+\caption{Đánh giá hiện trạng mở rộng}\\
+\toprule
+\textbf{Nhãn} & \textbf{Nội dung} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Nhãn} & \textbf{Nội dung} \\
+\midrule
+\endhead
+\targetstate & Đồng bộ hoàn toàn frontend dashboard routes với backend serving routes; tách poller, processor, API và frontend thành các workload thể hiện rõ hơn; có tài liệu seed dataset và benchmark latency/freshness rõ ràng. \\
+\gaplabel & Có dấu vết lệch giữa dashboard routes phía frontend, test và source backend hiện hành; một số dashboard observability đòi hỏi metric source chưa thấy hiện diện đầy đủ trong tree source khảo sát. \\
+\risklabel & Nếu serving routes chưa tồn tại ở runtime thật, dashboard frontend sẽ lỗi; nếu metadata bootstrap chưa chạy, AI/search vẫn chạy được nhưng chất lượng insight và category metadata có thể giảm; nếu metric source không đồng bộ, dashboard observability có nguy cơ trống hoặc sai ngữ cảnh. \\
+\assumptionlabel & Repository đang ở trạng thái chuyển tiếp và một phần bằng chứng được suy ra từ test, dashboard provisioning và commit history chứ không chỉ từ source runtime đang mở. \\
+\bottomrule
+\end{longtable}
+
+\section{Kiến Trúc Backend, Dữ Liệu và Frontend}
+
+\subsection{Backend theo layered architecture}
+
+\begin{table}[H]
+  \centering
+  \caption{Phân lớp backend}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{2.8cm}X X}
+    \toprule
+    Lớp & Thành phần hiện có & Ý nghĩa \\
+    \midrule
+    Application & Use case, DTO & Chứa orchestration logic cho search, brief, compare, market insight. \\
+    Infrastructure & ClickHouse access, LLM service, tracing, news service & Chứa phần kết nối công nghệ và phục vụ lưu trữ / observability. \\
+    Presentation & FastAPI routes & Phơi bày API cho AI/search và lớp HTTP. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{ClickHouse như lõi dữ liệu phân tích}
+
+\begin{table}[H]
+  \centering
+  \caption{Các bảng và vai trò dữ liệu}
+  \begin{tabularx}{\textwidth}{>{\ttfamily}p{4cm}X}
+    \toprule
+    Bảng / view & Vai trò \\
+    \midrule
+    github\_data & Raw event table chứa sự kiện GitHub và metadata quan sát được tại thời điểm event. \\
+    repo\_metadata & Snapshot metadata hiện tại của repository, phục vụ query nhanh hơn cho AI/search/dashboard. \\
+    repo\_metadata\_history & Lịch sử metadata theo thời gian để phân tích evolution. \\
+    repo\_star\_counts & Aggregate hỗ trợ đo tăng trưởng sao theo cửa sổ thời gian. \\
+    github\_data\_to\_repo\_metadata\_history\_mv & Luồng đưa raw event sang lịch sử metadata. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Frontend dashboard}
+
+\begin{table}[H]
+  \centering
+  \caption{Các khối hiển thị chính}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{4cm}X}
+    \toprule
+    Thành phần hiển thị & Vai trò \\
+    \midrule
+    Category summary & Cái nhìn chiến lược theo nhóm chủ đề hoặc phân loại repo. \\
+    Top repositories & Xác định các repository nổi bật theo metric chính. \\
+    Trending repositories & Nhấn vào các repo đang tăng tốc trong time window ngắn. \\
+    Topic heatmap & Thể hiện cụm chủ đề nổi bật và tần suất xuất hiện. \\
+    Language breakdown & Cho cái nhìn phân bố công nghệ đang chiếm ưu thế. \\
+    Activity timeline / repo timeseries & Diễn giải sự thay đổi theo thời gian thay vì snapshot tĩnh. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Vai Trò Của Lớp Quan Sát Vận Hành}
+
+\begin{table}[H]
+  \centering
+  \caption{Ý nghĩa của observability trong hệ thống}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{3.2cm}X}
+    \toprule
+    Khía cạnh & Giá trị \\
+    \midrule
+    System overview & Theo dõi API health, pipeline health, data freshness, quota, throughput và latency. \\
+    Database overview & Quan sát số dòng, số repo, latest event timestamp, freshness theo giây và mức hoạt động 24 giờ gần nhất. \\
+    Narrative dashboard & Cho thấy trường hợp service vẫn hoạt động nhưng dữ liệu nghiệp vụ đã stale, tức là operational health và business health không trùng nhau. \\
+    Tracing semantics & Span không chỉ có latency mà còn có root cause như \texttt{processing\_pipeline\_stalled}, \texttt{clickhouse\_unreachable}. \\
+    Reproducibility & Dashboard được provisioning trực tiếp từ repo nên dễ dựng, dễ tái hiện và phù hợp môi trường đồ án. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{So Sánh Ngắn: Có Và Không Có Các Thành Phần Này}
+
+\begin{table}[H]
+  \centering
+  \caption{Tác động của từng thành phần}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{3.1cm}X X}
+    \toprule
+    Thành phần & Khi có & Khi không có \\
+    \midrule
+    ClickHouse & Query aggregate nhanh, phù hợp dashboard analytics và AI context retrieval. & Phân tích chậm hơn, serving khó mở rộng hơn trên event data. \\
+    AI grounded layer & Tăng khả năng diễn giải và demo tính thông minh của hệ thống. & Chỉ còn dashboard thống kê, thiếu phần insight có giá trị trình bày. \\
+    Metadata bootstrap & Có serving tables rõ nghĩa, truy vấn sạch và ổn định hơn. & Phải phụ thuộc nhiều vào raw table, chất lượng và hiệu năng có thể giảm. \\
+    Observability stack & Dễ chứng minh độ hoàn thiện và dễ điều tra lỗi. & Đồ án khó vượt khỏi mức ``app chạy được''. \\
+    Docker Compose & Dễ demo full stack một lệnh. & Setup rời rạc, khó tái tạo trước giảng viên. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Lịch Sử Phát Triển Và Đóng Góp}
+
+\subsection{Nhịp phát triển gần nhất}
+
+\section*{Phụ Lục Hình Ảnh Minh Họa}
+
+\subsection{Ảnh frontend}
+\begin{figure}[H]
+  \centering
+  \reportimage{images/Big Data Week 8 frontend.png}{Giao diện frontend của hệ thống GitHub Analyzer}
+\end{figure}
+
+\subsection{Ảnh database}
+\begin{figure}[H]
+  \centering
+  \reportimage{images/Big Data Week 8 Database.png}{Tầng cơ sở dữ liệu và cấu trúc lưu trữ ClickHouse}
+\end{figure}
+
+\subsection{Ảnh Grafana overview}
+\begin{figure}[H]
+  \centering
+  \reportimage{images/Grafana Overview BigDataWeek8.png}{Dashboard Grafana tổng quan hệ thống}
+\end{figure}
+
+\subsection{Ảnh Grafana database}
+\begin{figure}[H]
+  \centering
+  \reportimage{images/grafana_database.png}{Dashboard Grafana giám sát lớp dữ liệu}
+\end{figure}
+
+\subsection{Ảnh commit GitHub của nhóm}
+\begin{figure}[H]
+  \centering
+  \reportimage{images/Big Data Week 8 Commits.png}{Minh chứng đóng góp GitHub của nhóm thực hiện}
+\end{figure}
+
+\section{Kế Hoạch Triển Khai Đến Tuần 12}
+
+\begin{table}[H]
+  \centering
+  \caption{Kế hoạch triển khai theo tuần}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{1.5cm}p{4.2cm}X}
+    \toprule
+    Tuần & Trọng tâm & Nội dung triển khai \\
+    \midrule
+    Tuần 1 & Khảo sát bài toán & Xác định mục tiêu đề tài, phạm vi dữ liệu GitHub cần theo dõi, chỉ số phân tích chính và định hướng kiến trúc tổng thể. \\
+    Tuần 2 & Thiết kế dữ liệu & Xác định cấu trúc raw events, metadata repository, các trường phục vụ truy vấn theo thời gian, topic, language và category. \\
+    Tuần 3 & Dựng hạ tầng dữ liệu & Chuẩn bị ClickHouse, môi trường Docker Compose và cấu hình backend cơ sở để tiếp nhận dữ liệu. \\
+    Tuần 4 & Ingestion pipeline & Xây dựng luồng nạp dữ liệu GitHub vào raw table, kiểm tra tính toàn vẹn và khả năng backfill dữ liệu. \\
+    Tuần 5 & Data shaping & Tạo lớp \texttt{repo\_metadata}, \texttt{repo\_metadata\_history} và các aggregate phục vụ dashboard, AI và phân tích xu hướng. \\
+    Tuần 6 & Backend API & Xây dựng các route cho dashboard, search và insight; chuẩn hóa DTO, validation và cơ chế fallback khi dữ liệu enrichment chưa sẵn sàng. \\
+    Tuần 7 & Frontend dashboard & Phát triển giao diện trực quan hóa gồm top repositories, trending, language breakdown, topic heatmap và timeline. \\
+    Tuần 8 & AI use cases & Tích hợp semantic reranking, repo brief, market brief và recommendation theo nguyên tắc grounded generation. \\
+    Tuần 9 & Observability & Bổ sung Grafana, Loki, Promtail, Tempo; xây dashboard theo dõi freshness, throughput, health và tracing. \\
+    Tuần 10 & Kiểm thử và hiệu chỉnh & Viết test cho backend, dashboard routes và các service dữ liệu; kiểm tra hiệu năng truy vấn và độ ổn định của pipeline. \\
+    Tuần 11 & Hoàn thiện sản phẩm & Đồng bộ backend, frontend, dữ liệu và dashboard quan sát; rà soát môi trường demo và tài liệu chạy hệ thống. \\
+    Tuần 12 & Tổng hợp báo cáo & Hoàn thiện báo cáo, tổng hợp hình minh họa, kết quả triển khai, hiện trạng hệ thống và chuẩn bị nội dung bảo vệ đồ án. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Kết Luận}
+
+Phiên bản báo cáo này chuyển trọng tâm từ mô tả dài sang \textbf{lý do tồn tại của đề tài, pipeline xử lý, bảng so sánh công nghệ, hiện trạng dự án và các điểm kỹ thuật đáng trình bày}. Theo góc nhìn Massive Data Mining, dự án đủ mạnh ở chỗ không chỉ thu thập dữ liệu lớn mà còn tổ chức được storage, serving, AI insight và observability thành một chuỗi giá trị tương đối hoàn chỉnh.
+
+Đây không phải một dashboard đơn thuần mà là một \textbf{full-stack data product} có analytical database, grounded AI và monitoring của business health. Trạng thái tích hợp dashboard backend hiện còn dấu hiệu chuyển tiếp; tuy vậy, hệ thống vẫn thể hiện tư duy thiết kế rõ ràng và mức độ hoàn thiện kỹ thuật cao so với một đồ án dashboard thông thường.
+
+\section*{Phụ lục A. Các file được dùng làm bằng chứng}
+
+\begin{itemize}[leftmargin=1.1cm]
+  \item \texttt{README.md}
+  \item \texttt{docker-compose.yml}
+  \item \texttt{pyproject.toml}
+  \item \texttt{src/presentation/api/ai\_routes.py}
+  \item \texttt{src/application/use\_cases/search\_repositories.py}
+  \item \texttt{src/application/use\_cases/generate\_repo\_brief.py}
+  \item \texttt{src/infrastructure/storage/clickhouse\_ai\_service.py}
+  \item \texttt{src/infrastructure/storage/clickhouse\_ai\_insights\_service.py}
+  \item \texttt{src/infrastructure/storage/clickhouse\_repo\_observation\_bootstrap.py}
+  \item \texttt{src/infrastructure/observability/tracing.py}
+  \item \texttt{frontend/app/page.tsx}
+  \item \texttt{frontend/lib/api.ts}
+  \item \texttt{frontend/lib/types.ts}
+  \item \texttt{frontend/hooks/useDashboard.ts}
+  \item \texttt{frontend/components/layout/Header.tsx}
+  \item \texttt{observability/grafana\_provisioning/dashboards/system\_overview.json}
+  \item \texttt{observability/grafana\_provisioning/dashboards/database\_overview.json}
+  \item \texttt{observability/grafana\_provisioning/dashboards/demo\_saas.json}
+  \item \texttt{tests/presentation/test\_dashboard\_routes.py}
+  \item \texttt{tests/presentation/test\_pipeline\_status.py}
+  \item \texttt{git log}, \texttt{git shortlog}
+\end{itemize}
+
+\end{document}
