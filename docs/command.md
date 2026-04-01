@@ -51,6 +51,22 @@ Neu muon tao them trace business:
 for i in $(seq 1 5); do curl -s http://localhost:8000/pipeline/status >/dev/null; sleep 1; done
 ```
 
+## 3.1. Dau hieu ky vong khi su co xay ra
+
+Day la nhung dau hieu can quan sat sau khi tat `processor`:
+
+- `Throughput` o nhanh xu ly se giam rat manh, co the ve gan `0`
+- `Kafka Lag` hoac do lech giua produced va processed se tang dan
+- `Data Freshness` se tang lien tuc vi khong con ban ghi moi duoc xu ly
+- `Latest Ingest Timestamp` co xu huong dung lai
+- `API Health`, `Request Rate`, `Error Rate`, va ca `Latency` co the van khong bao dong ro rang
+
+Thong diep can giu nhat quan:
+
+- day la su co o tang xu ly bat dong bo, khong nhat thiet la su co lam request API cham hon ro ret
+- trace va logs duoc dung de correlate mot request thanh cong voi tinh trang pipeline bi stale
+- root cause duoc xac nhan bang business telemetry va processor logs, khong phai bang mot span request bi block boi processor
+
 ## 4. Kich ban demo binh thuong
 
 Noi khi dang mo dashboard:
@@ -145,6 +161,7 @@ Noi:
 - lay mot request thanh cong
 - mo trace correlation
 - doi chieu logs va metrics
+- nhan manh trace nay dung de correlate, khong phai de chung minh request dang doi processor
 
 ### Hang 5: Xac Nhan Cuoi
 
@@ -203,6 +220,8 @@ Nghia la request-layer monitoring khong du de ket luan root cause.
 
 Luc nay trace va logs moi chi ra duoc su that:
 API van thanh cong, nhung processor da ngung xu ly.
+Trace giup noi request thanh cong voi tinh trang pipeline stale,
+con logs processor va metrics business moi xac nhan diem gay.
 
 Do la khac biet giua monitoring va observability:
 monitoring cho biet service con song,
