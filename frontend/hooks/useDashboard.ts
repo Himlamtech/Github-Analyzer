@@ -50,3 +50,21 @@ export function useCategorySummary() {
     staleTime: 300_000,
   });
 }
+
+/** Repos making the biggest weekly moves in absolute and percentage terms. */
+export function useShockMovers(days: number) {
+  return useQuery({
+    queryKey: ["shock-movers", days],
+    queryFn: () => api.getShockMovers(days),
+    staleTime: 60_000,
+  });
+}
+
+/** Topics gaining star activity versus the prior comparison window. */
+export function useTopicRotation(days: number) {
+  return useQuery({
+    queryKey: ["topic-rotation", days],
+    queryFn: () => api.getTopicRotation(days),
+    staleTime: 120_000,
+  });
+}

@@ -4,8 +4,15 @@
 import type {
   CategorySummary,
   LanguageBreakdown,
+  MarketBriefResponse,
+  RelatedReposResponse,
+  RepoBriefResponse,
+  RepoCompareResponse,
+  RepoSearchResponse,
+  ShockMoversResponse,
   TimeseriesPoint,
   TopicBreakdown,
+  TopicRotationItem,
   TopRepo,
   TrendingRepo,
 } from "./types";
@@ -65,4 +72,88 @@ export const api = {
 
   getCategorySummary: (): Promise<CategorySummary[]> =>
     apiFetch<CategorySummary[]>("/dashboard/category-summary"),
+
+  getShockMovers: (
+    days = 7,
+    absolute_limit = 10,
+    percentage_limit = 10,
+    min_baseline_stars = 500,
+  ): Promise<ShockMoversResponse> =>
+    apiFetch<ShockMoversResponse>("/dashboard/shock-movers", {
+      days,
+      absolute_limit,
+      percentage_limit,
+      min_baseline_stars,
+    }),
+
+  getTopicRotation: (days = 7, limit = 12): Promise<TopicRotationItem[]> =>
+    apiFetch<TopicRotationItem[]>("/dashboard/topic-rotation", {
+      days,
+      limit,
+    }),
+
+  searchRepositories: ({
+    query,
+    category,
+    days = 7,
+    language,
+    limit = 12,
+    minStars = 10_000,
+  }: {
+    query: string;
+    category?: string;
+    days?: number;
+    language?: string;
+    limit?: number;
+    minStars?: number;
+  }): Promise<RepoSearchResponse> =>
+    apiFetch<RepoSearchResponse>("/ai/search", {
+      query,
+      ...(category ? { category } : {}),
+      ...(language ? { language } : {}),
+      days,
+      limit,
+      min_stars: minStars,
+    }),
+
+  getAIMarketBrief: (
+    days = 7,
+    breakout_limit = 3,
+    category_limit = 2,
+    topic_limit = 3,
+  ): Promise<MarketBriefResponse> =>
+    apiFetch<MarketBriefResponse>("/ai/market-brief", {
+      days,
+      breakout_limit,
+      category_limit,
+      topic_limit,
+    }),
+
+  getAIRepoBrief: (repo_name: string, days = 7): Promise<RepoBriefResponse> =>
+    apiFetch<RepoBriefResponse>("/ai/repo-brief", {
+      repo_name,
+      days,
+    }),
+
+  getAIRepoCompare: (
+    base_repo_name: string,
+    compare_repo_name: string,
+    days = 7,
+  ): Promise<RepoCompareResponse> =>
+    apiFetch<RepoCompareResponse>("/ai/repo-compare", {
+      base_repo_name,
+      compare_repo_name,
+      days,
+    }),
+
+  getAIRelatedRepos: (
+    repo_name: string,
+    days = 7,
+    limit = 6,
+  ): Promise<RelatedReposResponse> =>
+    apiFetch<RelatedReposResponse>("/ai/related-repos", {
+      repo_name,
+      days,
+      limit,
+    }),
 };
