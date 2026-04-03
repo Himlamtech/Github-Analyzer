@@ -5,6 +5,7 @@ server:
   grpc_listen_port: 9096
 
 common:
+  # Local single-node storage layout for the Docker Compose stack.
   path_prefix: /loki
   replication_factor: 1
   ring:
