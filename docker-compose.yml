@@ -1,32 +1,32 @@
 name: gha
 
 networks:
-  github_analyzer_net:
+  github-networks:
     driver: bridge
 
 volumes:
   clickhouse_data:
     external: true
-    name: githubsmoke_clickhouse_data
+    name: github-clickhouse-data
   prometheus_data:
     external: true
-    name: githubsmoke_prometheus_data
+    name: github-prometheus-data
   grafana_data:
     external: true
-    name: githubsmoke_grafana_data
+    name: github-grafana-data
   tempo_data:
   loki_data:
   ollama_data:
     external: true
-    name: githubsmoke_ollama_data
+    name: github-ollama-data
 
 services:
   zookeeper:
     image: gha-zookeeper
-    container_name: gha-zookeeper
+    container_name: github-zookeeper
     hostname: zookeeper
     networks:
-      - github_analyzer_net
+      - github-networks
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -41,10 +41,10 @@ services:
 
   kafka:
     image: gha-kafka
-    container_name: gha-kafka
+    container_name: github-kafka
     hostname: kafka
     networks:
-      - github_analyzer_net
+      - github-networks
     depends_on:
       - zookeeper
     ports:
@@ -77,10 +77,10 @@ services:
 
   clickhouse:
     image: gha-clickhouse
-    container_name: gha-clickhouse
+    container_name: github-clickhouse
     hostname: clickhouse
     networks:
-      - github_analyzer_net
+      - github-networks
     ports:
       - "${CLICKHOUSE_HTTP_PORT:-8123}:8123"
       - "${CLICKHOUSE_NATIVE_PORT:-9100}:9000"
@@ -106,10 +106,10 @@ services:
 
   prometheus:
     image: gha-prometheus
-    container_name: gha-prometheus
+    container_name: github-prometheus
     hostname: prometheus
     networks:
-      - github_analyzer_net
+      - github-networks
     ports:
       - "${PROMETHEUS_PORT:-9093}:9090"
     volumes:
@@ -126,10 +126,10 @@ services:
 
   grafana:
     image: gha-grafana
-    container_name: gha-grafana
+    container_name: github-grafana
     hostname: grafana
     networks:
-      - github_analyzer_net
+      - github-networks
     ports:
       - "${GRAFANA_PORT:-3001}:3000"
     volumes:
@@ -150,10 +150,10 @@ services:
 
   tempo:
     image: grafana/tempo:2.8.0
-    container_name: gha-tempo
+    container_name: github-tempo
     hostname: tempo
     networks:
-      - github_analyzer_net
+      - github-networks
     command: ["-config.file=/etc/tempo/tempo.yml"]
     ports:
       - "${TEMPO_PORT:-3200}:3200"
@@ -172,10 +172,10 @@ services:
 
   loki:
     image: grafana/loki:3.1.1
-    container_name: gha-loki
+    container_name: github-loki
     hostname: loki
     networks:
-      - github_analyzer_net
+      - github-networks
     command: ["-config.file=/etc/loki/config.yml"]
     volumes:
       - ./observability/loki.yml:/etc/loki/config.yml:ro
@@ -190,10 +190,10 @@ services:
 
   promtail:
     image: grafana/promtail:3.1.1
-    container_name: gha-promtail
+    container_name: github-promtail
     hostname: promtail
     networks:
-      - github_analyzer_net
+      - github-networks
     command: ["-config.file=/etc/promtail/config.yml"]
     volumes:
       - ./observability/promtail.yml:/etc/promtail/config.yml:ro
@@ -207,10 +207,10 @@ services:
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
-    container_name: gha-cadvisor
+    container_name: github-cadvisor
     hostname: cadvisor
     networks:
-      - github_analyzer_net
+      - github-networks
     privileged: true
     devices:
       - /dev/kmsg:/dev/kmsg
@@ -224,10 +224,10 @@ services:
 
   node-exporter:
     image: prom/node-exporter:v1.8.2
-    container_name: gha-node-exporter
+    container_name: github-node-exporter
     hostname: node-exporter
     networks:
-      - github_analyzer_net
+      - github-networks
     command:
       - "--path.rootfs=/host"
     volumes:
@@ -236,11 +236,11 @@ services:
 
   dcgm-exporter:
     image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.9-3.6.1-ubuntu22.04
-    container_name: gha-dcgm-exporter
+    container_name: github-dcgm-exporter
     hostname: dcgm-exporter
     profiles: ["gpu"]
     networks:
-      - github_analyzer_net
+      - github-networks
     environment:
       DCGM_EXPORTER_LISTEN: ":9400"
     deploy:
@@ -254,10 +254,10 @@ services:
 
   ollama:
     image: gha-ollama
-    container_name: gha-ollama
+    container_name: github-ollama
     hostname: ollama
     networks:
-      - github_analyzer_net
+      - github-networks
     ports:
       - "${OLLAMA_PORT:-11435}:11434"
     volumes:
@@ -281,7 +281,7 @@ services:
 
   frontend:
     image: gha-frontend
-    container_name: gha-frontend
+    container_name: github-frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -289,7 +289,7 @@ services:
         API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:8000}
     hostname: frontend
     networks:
-      - github_analyzer_net
+      - github-networks
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     environment:
@@ -307,13 +307,13 @@ services:
 
   api:
     image: gha-api
-    container_name: gha-api
+    container_name: github-api
     build:
       context: .
       dockerfile: Dockerfile
     hostname: api
     networks:
-      - github_analyzer_net
+      - github-networks
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
@@ -354,14 +354,14 @@ services:
 
   poller:
     image: gha-poller
-    container_name: gha-poller
+    container_name: github-poller
     build:
       context: .
       dockerfile: Dockerfile
     hostname: poller
     command: ["python", "-m", "src.application.use_cases.poll_github_events"]
     networks:
-      - github_analyzer_net
+      - github-networks
     environment:
       GITHUB_API_TOKENS: ${GITHUB_API_TOKENS}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
@@ -377,14 +377,14 @@ services:
 
   processor:
     image: gha-processor
-    container_name: gha-processor
+    container_name: github-processor
     build:
       context: .
       dockerfile: Dockerfile
     hostname: processor
     command: ["python", "-m", "src.application.use_cases.process_event_stream"]
     networks:
-      - github_analyzer_net
+      - github-networks
     volumes:
       - ./data:/app/data
     environment:
