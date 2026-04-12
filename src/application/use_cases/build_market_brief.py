@@ -6,14 +6,14 @@ from typing import Any, Protocol
 
 import structlog
 
-from university.github.src.application.dtos.ai_market_brief_dto import (
+from src.application.dtos.ai_market_brief_dto import (
     MarketBreakoutRepoDTO,
     MarketBriefContextDTO,
     MarketBriefResponseDTO,
     MarketCategoryMoverDTO,
     MarketTopicShiftDTO,
 )
-from university.github.src.domain.exceptions import GenerationServiceError
+from src.domain.exceptions import GenerationServiceError
 
 logger = structlog.get_logger(__name__)
 

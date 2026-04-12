@@ -9,40 +9,40 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 import pytest
 
-from university.github.src.application.dtos.ai_market_brief_dto import (
+from src.application.dtos.ai_market_brief_dto import (
     MarketBreakoutRepoDTO,
     MarketBriefResponseDTO,
     MarketCategoryMoverDTO,
     MarketTopicShiftDTO,
 )
-from university.github.src.application.dtos.ai_related_repo_dto import (
+from src.application.dtos.ai_related_repo_dto import (
     RelatedRepoResultDTO,
     RelatedReposResponseDTO,
 )
-from university.github.src.application.dtos.ai_repo_brief_dto import (
+from src.application.dtos.ai_repo_brief_dto import (
     RepoBriefActivityDTO,
     RepoBriefResponseDTO,
 )
-from university.github.src.application.dtos.ai_repo_compare_dto import (
+from src.application.dtos.ai_repo_compare_dto import (
     RepoCompareMetricDTO,
     RepoCompareResponseDTO,
 )
-from university.github.src.application.dtos.ai_search_dto import (
+from src.application.dtos.ai_search_dto import (
     RepoSearchFiltersDTO,
     RepoSearchResponseDTO,
     RepoSearchResultDTO,
 )
-from university.github.src.application.dtos.repo_metadata_dto import RepoMetadataDTO
-from university.github.src.domain.exceptions import AIInsightError, AISearchError, RepoInsightNotFoundError
-from university.github.src.infrastructure.config import get_settings
-from university.github.src.presentation.api.ai_routes import (
+from src.application.dtos.repo_metadata_dto import RepoMetadataDTO
+from src.domain.exceptions import AIInsightError, AISearchError, RepoInsightNotFoundError
+from src.infrastructure.config import get_settings
+from src.presentation.api.ai_routes import (
     _get_market_brief_use_case,
     _get_related_repos_use_case,
     _get_repo_brief_use_case,
     _get_repo_compare_use_case,
     _get_search_use_case,
 )
-from university.github.src.presentation.api.routes import app
+from src.presentation.api.routes import app
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

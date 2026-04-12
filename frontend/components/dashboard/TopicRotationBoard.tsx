@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function TopicRotationBoard({ days }: Props) {
-  const { data, error, isLoading } = useTopicRotation(days);
+  const { data, isLoading } = useTopicRotation(days);
 
   return (
     <section className="card-glow overflow-hidden rounded-2xl border border-border bg-card">
@@ -71,13 +71,7 @@ export function TopicRotationBoard({ days }: Props) {
             );
           })}
 
-        {!isLoading && error && (
-          <div className="px-4 py-6 text-sm text-muted-foreground">
-            Topic rotation is unavailable until the dashboard API route is reachable.
-          </div>
-        )}
-
-        {!isLoading && !error && (data?.length ?? 0) === 0 && (
+        {!isLoading && (data?.length ?? 0) === 0 && (
           <div className="px-4 py-6 text-sm text-muted-foreground">
             No topics gained enough new star activity in the current window.
           </div>

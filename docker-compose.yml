@@ -1,113 +1,411 @@
+name: gha
+
+networks:
+  github_analyzer_net:
+    driver: bridge
+
+volumes:
+  clickhouse_data:
+    external: true
+    name: githubsmoke_clickhouse_data
+  prometheus_data:
+    external: true
+    name: githubsmoke_prometheus_data
+  grafana_data:
+    external: true
+    name: githubsmoke_grafana_data
+  tempo_data:
+  loki_data:
+  ollama_data:
+    external: true
+    name: githubsmoke_ollama_data
+
 services:
-  clickhouse:
-    image: clickhouse/clickhouse-server:24.8
-    container_name: github-clickhouse
-    ports:
-      - "8123:8123"
-      - "9000:9000"
+  zookeeper:
+    image: gha-zookeeper
+    container_name: gha-zookeeper
+    hostname: zookeeper
+    networks:
+      - github_analyzer_net
     environment:
-      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-github_analyzer}
-      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_LOG4J_ROOT_LOGLEVEL: WARN
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo ruok | timeout 2 bash -c 'cat > /dev/tcp/localhost/2181' && echo imok || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  kafka:
+    image: gha-kafka
+    container_name: gha-kafka
+    hostname: kafka
+    networks:
+      - github_analyzer_net
+    depends_on:
+      - zookeeper
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"
+      - "${KAFKA_JMX_HOST_PORT:-9101}:9101"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_NUM_PARTITIONS: 16
+      KAFKA_MESSAGE_MAX_BYTES: 52428800
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 52428800
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_LOG4J_ROOT_LOGLEVEL: WARN
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  clickhouse:
+    image: gha-clickhouse
+    container_name: gha-clickhouse
+    hostname: clickhouse
+    networks:
+      - github_analyzer_net
+    ports:
+      - "${CLICKHOUSE_HTTP_PORT:-8123}:8123"
+      - "${CLICKHOUSE_NATIVE_PORT:-9100}:9000"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-github_analyzer}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-github_analyzer}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-github_analyzer}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
     healthcheck:
-      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8123/ping"]
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 30s
+    restart: unless-stopped
 
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        APP_MODULE: ${APP_MODULE:-src.presentation.api.routes:app}
-    container_name: github-api
-    depends_on:
-      clickhouse:
-        condition: service_healthy
-    env_file:
-      - .env
-    environment:
-      CLICKHOUSE_HOST: clickhouse
-      TRACING_EXPORTER_OTLP_ENDPOINT: ${TRACING_EXPORTER_OTLP_ENDPOINT:-http://tempo:4318}
+  prometheus:
+    image: gha-prometheus
+    container_name: gha-prometheus
+    hostname: prometheus
+    networks:
+      - github_analyzer_net
     ports:
-      - "8000:8000"
+      - "${PROMETHEUS_PORT:-9093}:9090"
     volumes:
-      - ./data:/app/data
-      - ./scripts:/app/scripts
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    restart: unless-stopped
+
+  grafana:
+    image: gha-grafana
+    container_name: gha-grafana
+    hostname: grafana
+    networks:
+      - github_analyzer_net
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana_provisioning:/etc/grafana/provisioning:ro
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_LOG_LEVEL: warn
+      GF_METRICS_ENABLED: "true"
+      GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
+    depends_on:
+      - prometheus
+      - tempo
+      - loki
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:2.8.0
+    container_name: gha-tempo
+    hostname: tempo
+    networks:
+      - github_analyzer_net
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    ports:
+      - "${TEMPO_PORT:-3200}:3200"
+      - "${OTLP_GRPC_PORT:-4317}:4317"
+      - "${OTLP_HTTP_PORT:-4318}:4318"
+    volumes:
+      - ./observability/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo_data:/var/tempo
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3200/ready"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.1.1
+    container_name: gha-loki
+    hostname: loki
+    networks:
+      - github_analyzer_net
+    command: ["-config.file=/etc/loki/config.yml"]
+    volumes:
+      - ./observability/loki.yml:/etc/loki/config.yml:ro
+      - loki_data:/loki
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3100/ready"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:3.1.1
+    container_name: gha-promtail
+    hostname: promtail
+    networks:
+      - github_analyzer_net
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - ./observability/promtail.yml:/etc/promtail/config.yml:ro
+      - ./scheduler/logs:/var/log/gha-scheduler:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      loki:
+        condition: service_healthy
+    restart: unless-stopped
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: gha-cadvisor
+    hostname: cadvisor
+    networks:
+      - github_analyzer_net
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: gha-node-exporter
+    hostname: node-exporter
+    networks:
+      - github_analyzer_net
+    command:
+      - "--path.rootfs=/host"
+    volumes:
+      - /:/host:ro,rslave
+    restart: unless-stopped
+
+  dcgm-exporter:
+    image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.9-3.6.1-ubuntu22.04
+    container_name: gha-dcgm-exporter
+    hostname: dcgm-exporter
+    profiles: ["gpu"]
+    networks:
+      - github_analyzer_net
+    environment:
+      DCGM_EXPORTER_LISTEN: ":9400"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  ollama:
+    image: gha-ollama
+    container_name: gha-ollama
+    hostname: ollama
+    networks:
+      - github_analyzer_net
+    ports:
+      - "${OLLAMA_PORT:-11435}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 20s
+      timeout: 15s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    # After first start, pull the embedding model:
+    #   docker compose exec ollama ollama pull bge-m3
 
   frontend:
+    image: gha-frontend
+    container_name: gha-frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
-    container_name: github-frontend
-    depends_on:
-      - api
+        API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:8000}
+    hostname: frontend
+    networks:
+      - github_analyzer_net
     ports:
-      - "3000:3000"
-
-  grafana:
-    image: grafana/grafana:10.4.6
-    container_name: github-grafana
-    depends_on:
-      - loki
-      - tempo
+      - "${FRONTEND_PORT:-3000}:3000"
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
-    ports:
-      - "3001:3000"
-    volumes:
-      - ./observability/grafana_provisioning:/etc/grafana/provisioning
-
-  loki:
-    image: grafana/loki:3.1.1
-    container_name: github-loki
-    command: ["-config.file=/etc/loki/local-config.yaml"]
-    ports:
-      - "3100:3100"
-    volumes:
-      - ./observability/loki.yml:/etc/loki/local-config.yaml:ro
-      - loki_data:/loki
-
-  promtail:
-    image: grafana/promtail:3.1.1
-    container_name: github-promtail
+      API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:8000}
     depends_on:
-      - loki
-    command: ["-config.file=/etc/promtail/config.yml"]
-    volumes:
-      - ./observability/promtail.yml:/etc/promtail/config.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => process.exit(r.statusCode < 400 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  tempo:
-    image: grafana/tempo:2.5.0
-    container_name: github-tempo
-    command: ["-config.file=/etc/tempo.yml"]
+  api:
+    image: gha-api
+    container_name: gha-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    hostname: api
+    networks:
+      - github_analyzer_net
     ports:
-      - "3200:3200"
-      - "4317:4317"
-      - "4318:4318"
+      - "${API_PORT:-8000}:8000"
     volumes:
-      - ./observability/tempo.yml:/etc/tempo.yml:ro
-      - tempo_data:/var/tempo
+      - ./data:/app/data:ro
+    environment:
+      GITHUB_API_TOKENS: ${GITHUB_API_TOKENS}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: 9000
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-github_analyzer}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-github_analyzer}
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-github_analyzer}
+      PARQUET_BASE_PATH: /app/data/raw
+      REPO_METADATA_PATH: /app/data/repos
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_EMBEDDING_MODEL: bge-m3
+      SEARXNG_BASE_URL: ${SEARXNG_BASE_URL:-http://host.docker.internal:8080}
+      TRACING_ENABLED: ${TRACING_ENABLED:-true}
+      TRACING_SERVICE_NAME: ${TRACING_SERVICE_NAME:-gha-api}
+      TRACING_SAMPLING_RATIO: ${TRACING_SAMPLING_RATIO:-1.0}
+      TRACING_EXPORTER_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+    depends_on:
+      kafka:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  ollama:
-    image: ollama/ollama:0.3.12
-    container_name: github-ollama
-    profiles: ["ai"]
-    ports:
-      - "11434:11434"
+  poller:
+    image: gha-poller
+    container_name: gha-poller
+    build:
+      context: .
+      dockerfile: Dockerfile
+    hostname: poller
+    command: ["python", "-m", "src.application.use_cases.poll_github_events"]
+    networks:
+      - github_analyzer_net
+    environment:
+      GITHUB_API_TOKENS: ${GITHUB_API_TOKENS}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_TOPIC: github_raw_events
+      KAFKA_RETENTION_HOURS: 168
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-github_analyzer}
+      METRICS_PORT: 9091
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+
+  processor:
+    image: gha-processor
+    container_name: gha-processor
+    build:
+      context: .
+      dockerfile: Dockerfile
+    hostname: processor
+    command: ["python", "-m", "src.application.use_cases.process_event_stream"]
+    networks:
+      - github_analyzer_net
     volumes:
-      - ollama_data:/root/.ollama
-
-volumes:
-  clickhouse_data:
-  loki_data:
-  ollama_data:
-  tempo_data:
-
+      - ./data:/app/data
+    environment:
+      GITHUB_API_TOKENS: ${GITHUB_API_TOKENS}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_TOPIC: github_raw_events
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: 9000
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-github_analyzer}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-github_analyzer}
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-github_analyzer}
+      PARQUET_BASE_PATH: /app/data/raw
+      CHECKPOINT_BASE_PATH: /app/data/checkpoints
+      SPARK_MASTER: local[4]
+      SPARK_DRIVER_MEMORY: 2g
+      SPARK_EXECUTOR_MEMORY: 2g
+      METRICS_PORT: 9091
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped

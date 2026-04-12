@@ -12,10 +12,10 @@ import structlog
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from university.github.src.domain.exceptions import ClickHouseBackfillError  # noqa: E402
-from university.github.src.infrastructure.config import get_settings  # noqa: E402
+from src.domain.exceptions import ClickHouseBackfillError  # noqa: E402
+from src.infrastructure.config import get_settings  # noqa: E402
 from src.infrastructure.observability.logging_config import configure_logging  # noqa: E402
-from university.github.src.infrastructure.storage.clickhouse_backfill_service import (  # noqa: E402
+from src.infrastructure.storage.clickhouse_backfill_service import (  # noqa: E402
     ClickHouseBackfillService,
 )
 

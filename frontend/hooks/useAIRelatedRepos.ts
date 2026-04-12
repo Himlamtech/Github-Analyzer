@@ -3,17 +3,18 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
+import type { RelatedReposResponse } from "@/lib/types";
 
-/** Neighbor recommendations for the selected repository. */
+/** Related repository recommendations for a selected repo. */
 export function useAIRelatedRepos(
   repoName: string | null,
   days: number,
   limit = 6,
 ) {
-  return useQuery({
+  return useQuery<RelatedReposResponse>({
     queryKey: ["ai-related-repos", repoName, days, limit],
-    queryFn: () => api.getAIRelatedRepos(repoName!, days, limit),
+    queryFn: () => api.getRelatedRepos(repoName!, days, limit),
     enabled: !!repoName,
-    staleTime: 60_000,
+    staleTime: 120_000,
   });
 }

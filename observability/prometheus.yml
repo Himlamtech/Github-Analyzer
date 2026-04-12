@@ -1,0 +1,61 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    project: 'github_ai_trend_analyzer'
+    environment: 'local'
+
+scrape_configs:
+  # FastAPI container metrics server (internal Docker network)
+  - job_name: 'github_analyzer_api'
+    static_configs:
+      - targets: ['api:9091']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  # GitHub Events poller metrics
+  - job_name: 'github_analyzer_poller'
+    static_configs:
+      - targets: ['poller:9091']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  # Spark processor metrics
+  - job_name: 'github_analyzer_processor'
+    static_configs:
+      - targets: ['processor:9091']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+
+  - job_name: 'tempo'
+    static_configs:
+      - targets: ['tempo:3200']
+
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+
+  - job_name: 'promtail'
+    static_configs:
+      - targets: ['promtail:9080']
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  - job_name: 'dcgm_exporter'
+    static_configs:
+      - targets: ['dcgm-exporter:9400']

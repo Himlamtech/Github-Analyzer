@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from university.github.src.application.dtos.ai_market_brief_dto import (
+from src.application.dtos.ai_market_brief_dto import (
     MarketBreakoutRepoDTO,
     MarketBriefContextDTO,
     MarketCategoryMoverDTO,
     MarketTopicShiftDTO,
 )
-from university.github.src.application.dtos.repo_metadata_dto import RepoMetadataDTO
-from university.github.src.application.use_cases.build_market_brief import BuildMarketBriefUseCase
-from university.github.src.domain.exceptions import GenerationServiceError
+from src.application.dtos.repo_metadata_dto import RepoMetadataDTO
+from src.application.use_cases.build_market_brief import BuildMarketBriefUseCase
+from src.domain.exceptions import GenerationServiceError
 
 _NOW = datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 

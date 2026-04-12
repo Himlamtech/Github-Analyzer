@@ -24,6 +24,33 @@ export function useTrending(days: number) {
   });
 }
 
+/** Strongest absolute and percentage-based movers in the selected window. */
+export function useShockMovers(days: number) {
+  return useQuery({
+    queryKey: ["shock-movers", days],
+    queryFn: () => api.getShockMovers(days),
+    staleTime: 60_000,
+  });
+}
+
+/** Topics accelerating fastest compared with the prior matching window. */
+export function useTopicRotation(days: number) {
+  return useQuery({
+    queryKey: ["topic-rotation", days],
+    queryFn: () => api.getTopicRotation(days),
+    staleTime: 60_000,
+  });
+}
+
+/** External headline bundle for the current breakout repositories. */
+export function useNewsRadar(days: number) {
+  return useQuery({
+    queryKey: ["news-radar", days],
+    queryFn: () => api.getNewsRadar(days),
+    staleTime: 120_000,
+  });
+}
+
 /** Star counts grouped by GitHub topic tag (top 30). */
 export function useTopicBreakdown(days: number) {
   return useQuery({
@@ -43,28 +70,10 @@ export function useLanguageBreakdown(days: number) {
 }
 
 /** Per-category aggregate stats (repo count, stars, top repo, weekly delta). */
-export function useCategorySummary(days: number) {
+export function useCategorySummary() {
   return useQuery({
-    queryKey: ["category-summary", days],
-    queryFn: () => api.getCategorySummary(days),
+    queryKey: ["category-summary"],
+    queryFn: api.getCategorySummary,
     staleTime: 300_000,
-  });
-}
-
-/** Repos making the biggest weekly moves in absolute and percentage terms. */
-export function useShockMovers(days: number) {
-  return useQuery({
-    queryKey: ["shock-movers", days],
-    queryFn: () => api.getShockMovers(days),
-    staleTime: 60_000,
-  });
-}
-
-/** Topics gaining star activity versus the prior comparison window. */
-export function useTopicRotation(days: number) {
-  return useQuery({
-    queryKey: ["topic-rotation", days],
-    queryFn: () => api.getTopicRotation(days),
-    staleTime: 120_000,
   });
 }

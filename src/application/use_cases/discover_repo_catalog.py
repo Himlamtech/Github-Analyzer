@@ -18,7 +18,7 @@ from typing import Protocol
 
 import structlog
 
-from university.github.src.domain.exceptions import ValidationError
+from src.domain.exceptions import ValidationError
 
 logger = structlog.get_logger(__name__)
 
@@ -369,7 +369,7 @@ class DiscoverRepoCatalogUseCase:
 
 async def _main() -> None:
     """CLI entry point for repo-first catalog discovery."""
-    from university.github.src.infrastructure.config import get_settings
+    from src.infrastructure.config import get_settings
     from src.infrastructure.github.client import GitHubClient
 
     settings = get_settings()

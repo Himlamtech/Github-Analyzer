@@ -1,7 +1,14 @@
 // TypeScript interfaces — mirrors backend DTOs in src/application/dtos/repo_metadata_dto.py
 // Keep in sync with backend when adding new fields.
 
-export type Category = string;
+export type Category =
+  | "LLM"
+  | "Agent"
+  | "Diffusion"
+  | "Multimodal"
+  | "DataEng"
+  | "Other"
+  | "all";
 
 export interface RepoMetadata {
   repo_id: number;
@@ -39,13 +46,13 @@ export interface TrendingRepo {
 
 export interface TopicBreakdown {
   topic: string;
-  star_count: number;
+  event_count: number;
   repo_count: number;
 }
 
 export interface LanguageBreakdown {
   language: string;
-  star_count: number;
+  event_count: number;
   repo_count: number;
 }
 
@@ -64,15 +71,6 @@ export interface CategorySummary {
   weekly_star_delta: number;
 }
 
-export interface TopicRotationItem {
-  topic: string;
-  current_star_count: number;
-  previous_star_count: number;
-  star_delta: number;
-  repo_count: number;
-  rank: number;
-}
-
 export interface ShockMover {
   repo: RepoMetadata;
   star_count_in_window: number;
@@ -89,14 +87,44 @@ export interface ShockMoversResponse {
   percentage_movers: ShockMover[];
 }
 
-export interface RepoSearchFilters {
+export interface TopicRotation {
+  topic: string;
+  current_star_count: number;
+  previous_star_count: number;
+  star_delta: number;
+  repo_count: number;
+  rank: number;
+}
+
+export interface NewsHeadline {
+  title: string;
+  url: string;
+  source: string;
+  snippet: string;
+  engine: string | null;
+}
+
+export interface RepoNewsRadar {
+  repo_full_name: string;
+  category: string;
+  star_count_in_window: number;
+  weekly_percent_gain: number;
+  headlines: NewsHeadline[];
+}
+
+export interface NewsRadarResponse {
+  window_days: number;
+  repos: RepoNewsRadar[];
+}
+
+export interface AISearchFilters {
   category: string | null;
   primary_language: string | null;
   min_stars: number;
   days: number;
 }
 
-export interface RepoSearchResult {
+export interface AISearchResult {
   repo: RepoMetadata;
   star_count_in_window: number;
   score: number;
@@ -107,14 +135,14 @@ export interface RepoSearchResult {
   why_matched: string[];
 }
 
-export interface RepoSearchResponse {
+export interface AISearchResponse {
   query: string;
   normalized_query: string;
   retrieval_mode: "lexical" | "hybrid";
   total_candidates: number;
   returned_results: number;
-  filters: RepoSearchFilters;
-  results: RepoSearchResult[];
+  filters: AISearchFilters;
+  results: AISearchResult[];
 }
 
 export interface RepoBriefActivity {
@@ -161,21 +189,6 @@ export interface RepoCompareResponse {
   metric_snapshot: RepoCompareMetric[];
 }
 
-export interface RelatedRepoResult {
-  repo: RepoMetadata;
-  similarity_score: number;
-  star_count_in_window: number;
-  shared_topics: string[];
-  why_related: string[];
-}
-
-export interface RelatedReposResponse {
-  source_repo: RepoMetadata;
-  total_candidates: number;
-  returned_results: number;
-  results: RelatedRepoResult[];
-}
-
 export interface MarketBreakoutRepo {
   repo: RepoMetadata;
   star_count_in_window: number;
@@ -211,6 +224,21 @@ export interface MarketBriefResponse {
   breakout_repos: MarketBreakoutRepo[];
   category_movers: MarketCategoryMover[];
   topic_shifts: MarketTopicShift[];
+}
+
+export interface RelatedRepoResult {
+  repo: RepoMetadata;
+  similarity_score: number;
+  star_count_in_window: number;
+  shared_topics: string[];
+  why_related: string[];
+}
+
+export interface RelatedReposResponse {
+  source_repo: RepoMetadata;
+  total_candidates: number;
+  returned_results: number;
+  results: RelatedRepoResult[];
 }
 
 export const CATEGORY_COLORS: Record<string, string> = {

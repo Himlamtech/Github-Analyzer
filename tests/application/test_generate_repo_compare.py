@@ -6,14 +6,14 @@ from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
-from university.github.src.application.dtos.ai_repo_brief_dto import (
+from src.application.dtos.ai_repo_brief_dto import (
     RepoBriefActivityDTO,
     RepoBriefContextDTO,
     RepoBriefTimeseriesPointDTO,
 )
-from university.github.src.application.dtos.repo_metadata_dto import RepoMetadataDTO
-from university.github.src.application.use_cases.generate_repo_compare import GenerateRepoCompareUseCase
-from university.github.src.domain.exceptions import (
+from src.application.dtos.repo_metadata_dto import RepoMetadataDTO
+from src.application.use_cases.generate_repo_compare import GenerateRepoCompareUseCase
+from src.domain.exceptions import (
     GenerationServiceError,
     RepoInsightNotFoundError,
     ValidationError,

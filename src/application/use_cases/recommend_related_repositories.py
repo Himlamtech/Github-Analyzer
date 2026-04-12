@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
-from university.github.src.application.dtos.ai_related_repo_dto import (
+from src.application.dtos.ai_related_repo_dto import (
     RelatedRepoResultDTO,
     RelatedReposResponseDTO,
 )
 
 if TYPE_CHECKING:
-    from university.github.src.application.dtos.ai_repo_brief_dto import RepoBriefContextDTO
-    from university.github.src.application.dtos.ai_search_dto import RepoSearchCandidateDTO
+    from src.application.dtos.ai_repo_brief_dto import RepoBriefContextDTO
+    from src.application.dtos.ai_search_dto import RepoSearchCandidateDTO
 
 
 class RepoInsightContextProviderProtocol(Protocol):

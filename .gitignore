@@ -1,53 +1,63 @@
-# OS and editor files
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-
-# Environment and secrets
+# Secrets & environment
 .env
 .env.*
 !.env.example
 
-# Python caches and tooling
+# Python runtime artifacts
 __pycache__/
 *.py[cod]
+*$py.class
 *.so
-.python-version
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-.coverage.*
-htmlcov/
-.tox/
-.nox/
+.Python
+*.pyo
 
 # Python virtual environments
-.venv/
 venv/
 env/
+.venv/
+ENV/
 
-# Build artifacts
-build/
-dist/
+# Python build & packaging
 *.egg-info/
+.eggs/
+dist/
+build/
+*.whl
 
-# Node and Next.js
-node_modules/
-frontend/node_modules/
-.next/
-frontend/.next/
-frontend/tsconfig.tsbuildinfo
+# Type / lint / test caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.tox/
 
-# Local data and logs
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+coverage.json
+
+# Data & runtime artifacts (never commit generated data)
 data/
-tmpdata/
-scheduler/logs/
+logs/
+
+# Node / Next.js
+node_modules/
+frontend/.next/
+frontend/out/
+frontend/*.tsbuildinfo
+
+# IDE & OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.swo
+*.swn
+
+# Misc
 *.log
-
-# Docker and runtime leftovers
-*.pid
-*.seed
-*.out
-
+*.tmp
+*.bak
+*.crc
+*.cdr

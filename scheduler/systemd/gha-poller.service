@@ -1,0 +1,40 @@
+[Unit]
+Description=GitHub AI Trend Analyzer — Event Poller
+Documentation=https://github.com/lamnh/github_analyzer
+After=network-online.target docker.service
+Wants=network-online.target
+# Restart after Spark streaming if both are managed by systemd
+After=gha-spark-streaming.service
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=/home/WORK/lamnh/github_analyzer
+
+# Load .env file into the service environment
+EnvironmentFile=/home/WORK/lamnh/github_analyzer/.env
+
+# Python interpreter from conda env
+Environment="PYTHONUNBUFFERED=1"
+Environment="PYTHONDONTWRITEBYTECODE=1"
+
+ExecStart=/media/aiz/0836a33f-812f-4e69-a6f9-784fe732c6d5/miniconda3/envs/data/bin/python \
+  -m src.application.use_cases.poll_github_events
+
+# Restart policy: restart on failure with exponential backoff
+Restart=on-failure
+RestartSec=30s
+StartLimitInterval=300s
+StartLimitBurst=5
+
+# Resource limits
+# Allow enough file descriptors for async HTTP connections
+LimitNOFILE=65536
+
+# Logging: stdout/stderr go to journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gha-poller
+
+[Install]
+WantedBy=multi-user.target

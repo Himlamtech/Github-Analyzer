@@ -1,0 +1,860 @@
+{
+  "__inputs": [],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.4.0" },
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" }
+  ],
+  "annotations": { "list": [] },
+  "description": "GitHub AI Trend Analyzer — Real-time Pipeline Observability",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "🚀  Pipeline Overview — Key Numbers",
+      "type": "row"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Total AI-relevant GitHub events published to Kafka since startup.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "#73BF69", "mode": "fixed" },
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }] },
+          "mappings": []
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "id": 100,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "value_and_name"
+      },
+      "targets": [{ "expr": "events_ingested_total", "legendFormat": "Events Ingested", "refId": "A" }],
+      "title": "Total Events Ingested",
+      "type": "stat"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Total messages successfully produced to Kafka topic.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "#5794F2", "mode": "fixed" },
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": 0 }] }
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "id": 101,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "value_and_name"
+      },
+      "targets": [{ "expr": "kafka_messages_produced_total", "legendFormat": "Kafka Messages", "refId": "A" }],
+      "title": "Kafka Messages Produced",
+      "type": "stat"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Total events dropped by AI relevance filter.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "#FF9830", "mode": "fixed" },
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": 0 }] }
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "id": 102,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "value_and_name"
+      },
+      "targets": [{ "expr": "events_filtered_total", "legendFormat": "Filtered Out", "refId": "A" }],
+      "title": "Events Filtered (non-AI)",
+      "type": "stat"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "AI signal ratio: % of raw events that are AI-relevant.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "yellow", "value": 1 },
+              { "color": "green", "value": 2 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "id": 103,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "value_and_name"
+      },
+      "targets": [{
+        "expr": "100 * events_ingested_total / clamp_min(events_ingested_total + events_filtered_total, 1)",
+        "legendFormat": "AI Signal %",
+        "refId": "A"
+      }],
+      "title": "AI Signal Ratio",
+      "type": "stat"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Total rows inserted into ClickHouse.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "#F2495C", "mode": "fixed" },
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": 0 }] }
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "id": 104,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "value_and_name"
+      },
+      "targets": [{ "expr": "clickhouse_insert_rows_total", "legendFormat": "ClickHouse Rows", "refId": "A" }],
+      "title": "ClickHouse Rows Inserted",
+      "type": "stat"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "How many seconds ago the last event was stored. Green = fresh pipeline.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 180 },
+              { "color": "red", "value": 300 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "id": 105,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "value_and_name"
+      },
+      "targets": [{ "expr": "data_freshness_seconds", "legendFormat": "Data Freshness", "refId": "A" }],
+      "title": "Data Freshness",
+      "type": "stat"
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 2,
+      "title": "📥  Ingestion Health — GitHub API & Kafka",
+      "type": "row"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Remaining GitHub API quota. Yellow < 200, Red < 50. Resets hourly.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "yellow", "value": 200 },
+              { "color": "green", "value": 1000 }
+            ]
+          },
+          "unit": "short",
+          "min": 0,
+          "max": 5000
+        }
+      },
+      "gridPos": { "h": 7, "w": 5, "x": 0, "y": 6 },
+      "id": 2,
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true,
+        "textMode": "value"
+      },
+      "targets": [{
+        "expr": "github_api_rate_limit_remaining",
+        "legendFormat": "token_{{token_index}}",
+        "refId": "A"
+      }],
+      "title": "GitHub API Rate Limit Remaining",
+      "type": "gauge"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "AI-relevant events published vs total raw events filtered per minute.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "gradientMode": "opacity",
+            "pointSize": 4,
+            "showPoints": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Published / min" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#73BF69", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Filtered / min" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "gridPos": { "h": 7, "w": 10, "x": 5, "y": 6 },
+      "id": 3,
+      "options": {
+        "legend": { "calcs": ["mean", "max", "lastNotNull"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        { "expr": "rate(events_ingested_total[1m]) * 60", "legendFormat": "Published / min", "refId": "A" },
+        { "expr": "rate(events_filtered_total[1m]) * 60", "legendFormat": "Filtered / min", "refId": "B" }
+      ],
+      "title": "Events Throughput per Minute",
+      "type": "timeseries"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Cumulative GitHub API calls over time, by HTTP status code.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      },
+      "gridPos": { "h": 7, "w": 9, "x": 15, "y": 6 },
+      "id": 30,
+      "options": {
+        "legend": { "calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [{
+        "expr": "rate(github_api_requests_total[1m]) * 60",
+        "legendFormat": "HTTP {{status_code}} / min",
+        "refId": "A"
+      }],
+      "title": "GitHub API Request Rate",
+      "type": "timeseries"
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 },
+      "id": 10,
+      "title": "⚡  Processing Health — Spark & Kafka",
+      "type": "row"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Duration of each Spark micro-batch. Should stay under 30s for 60s trigger.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 30 },
+              { "color": "red", "value": 55 }
+            ]
+          },
+          "unit": "s",
+          "custom": { "lineWidth": 2, "fillOpacity": 20, "gradientMode": "scheme" }
+        }
+      },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 14 },
+      "id": 11,
+      "options": {
+        "legend": { "calcs": ["mean", "max", "lastNotNull"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [{
+        "expr": "spark_batch_duration_seconds_sum / clamp_min(spark_batch_duration_seconds_count, 1)",
+        "legendFormat": "Avg batch duration",
+        "refId": "A"
+      }],
+      "title": "Spark Batch Duration (avg)",
+      "type": "timeseries"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Records written per sink (Parquet & ClickHouse) per minute.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 15, "gradientMode": "opacity" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Parquet" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#5794F2", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "ClickHouse" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#F2495C", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 14 },
+      "id": 12,
+      "options": {
+        "legend": { "calcs": ["sum", "mean"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        { "expr": "rate(spark_records_processed_total{sink='parquet'}[1m]) * 60", "legendFormat": "Parquet", "refId": "A" },
+        { "expr": "rate(spark_records_processed_total{sink='clickhouse'}[1m]) * 60", "legendFormat": "ClickHouse", "refId": "B" }
+      ],
+      "title": "Records Written per Sink / min",
+      "type": "timeseries"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Kafka producer errors by type in rolling 5-minute windows.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 14 },
+      "id": 4,
+      "options": {
+        "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [{
+        "expr": "increase(kafka_producer_error_total[5m])",
+        "legendFormat": "{{error_type}}",
+        "refId": "A"
+      }],
+      "title": "Kafka Producer Errors (5m window)",
+      "type": "timeseries"
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 21 },
+      "id": 20,
+      "title": "🔍  Data Quality & Distribution",
+      "type": "row"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Ratio of AI signal to noise — higher is better. Shows pipeline selectivity.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 20, "gradientMode": "opacity" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "AI-Relevant" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#73BF69", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Filtered Out" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "gridPos": { "h": 7, "w": 10, "x": 0, "y": 22 },
+      "id": 40,
+      "options": {
+        "legend": { "calcs": ["mean", "lastNotNull"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        { "expr": "rate(events_ingested_total[2m]) * 60", "legendFormat": "AI-Relevant", "refId": "A" },
+        { "expr": "rate(events_filtered_total[2m]) * 60", "legendFormat": "Filtered Out", "refId": "B" }
+      ],
+      "title": "AI Signal vs Noise (2m rate)",
+      "type": "timeseries"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Share of AI-relevant events vs total ingested. Tracks filter selectivity.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "AI Relevant" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#73BF69", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Non-AI (Filtered)" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "gridPos": { "h": 7, "w": 7, "x": 10, "y": 22 },
+      "id": 22,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "values": ["percent"] },
+        "pieType": "donut",
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        { "expr": "events_ingested_total", "legendFormat": "AI Relevant", "refId": "A" },
+        { "expr": "events_filtered_total", "legendFormat": "Non-AI (Filtered)", "refId": "B" }
+      ],
+      "title": "AI vs Non-AI Event Distribution",
+      "type": "piechart"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Process memory usage over time. Helps detect memory leaks.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "bytes",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "RSS (Resident)" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#5794F2", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Virtual" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#B877D9", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "gridPos": { "h": 7, "w": 7, "x": 17, "y": 22 },
+      "id": 50,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        { "expr": "process_resident_memory_bytes", "legendFormat": "RSS (Resident)", "refId": "A" },
+        { "expr": "process_virtual_memory_bytes", "legendFormat": "Virtual", "refId": "B" }
+      ],
+      "title": "Process Memory Usage",
+      "type": "timeseries"
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 29 },
+      "id": 70,
+      "title": "⏱️  Cron Job / Poll Cycle Tracking",
+      "type": "row"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Seconds since the last successful poll cycle. Alert if > 60s — indicates poller is stuck.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 15 },
+              { "color": "red", "value": 60 }
+            ]
+          },
+          "mappings": []
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 30 },
+      "id": 71,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "value_and_name"
+      },
+      "targets": [{
+        "expr": "time() - poll_last_success_timestamp_seconds",
+        "legendFormat": "Since last success",
+        "refId": "A"
+      }],
+      "title": "Time Since Last Poll",
+      "type": "stat"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Total poll cycles completed successfully since startup.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "#73BF69", "mode": "fixed" },
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": 0 }] }
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 30 },
+      "id": 72,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "value_and_name"
+      },
+      "targets": [{
+        "expr": "poll_cycle_total",
+        "legendFormat": "Total Cycles",
+        "refId": "A"
+      }],
+      "title": "Total Poll Cycles",
+      "type": "stat"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Current consecutive error count. Should be 0. Red if > 3.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 3 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 30 },
+      "id": 73,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "value_and_name"
+      },
+      "targets": [{
+        "expr": "poll_consecutive_errors_total",
+        "legendFormat": "Consecutive Errors",
+        "refId": "A"
+      }],
+      "title": "Consecutive Poll Errors",
+      "type": "stat"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Poll cycles per minute — shows poller heartbeat rhythm.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "#5794F2", "mode": "fixed" },
+          "unit": "short",
+          "decimals": 1,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": 0 }] }
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 30 },
+      "id": 74,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "value_and_name"
+      },
+      "targets": [{
+        "expr": "rate(poll_cycle_total[1m]) * 60",
+        "legendFormat": "Cycles / min",
+        "refId": "A"
+      }],
+      "title": "Poll Rate (cycles/min)",
+      "type": "stat"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Wall-clock duration of each poll cycle (fetch + filter + publish). Should stay under 2s.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "s",
+          "custom": { "lineWidth": 2, "fillOpacity": 15, "gradientMode": "opacity" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "p50" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#73BF69", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "p95" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "p99" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#F2495C", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 30 },
+      "id": 75,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, rate(poll_cycle_duration_seconds_bucket[2m]))", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, rate(poll_cycle_duration_seconds_bucket[2m]))", "legendFormat": "p95", "refId": "B" },
+        { "expr": "histogram_quantile(0.99, rate(poll_cycle_duration_seconds_bucket[2m]))", "legendFormat": "p99", "refId": "C" }
+      ],
+      "title": "Poll Cycle Latency (p50 / p95 / p99)",
+      "type": "timeseries"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Number of raw GitHub events per poll cycle. Flat = stable API. Drops = rate limit or connectivity issue.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "#B877D9", "mode": "fixed" },
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 10, "gradientMode": "opacity" }
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 34 },
+      "id": 76,
+      "options": {
+        "legend": { "calcs": ["mean", "min", "max"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [{
+        "expr": "histogram_quantile(0.50, rate(poll_batch_size_events_bucket[2m]))",
+        "legendFormat": "Batch size p50",
+        "refId": "A"
+      }],
+      "title": "Events per Poll Cycle (batch size)",
+      "type": "timeseries"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Rate of poll cycles per second over time — heartbeat visualization. Flat = healthy. Gaps = poller down.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "#73BF69", "mode": "fixed" },
+          "unit": "cps",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "spanNulls": false,
+            "drawStyle": "bars"
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 34 },
+      "id": 77,
+      "options": {
+        "legend": { "calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [{
+        "expr": "rate(poll_cycle_total[30s])",
+        "legendFormat": "Poll heartbeat",
+        "refId": "A"
+      }],
+      "title": "Poller Heartbeat (30s rate)",
+      "type": "timeseries"
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 42 },
+      "id": 60,
+      "title": "🖥️  System Health — CPU, FDs & GC",
+      "type": "row"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "CPU time consumed by the pipeline process.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "#FF9830", "mode": "fixed" },
+          "unit": "s",
+          "custom": { "lineWidth": 2, "fillOpacity": 15, "gradientMode": "opacity" }
+        }
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 43 },
+      "id": 61,
+      "options": {
+        "legend": { "calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [{
+        "expr": "rate(process_cpu_seconds_total[1m])",
+        "legendFormat": "CPU seconds / sec",
+        "refId": "A"
+      }],
+      "title": "CPU Usage Rate",
+      "type": "timeseries"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Open file descriptors vs limit. High ratio = risk of FD exhaustion.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "short",
+          "min": 0,
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 60 },
+              { "color": "red", "value": 85 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 43 },
+      "id": 62,
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "minVizWidth": 75,
+        "minVizHeight": 75
+      },
+      "targets": [
+        { "expr": "process_open_fds", "legendFormat": "Open FDs", "refId": "A" },
+        { "expr": "process_max_fds", "legendFormat": "Max FDs", "refId": "B" }
+      ],
+      "title": "Open File Descriptors",
+      "type": "bargauge"
+    },
+
+    {
+      "datasource": "Prometheus",
+      "description": "Python GC object collections per generation. Spikes may indicate memory pressure.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "custom": { "lineWidth": 1, "fillOpacity": 8 }
+        }
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 43 },
+      "id": 63,
+      "options": {
+        "legend": { "calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [{
+        "expr": "rate(python_gc_collections_total[1m])",
+        "legendFormat": "GC gen {{generation}}",
+        "refId": "A"
+      }],
+      "title": "Python GC Collections / sec",
+      "type": "timeseries"
+    }
+
+  ],
+  "refresh": "15s",
+  "schemaVersion": 39,
+  "tags": ["github", "kafka", "spark", "clickhouse", "ai", "realtime"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "GitHub AI Trend Analyzer",
+  "uid": "github-ai-trend-analyzer",
+  "version": 2
+}

@@ -10,13 +10,9 @@ from clickhouse_driver import Client
 from clickhouse_driver.errors import Error as ClickHouseError
 from clickhouse_driver.errors import NetworkError as ClickHouseNetworkError
 
-from university.github.src.application.dtos.ai_search_dto import RepoSearchCandidateDTO
-from university.github.src.application.dtos.repo_metadata_dto import RepoMetadataDTO
-from university.github.src.domain.exceptions import AISearchError, ClickHouseConnectionError
-from university.github.src.infrastructure.storage.parquet_repo_analytics import (
-    load_repo_snapshots,
-    prefer_ai_repositories,
-)
+from src.application.dtos.ai_search_dto import RepoSearchCandidateDTO
+from src.application.dtos.repo_metadata_dto import RepoMetadataDTO
+from src.domain.exceptions import AISearchError, ClickHouseConnectionError
 
 _SEARCH_CANDIDATES_QUERY = """
 SELECT
@@ -107,14 +103,12 @@ class ClickHouseAISearchService:
         user: str,
         password: str,
         database: str,
-        parquet_base_path: str,
     ) -> None:
         self._host = host
         self._port = port
         self._user = user
         self._password = password
         self._database = database
-        self._parquet_base_path = parquet_base_path
 
     def _get_client(self) -> Client:
         try:
@@ -154,12 +148,6 @@ class ClickHouseAISearchService:
             return int(rows[0][0]) == 1
         except (TypeError, ValueError):
             return True
-
-    def _repo_metadata_table_exists_safe(self) -> bool:
-        try:
-            return self._repo_metadata_table_exists()
-        except (ClickHouseConnectionError, AISearchError):
-            return False
 
     @staticmethod
     def _parse_candidate_row(row: tuple[Any, ...]) -> RepoSearchCandidateDTO:
@@ -223,104 +211,17 @@ class ClickHouseAISearchService:
         }
         query = (
             _SEARCH_CANDIDATES_QUERY
-            if self._repo_metadata_table_exists_safe()
+            if self._repo_metadata_table_exists()
             else _SEARCH_CANDIDATES_FALLBACK_QUERY
         )
 
         def _run() -> list[RepoSearchCandidateDTO]:
-            try:
-                rows = self._execute_query(query, params)
-                if not rows and query != _SEARCH_CANDIDATES_FALLBACK_QUERY:
-                    rows = self._execute_query(_SEARCH_CANDIDATES_FALLBACK_QUERY, params)
-                return [self._parse_candidate_row(row) for row in rows]
-            except (ClickHouseConnectionError, AISearchError):
-                return self._load_candidates_from_parquet(
-                    category=category,
-                    primary_language=primary_language,
-                    min_stars=min_stars,
-                    days=days,
-                    limit=limit,
-                )
+            rows = self._execute_query(query, params)
+            if not rows and query != _SEARCH_CANDIDATES_FALLBACK_QUERY:
+                rows = self._execute_query(_SEARCH_CANDIDATES_FALLBACK_QUERY, params)
+            return [self._parse_candidate_row(row) for row in rows]
 
         return await asyncio.to_thread(_run)
-
-    def _load_candidates_from_parquet(
-        self,
-        *,
-        category: str | None,
-        primary_language: str | None,
-        min_stars: int,
-        days: int,
-        limit: int,
-    ) -> list[RepoSearchCandidateDTO]:
-        snapshots = prefer_ai_repositories(
-            load_repo_snapshots(
-                parquet_base_path=self._parquet_base_path,
-                days=days,
-            ),
-            category=category,
-        )
-        candidates = [
-            repo
-            for repo in snapshots
-            if int(repo["stargazers_count"]) >= min_stars
-            and (
-                not primary_language
-                or str(repo["primary_language"]).lower() == primary_language.lower()
-            )
-        ]
-        ranked = sorted(
-            candidates,
-            key=lambda item: (
-                int(item["star_count_in_window"]),
-                int(item["stargazers_count"]),
-                cast("datetime", item["github_pushed_at"]),
-            ),
-            reverse=True,
-        )[:limit]
-        return [self._to_candidate(repo) for repo in ranked]
-
-    @staticmethod
-    def _to_candidate(repo: dict[str, Any]) -> RepoSearchCandidateDTO:
-        metadata = RepoMetadataDTO(
-            repo_id=int(repo["repo_id"]),
-            repo_full_name=str(repo["repo_full_name"]),
-            repo_name=str(repo["repo_name"]),
-            html_url=str(repo["html_url"]),
-            description=str(repo["description"]),
-            primary_language=str(repo["primary_language"]),
-            topics=list(cast("list[str]", repo["topics"])),
-            category=str(repo["category"]),
-            stargazers_count=int(repo["stargazers_count"]),
-            watchers_count=int(repo["watchers_count"]),
-            forks_count=int(repo["forks_count"]),
-            open_issues_count=int(repo["open_issues_count"]),
-            subscribers_count=int(repo["subscribers_count"]),
-            owner_login=str(repo["owner_login"]),
-            owner_avatar_url=str(repo["owner_avatar_url"]),
-            license_name=str(repo["license_name"]),
-            github_created_at=cast("datetime", repo["github_created_at"]),
-            github_pushed_at=cast("datetime", repo["github_pushed_at"]),
-            rank=int(repo["rank"]),
-        )
-        search_document = " ".join(
-            part
-            for part in [
-                metadata.repo_full_name,
-                metadata.repo_name,
-                metadata.owner_login,
-                metadata.primary_language,
-                metadata.category,
-                " ".join(metadata.topics),
-                metadata.description,
-            ]
-            if part
-        )
-        return RepoSearchCandidateDTO(
-            repo=metadata,
-            star_count_in_window=int(repo["star_count_in_window"]),
-            search_document=search_document[:1600],
-        )
 
 
 def _coerce_datetime(value: object) -> datetime:

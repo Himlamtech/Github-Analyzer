@@ -1,0 +1,57 @@
+[Unit]
+Description=GitHub AI Trend Analyzer — Spark Structured Streaming Job
+Documentation=https://github.com/lamnh/github_analyzer
+After=network-online.target docker.service
+Wants=network-online.target
+# Kafka (via Docker) should be up before Spark tries to connect
+After=docker.service
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=/home/WORK/lamnh/github_analyzer
+
+# Load .env file into the service environment
+EnvironmentFile=/home/WORK/lamnh/github_analyzer/.env
+
+# Python / Java environment
+Environment="PYTHONUNBUFFERED=1"
+Environment="PYTHONDONTWRITEBYTECODE=1"
+# Java 17 is required by PySpark 3.5.x — adjust JAVA_HOME if different
+Environment="JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64"
+Environment="PYSPARK_PYTHON=/media/aiz/0836a33f-812f-4e69-a6f9-784fe732c6d5/miniconda3/envs/data/bin/python"
+
+# Increase OOM score adjustment so the kernel prefers this process last
+OOMScoreAdjust=-500
+
+ExecStart=/media/aiz/0836a33f-812f-4e69-a6f9-784fe732c6d5/miniconda3/envs/data/bin/python \
+  -m src.application.use_cases.process_event_stream
+
+# Restart policy: restart on failure, back off on repeated failures
+Restart=on-failure
+RestartSec=60s
+StartLimitInterval=600s
+StartLimitBurst=3
+
+# Spark needs more file descriptors for shuffle files
+LimitNOFILE=131072
+# No hard memory limit — let Spark manage its own memory via SPARK_DRIVER_MEMORY
+# (set in .env as SPARK_DRIVER_MEMORY=8g)
+
+# Logging: stdout/stderr go to journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gha-spark-streaming
+
+# Wait for Kafka to be available before starting (up to 2 minutes)
+ExecStartPre=/bin/bash -c '\
+  for i in $(seq 1 24); do \
+    docker compose -f /home/WORK/lamnh/github_analyzer/docker-compose.yml \
+      exec -T kafka /opt/kafka/bin/kafka-topics.sh \
+        --bootstrap-server localhost:9092 --list >/dev/null 2>&1 && exit 0; \
+    echo "Waiting for Kafka... ($i/24)"; sleep 5; \
+  done; \
+  echo "Kafka not ready after 2 minutes, aborting"; exit 1'
+
+[Install]
+WantedBy=multi-user.target

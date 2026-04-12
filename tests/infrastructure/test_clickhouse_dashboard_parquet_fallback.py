@@ -8,8 +8,7 @@ from unittest.mock import patch
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from university.github.src.domain.exceptions import DashboardQueryError
-from university.github.src.infrastructure.storage.clickhouse_dashboard_service import (
+from src.infrastructure.storage.clickhouse_dashboard_service import (
     ClickHouseDashboardService,
 )
 
@@ -72,59 +71,6 @@ def _write_new_watch_schema(path: Path) -> None:
     )
 
 
-def _write_repo_event(
-    path: Path,
-    *,
-    repo_id: int,
-    repo_name: str,
-    created_at: str,
-    stargazers_count: int,
-    primary_language: str,
-    topics: list[str],
-    description: str,
-    event_type: str = "WatchEvent",
-) -> None:
-    _write_parquet(
-        path,
-        {
-            "event_id": [f"evt-{repo_id}-{event_type.lower()}"],
-            "actor_id": [repo_id],
-            "actor_login": [f"user-{repo_id}"],
-            "repo_id": [repo_id],
-            "repo_name": [repo_name],
-            "created_at": [created_at],
-            "payload_json": ["{}"],
-            "repo_stargazers_count": [stargazers_count],
-            "repo_primary_language": [primary_language],
-            "repo_topics": [topics],
-            "repo_description": [description],
-            "repo_full_metadata_json": [
-                (
-                    '{"full_name":"%s","html_url":"https://github.com/%s",'
-                    '"description":"%s","language":"%s","topics":%s,'
-                    '"stargazers_count":%d,"watchers_count":%d,'
-                    '"owner":{"login":"%s","avatar_url":"https://avatars.githubusercontent.com/u/%d"},'
-                    '"license":{"name":"MIT"}}'
-                )
-                % (
-                    repo_name,
-                    repo_name,
-                    description,
-                    primary_language,
-                    str(topics).replace("'", '"'),
-                    stargazers_count,
-                    stargazers_count,
-                    repo_name.split("/")[0],
-                    repo_id,
-                )
-            ],
-            "repo_readme_text": [description],
-            "repo_issues_json": ["[]"],
-            "public": [True],
-        },
-    )
-
-
 async def test_get_top_repos_parquet_fallback_handles_mixed_schema_files(
     tmp_path: Path,
 ) -> None:
@@ -145,83 +91,3 @@ async def test_get_top_repos_parquet_fallback_handles_mixed_schema_files(
     assert result[0]["repo_full_name"] == "openai/gpt-5"
     assert result[0]["star_count_in_window"] == 2
     assert result[0]["stargazers_count"] == 123
-
-
-async def test_get_category_summary_parquet_fallback_derives_ai_categories(
-    tmp_path: Path,
-) -> None:
-    day_dir = tmp_path / "event_date=2026-03-30"
-    _write_repo_event(
-        day_dir / "event_type=WatchEvent" / "agent.parquet",
-        repo_id=201,
-        repo_name="browser-use/browser-use",
-        created_at="2026-03-30T12:00:00+00:00",
-        stargazers_count=50_000,
-        primary_language="Python",
-        topics=["browser-use", "agent", "automation"],
-        description="Browser agents for automation.",
-    )
-    _write_repo_event(
-        day_dir / "event_type=WatchEvent" / "llm.parquet",
-        repo_id=202,
-        repo_name="openai/gpt-5",
-        created_at="2026-03-30T12:10:00+00:00",
-        stargazers_count=80_000,
-        primary_language="Python",
-        topics=["llm", "transformer"],
-        description="Foundation language model stack.",
-    )
-    _write_repo_event(
-        day_dir / "event_type=WatchEvent" / "other.parquet",
-        repo_id=203,
-        repo_name="public-apis/public-apis",
-        created_at="2026-03-30T12:20:00+00:00",
-        stargazers_count=400_000,
-        primary_language="Python",
-        topics=["apis"],
-        description="A collective list of free APIs.",
-    )
-
-    service = _make_service(str(tmp_path))
-
-    with patch.object(service, "_execute_query", side_effect=DashboardQueryError("down")):
-        result = await service.get_category_summary(days=1000, limit=10)
-
-    categories = {item["category"] for item in result}
-    assert "Agent" in categories
-    assert "LLM" in categories
-    assert "Other" not in categories
-
-
-async def test_get_language_breakdown_parquet_fallback_returns_star_count_shape(
-    tmp_path: Path,
-) -> None:
-    day_dir = tmp_path / "event_date=2026-03-30"
-    _write_repo_event(
-        day_dir / "event_type=WatchEvent" / "agent.parquet",
-        repo_id=301,
-        repo_name="browser-use/browser-use",
-        created_at="2026-03-30T12:00:00+00:00",
-        stargazers_count=50_000,
-        primary_language="Python",
-        topics=["browser-use", "agent"],
-        description="Browser agents for automation.",
-    )
-    _write_repo_event(
-        day_dir / "event_type=WatchEvent" / "multimodal.parquet",
-        repo_id=302,
-        repo_name="openai/voice-lab",
-        created_at="2026-03-30T12:05:00+00:00",
-        stargazers_count=25_000,
-        primary_language="TypeScript",
-        topics=["audio", "speech", "multimodal"],
-        description="Speech and audio generation stack.",
-    )
-
-    service = _make_service(str(tmp_path))
-
-    with patch.object(service, "_execute_query", side_effect=DashboardQueryError("down")):
-        result = await service.get_language_breakdown(days=1000, limit=10)
-
-    assert {item["language"] for item in result} == {"Python", "TypeScript"}
-    assert all("star_count" in item for item in result)

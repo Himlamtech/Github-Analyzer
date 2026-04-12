@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from university.github.src.infrastructure.storage.clickhouse_repo_observation_bootstrap import (
+from src.infrastructure.storage.clickhouse_repo_observation_bootstrap import (
     ClickHouseRepoObservationBootstrapService,
 )
 

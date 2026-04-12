@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 from fastapi.testclient import TestClient
 import pytest
 
-from university.github.src.infrastructure.config import get_settings
-from university.github.src.presentation.api.dashboard_routes import _get_dashboard_service
-from university.github.src.presentation.api.routes import app
+from src.infrastructure.config import get_settings
+from src.presentation.api.dashboard_routes import _get_dashboard_service, _get_news_service
+from src.presentation.api.routes import app
 
 _NOW = datetime(2026, 3, 30, 12, 0, tzinfo=UTC)
 
@@ -68,6 +68,24 @@ class FakeDashboardService:
         ]
 
 
+class FakeNewsService:
+    async def search_repo_news(
+        self,
+        *,
+        repo_full_name: str,
+        days: int,
+    ) -> list[dict[str, str | None]]:
+        return [
+            {
+                "title": f"{repo_full_name} is everywhere this week",
+                "url": "https://example.com/headline",
+                "source": "Example News",
+                "snippet": "A quick coverage snippet.",
+                "engine": "google news",
+            }
+        ]
+
+
 def _override_settings() -> object:
     return get_settings()
 
@@ -76,6 +94,7 @@ def _override_settings() -> object:
 def client() -> TestClient:
     app.dependency_overrides[get_settings] = _override_settings
     app.dependency_overrides[_get_dashboard_service] = lambda: FakeDashboardService()
+    app.dependency_overrides[_get_news_service] = lambda: FakeNewsService()
     try:
         yield TestClient(app)
     finally:
@@ -97,3 +116,11 @@ def test_topic_rotation_route_returns_ranked_topics(client: TestClient) -> None:
     assert response.status_code == 200
     assert response.json()[0]["topic"] == "browser-use"
     assert response.json()[0]["star_delta"] == 480
+
+
+def test_news_radar_route_returns_headlines_for_breakout_repos(client: TestClient) -> None:
+    response = client.get("/dashboard/news-radar", params={"days": 7, "focus": "percentage"})
+
+    assert response.status_code == 200
+    assert response.json()["repos"][0]["headlines"][0]["source"] == "Example News"
+    assert response.json()["repos"][0]["repo_full_name"] == "browser-use/browser-use"

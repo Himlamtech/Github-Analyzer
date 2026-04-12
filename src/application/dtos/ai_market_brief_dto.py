@@ -7,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from university.github.src.application.dtos.repo_metadata_dto import RepoMetadataDTO  # noqa: TC001
+from src.application.dtos.repo_metadata_dto import RepoMetadataDTO  # noqa: TC001
 
 
 class MarketBreakoutRepoDTO(BaseModel):

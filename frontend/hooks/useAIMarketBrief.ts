@@ -3,13 +3,14 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
+import type { MarketBriefResponse } from "@/lib/types";
 
-/** On-demand market brief summarizing current breakout activity. */
-export function useAIMarketBrief(days: number, enabled: boolean) {
-  return useQuery({
+/** Grounded AI market brief for the active dashboard window. */
+export function useAIMarketBrief(days: number, enabled = false) {
+  return useQuery<MarketBriefResponse>({
     queryKey: ["ai-market-brief", days],
-    queryFn: () => api.getAIMarketBrief(days),
+    queryFn: () => api.getMarketBrief(days),
     enabled,
-    staleTime: 60_000,
+    staleTime: 120_000,
   });
 }

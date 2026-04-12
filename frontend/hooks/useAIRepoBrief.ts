@@ -3,13 +3,14 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
+import type { RepoBriefResponse } from "@/lib/types";
 
-/** Grounded repository brief for a selected repo. */
+/** Grounded AI repo brief for a selected repository. */
 export function useAIRepoBrief(repoName: string | null, days: number) {
-  return useQuery({
+  return useQuery<RepoBriefResponse>({
     queryKey: ["ai-repo-brief", repoName, days],
-    queryFn: () => api.getAIRepoBrief(repoName!, days),
+    queryFn: () => api.getRepoBrief(repoName!, days),
     enabled: !!repoName,
-    staleTime: 60_000,
+    staleTime: 120_000,
   });
 }
