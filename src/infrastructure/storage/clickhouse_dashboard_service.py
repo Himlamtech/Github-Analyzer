@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, date, datetime, timedelta
-from pathlib import Path
+from datetime import UTC, date, datetime
 from typing import Any, cast
 
-import pyarrow.parquet as pq
 from clickhouse_driver import Client
 from clickhouse_driver.errors import Error as ClickHouseDriverError
 from clickhouse_driver.errors import NetworkError as ClickHouseDriverNetworkError
 
-from src.domain.exceptions import ClickHouseConnectionError, DashboardQueryError
+from university.github.src.domain.exceptions import ClickHouseConnectionError, DashboardQueryError
+from university.github.src.infrastructure.storage.parquet_repo_analytics import (
+    load_repo_snapshots,
+    load_repo_timeseries,
+    prefer_ai_repositories,
+)
 
 _TOP_REPOS_QUERY = """
 SELECT
@@ -455,6 +458,12 @@ class ClickHouseDashboardService:
         except (TypeError, ValueError):
             return True
 
+    def _repo_metadata_table_exists_safe(self) -> bool:
+        try:
+            return self._repo_metadata_table_exists()
+        except (ClickHouseConnectionError, DashboardQueryError):
+            return False
+
     async def get_top_repos(
         self,
         *,
@@ -465,28 +474,38 @@ class ClickHouseDashboardService:
         params = {"category": category or "", "days": days, "limit": limit}
         query = (
             _TOP_REPOS_QUERY
-            if self._repo_metadata_table_exists()
+            if self._repo_metadata_table_exists_safe()
             else (
                 _TOP_REPOS_CATEGORY_FALLBACK_QUERY if category else _TOP_REPOS_ALL_FALLBACK_QUERY
             )
         )
 
         def _run() -> list[dict[str, object]]:
-            rows = self._execute_query(query, params)
-            repos = [self._parse_repo_metric_row(row) for row in rows]
-            if repos:
-                return repos
+            try:
+                rows = self._execute_query(query, params)
+                repos = [self._parse_repo_metric_row(row) for row in rows]
+                if repos:
+                    return repos
+            except (ClickHouseConnectionError, DashboardQueryError):
+                pass
             return self._load_top_repos_from_parquet(days=days, limit=limit, category=category)
 
         return await asyncio.to_thread(_run)
 
     async def get_trending(self, *, days: int, limit: int) -> list[dict[str, object]]:
         params = {"days": days, "limit": limit}
-        query = _TRENDING_QUERY if self._repo_metadata_table_exists() else _TRENDING_FALLBACK_QUERY
+        query = (
+            _TRENDING_QUERY
+            if self._repo_metadata_table_exists_safe()
+            else _TRENDING_FALLBACK_QUERY
+        )
 
         def _run() -> list[dict[str, object]]:
-            rows = self._execute_query(query, params)
-            items = [self._parse_repo_metric_row(row) for row in rows]
+            try:
+                rows = self._execute_query(query, params)
+                items = [self._parse_repo_metric_row(row) for row in rows]
+            except (ClickHouseConnectionError, DashboardQueryError):
+                items = self._load_trending_from_parquet(days=days, limit=limit)
             for index, item in enumerate(items, start=1):
                 item["growth_rank"] = index
             return items
@@ -500,25 +519,34 @@ class ClickHouseDashboardService:
         limit: int = 20,
     ) -> list[dict[str, object]]:
         def _run() -> list[dict[str, object]]:
-            rows = self._execute_query(_LANGUAGE_BREAKDOWN_QUERY, {"days": days, "limit": limit})
-            return [
-                {
-                    "language": str(row[0]),
-                    "star_count": int(row[1]),
-                    "repo_count": int(row[2]),
-                }
-                for row in rows
-            ]
+            try:
+                rows = self._execute_query(
+                    _LANGUAGE_BREAKDOWN_QUERY,
+                    {"days": days, "limit": limit},
+                )
+                return [
+                    {
+                        "language": str(row[0]),
+                        "star_count": int(row[1]),
+                        "repo_count": int(row[2]),
+                    }
+                    for row in rows
+                ]
+            except (ClickHouseConnectionError, DashboardQueryError):
+                return self._load_language_breakdown_from_parquet(days=days, limit=limit)
 
         return await asyncio.to_thread(_run)
 
     async def get_topic_breakdown(self, *, days: int, limit: int = 20) -> list[dict[str, object]]:
         def _run() -> list[dict[str, object]]:
-            rows = self._execute_query(_TOPIC_BREAKDOWN_QUERY, {"days": days, "limit": limit})
-            return [
-                {"topic": str(row[0]), "star_count": int(row[1]), "repo_count": int(row[2])}
-                for row in rows
-            ]
+            try:
+                rows = self._execute_query(_TOPIC_BREAKDOWN_QUERY, {"days": days, "limit": limit})
+                return [
+                    {"topic": str(row[0]), "star_count": int(row[1]), "repo_count": int(row[2])}
+                    for row in rows
+                ]
+            except (ClickHouseConnectionError, DashboardQueryError):
+                return self._load_topic_breakdown_from_parquet(days=days, limit=limit)
 
         return await asyncio.to_thread(_run)
 
@@ -529,18 +557,21 @@ class ClickHouseDashboardService:
         days: int,
     ) -> list[dict[str, object]]:
         def _run() -> list[dict[str, object]]:
-            rows = self._execute_query(
-                _REPO_TIMESERIES_QUERY,
-                {"repo_name": repo_name, "days": days},
-            )
-            return [
-                {
-                    "event_date": _coerce_date(row[0]),
-                    "star_count": int(row[1]),
-                    "total_events": int(row[2]),
-                }
-                for row in rows
-            ]
+            try:
+                rows = self._execute_query(
+                    _REPO_TIMESERIES_QUERY,
+                    {"repo_name": repo_name, "days": days},
+                )
+                return [
+                    {
+                        "event_date": _coerce_date(row[0]),
+                        "star_count": int(row[1]),
+                        "total_events": int(row[2]),
+                    }
+                    for row in rows
+                ]
+            except (ClickHouseConnectionError, DashboardQueryError):
+                return self._load_repo_timeseries_from_parquet(repo_name=repo_name, days=days)
 
         return await asyncio.to_thread(_run)
 
@@ -552,23 +583,29 @@ class ClickHouseDashboardService:
     ) -> list[dict[str, object]]:
         query = (
             _CATEGORY_SUMMARY_QUERY
-            if self._repo_metadata_table_exists()
+            if self._repo_metadata_table_exists_safe()
             else (_CATEGORY_SUMMARY_FALLBACK_QUERY)
         )
 
         def _run() -> list[dict[str, object]]:
-            rows = self._execute_query(query, {"days": days, "limit": limit})
-            return [
-                {
-                    "category": str(row[0]),
-                    "repo_count": int(row[1]),
-                    "total_stars": int(row[2]),
-                    "top_repo_name": str(row[3]),
-                    "top_repo_stars": int(row[4]),
-                    "weekly_star_delta": int(row[5]),
-                }
-                for row in rows
-            ]
+            try:
+                rows = self._execute_query(query, {"days": days, "limit": limit})
+                items = [
+                    {
+                        "category": str(row[0]),
+                        "repo_count": int(row[1]),
+                        "total_stars": int(row[2]),
+                        "top_repo_name": str(row[3]),
+                        "top_repo_stars": int(row[4]),
+                        "weekly_star_delta": int(row[5]),
+                    }
+                    for row in rows
+                ]
+                if items and any(item["category"] != "Other" for item in items):
+                    return items
+            except (ClickHouseConnectionError, DashboardQueryError):
+                pass
+            return self._load_category_summary_from_parquet(days=days, limit=limit)
 
         return await asyncio.to_thread(_run)
 
@@ -582,27 +619,30 @@ class ClickHouseDashboardService:
     ) -> dict[str, object]:
         query = (
             _SHOCK_MOVERS_QUERY
-            if self._repo_metadata_table_exists()
+            if self._repo_metadata_table_exists_safe()
             else _SHOCK_MOVERS_FALLBACK_QUERY
         )
 
         def _run() -> dict[str, object]:
-            rows = self._execute_query(
-                query,
-                {
-                    "days": days,
-                    "days_twice": days * 2,
-                },
-            )
-            if not rows and query != _SHOCK_MOVERS_FALLBACK_QUERY:
+            try:
                 rows = self._execute_query(
-                    _SHOCK_MOVERS_FALLBACK_QUERY,
+                    query,
                     {
                         "days": days,
                         "days_twice": days * 2,
                     },
                 )
-            items = [self._parse_shock_mover_row(row) for row in rows]
+                if not rows and query != _SHOCK_MOVERS_FALLBACK_QUERY:
+                    rows = self._execute_query(
+                        _SHOCK_MOVERS_FALLBACK_QUERY,
+                        {
+                            "days": days,
+                            "days_twice": days * 2,
+                        },
+                    )
+                items = [self._parse_shock_mover_row(row) for row in rows]
+            except (ClickHouseConnectionError, DashboardQueryError):
+                items = self._load_shock_movers_from_parquet(days=days)
             absolute = sorted(
                 items,
                 key=lambda item: (
@@ -639,25 +679,28 @@ class ClickHouseDashboardService:
 
     async def get_topic_rotation(self, *, days: int, limit: int) -> list[dict[str, object]]:
         def _run() -> list[dict[str, object]]:
-            rows = self._execute_query(
-                _TOPIC_ROTATION_QUERY,
-                {"days": days, "days_twice": days * 2, "limit": limit},
-            )
-            result: list[dict[str, object]] = []
-            for index, row in enumerate(rows, start=1):
-                current = int(row[1])
-                previous = int(row[2])
-                result.append(
-                    {
-                        "topic": str(row[0]),
-                        "current_star_count": current,
-                        "previous_star_count": previous,
-                        "star_delta": current - previous,
-                        "repo_count": int(row[3]),
-                        "rank": index,
-                    }
+            try:
+                rows = self._execute_query(
+                    _TOPIC_ROTATION_QUERY,
+                    {"days": days, "days_twice": days * 2, "limit": limit},
                 )
-            return result
+                result: list[dict[str, object]] = []
+                for index, row in enumerate(rows, start=1):
+                    current = int(row[1])
+                    previous = int(row[2])
+                    result.append(
+                        {
+                            "topic": str(row[0]),
+                            "current_star_count": current,
+                            "previous_star_count": previous,
+                            "star_delta": current - previous,
+                            "repo_count": int(row[3]),
+                            "rank": index,
+                        }
+                    )
+                return result
+            except (ClickHouseConnectionError, DashboardQueryError):
+                return self._load_topic_rotation_from_parquet(days=days, limit=limit)
 
         return await asyncio.to_thread(_run)
 
@@ -713,84 +756,14 @@ class ClickHouseDashboardService:
         limit: int,
         category: str | None,
     ) -> list[dict[str, object]]:
-        if category not in {None, "", "Other"}:
-            return []
-
-        base_path = Path(self._parquet_base_path)
-        if not base_path.exists():
-            return []
-
-        cutoff = datetime.now(tz=UTC) - timedelta(days=days)
-        repos: dict[str, dict[str, object]] = {}
-
-        for parquet_file in sorted(base_path.rglob("*.parquet")):
-            event_type = _extract_event_type(parquet_file)
-            if event_type != "WatchEvent":
-                continue
-            parquet_reader = pq.ParquetFile(str(parquet_file))
-            for batch in parquet_reader.iter_batches(batch_size=1000):
-                for record in batch.to_pylist():
-                    repo_full_name = str(record.get("repo_name") or "").strip().lower()
-                    if not repo_full_name:
-                        continue
-                    created_at = _coerce_datetime(record.get("created_at"))
-                    if created_at < cutoff:
-                        continue
-                    current = repos.setdefault(
-                        repo_full_name,
-                        {
-                            "repo_id": int(record.get("repo_id") or 0),
-                            "repo_full_name": repo_full_name,
-                            "repo_name": repo_full_name.split("/")[-1],
-                            "html_url": f"https://github.com/{repo_full_name}",
-                            "description": str(record.get("repo_description") or ""),
-                            "primary_language": str(record.get("repo_primary_language") or ""),
-                            "topics": _coerce_string_list(record.get("repo_topics")),
-                            "category": "Other",
-                            "stargazers_count": _coerce_int(
-                                record.get("repo_stargazers_count"),
-                            ),
-                            "watchers_count": _coerce_int(
-                                record.get("repo_stargazers_count"),
-                            ),
-                            "forks_count": 0,
-                            "open_issues_count": 0,
-                            "subscribers_count": 0,
-                            "owner_login": repo_full_name.split("/")[0],
-                            "owner_avatar_url": "",
-                            "license_name": "",
-                            "github_created_at": created_at,
-                            "github_pushed_at": created_at,
-                            "rank": 0,
-                            "star_count_in_window": 0,
-                            "star_delta": 0,
-                        },
-                    )
-                    current["description"] = str(
-                        record.get("repo_description") or current["description"]
-                    )
-                    current["primary_language"] = str(
-                        record.get("repo_primary_language") or current["primary_language"]
-                    )
-                    current["topics"] = _coerce_string_list(
-                        record.get("repo_topics") or current["topics"]
-                    )
-                    current["stargazers_count"] = max(
-                        _coerce_int(current["stargazers_count"]),
-                        _coerce_int(record.get("repo_stargazers_count")),
-                    )
-                    current["watchers_count"] = _coerce_int(current["stargazers_count"])
-                    current["github_pushed_at"] = max(
-                        cast("datetime", current["github_pushed_at"]),
-                        created_at,
-                    )
-                    current["star_count_in_window"] = (
-                        _coerce_int(current["star_count_in_window"]) + 1
-                    )
-                    current["star_delta"] = _coerce_int(current["star_count_in_window"])
-
+        snapshots = self._load_snapshots_from_parquet(days=days)
+        candidates = [
+            repo
+            for repo in prefer_ai_repositories(snapshots, category=category)
+            if bool(repo["had_recent_event"])
+        ]
         ranked = sorted(
-            repos.values(),
+            candidates,
             key=lambda item: (
                 _coerce_int(item["stargazers_count"]),
                 _coerce_int(item["star_count_in_window"]),
@@ -800,12 +773,250 @@ class ClickHouseDashboardService:
         )
         return ranked[:limit]
 
+    def _load_trending_from_parquet(self, *, days: int, limit: int) -> list[dict[str, object]]:
+        snapshots = self._load_snapshots_from_parquet(days=days)
+        candidates = [
+            repo
+            for repo in prefer_ai_repositories(snapshots)
+            if _coerce_int(repo["star_count_in_window"]) > 0
+        ]
+        ranked = sorted(
+            candidates,
+            key=lambda item: (
+                _coerce_int(item["star_count_in_window"]),
+                _coerce_int(item["stargazers_count"]),
+                cast("datetime", item["github_pushed_at"]),
+            ),
+            reverse=True,
+        )
+        return ranked[:limit]
 
-def _extract_event_type(path: Path) -> str:
-    for part in path.parts:
-        if part.startswith("event_type="):
-            return part.split("=", maxsplit=1)[1]
-    return ""
+    def _load_language_breakdown_from_parquet(
+        self,
+        *,
+        days: int,
+        limit: int,
+    ) -> list[dict[str, object]]:
+        snapshots = [
+            repo for repo in prefer_ai_repositories(self._load_snapshots_from_parquet(days=days))
+            if bool(repo["had_recent_event"])
+        ]
+        language_map: dict[str, dict[str, int | set[str]]] = {}
+        for repo in snapshots:
+            language = str(repo["primary_language"] or "Unknown")
+            bucket = language_map.setdefault(
+                language,
+                {"star_count": 0, "repos": set()},
+            )
+            bucket["star_count"] = _coerce_int(bucket["star_count"]) + _coerce_int(
+                repo["star_count_in_window"]
+            )
+            cast("set[str]", bucket["repos"]).add(str(repo["repo_full_name"]))
+
+        ranked = sorted(
+            [
+                {
+                    "language": language,
+                    "star_count": _coerce_int(data["star_count"]),
+                    "repo_count": len(cast("set[str]", data["repos"])),
+                }
+                for language, data in language_map.items()
+            ],
+            key=lambda item: (
+                _coerce_int(item["star_count"]),
+                _coerce_int(item["repo_count"]),
+                str(item["language"]),
+            ),
+            reverse=True,
+        )
+        return ranked[:limit]
+
+    def _load_topic_breakdown_from_parquet(
+        self,
+        *,
+        days: int,
+        limit: int,
+    ) -> list[dict[str, object]]:
+        snapshots = [
+            repo for repo in prefer_ai_repositories(self._load_snapshots_from_parquet(days=days))
+            if bool(repo["had_recent_event"])
+        ]
+        topic_map: dict[str, dict[str, int | set[str]]] = {}
+        for repo in snapshots:
+            for topic in cast("list[str]", repo["topics"]):
+                if not topic:
+                    continue
+                bucket = topic_map.setdefault(
+                    topic,
+                    {"star_count": 0, "repos": set()},
+                )
+                bucket["star_count"] = _coerce_int(bucket["star_count"]) + _coerce_int(
+                    repo["star_count_in_window"]
+                )
+                cast("set[str]", bucket["repos"]).add(str(repo["repo_full_name"]))
+
+        ranked = sorted(
+            [
+                {
+                    "topic": topic,
+                    "star_count": _coerce_int(data["star_count"]),
+                    "repo_count": len(cast("set[str]", data["repos"])),
+                }
+                for topic, data in topic_map.items()
+            ],
+            key=lambda item: (
+                _coerce_int(item["star_count"]),
+                _coerce_int(item["repo_count"]),
+                str(item["topic"]),
+            ),
+            reverse=True,
+        )
+        return ranked[:limit]
+
+    def _load_category_summary_from_parquet(
+        self,
+        *,
+        days: int,
+        limit: int,
+    ) -> list[dict[str, object]]:
+        snapshots = [
+            repo for repo in prefer_ai_repositories(self._load_snapshots_from_parquet(days=days))
+            if bool(repo["had_recent_event"])
+        ]
+        category_map: dict[str, dict[str, object]] = {}
+        for repo in snapshots:
+            category = str(repo["category"])
+            bucket = category_map.setdefault(
+                category,
+                {
+                    "category": category,
+                    "repo_count": 0,
+                    "total_stars": 0,
+                    "top_repo_name": "",
+                    "top_repo_stars": 0,
+                    "weekly_star_delta": 0,
+                },
+            )
+            bucket["repo_count"] = _coerce_int(bucket["repo_count"]) + 1
+            bucket["total_stars"] = _coerce_int(bucket["total_stars"]) + _coerce_int(
+                repo["stargazers_count"]
+            )
+            bucket["weekly_star_delta"] = _coerce_int(bucket["weekly_star_delta"]) + _coerce_int(
+                repo["star_count_in_window"]
+            )
+            if _coerce_int(repo["stargazers_count"]) >= _coerce_int(bucket["top_repo_stars"]):
+                bucket["top_repo_name"] = str(repo["repo_full_name"])
+                bucket["top_repo_stars"] = _coerce_int(repo["stargazers_count"])
+
+        ranked = sorted(
+            category_map.values(),
+            key=lambda item: (
+                _coerce_int(item["weekly_star_delta"]),
+                _coerce_int(item["total_stars"]),
+                _coerce_int(item["repo_count"]),
+            ),
+            reverse=True,
+        )
+        return ranked[:limit]
+
+    def _load_shock_movers_from_parquet(self, *, days: int) -> list[dict[str, object]]:
+        snapshots = load_repo_snapshots(
+            parquet_base_path=self._parquet_base_path,
+            days=days,
+            include_previous_window=True,
+        )
+        return [
+            self._decorate_shock_mover(repo)
+            for repo in prefer_ai_repositories(snapshots)
+            if _coerce_int(repo["star_count_in_window"]) > 0
+        ]
+
+    def _load_topic_rotation_from_parquet(
+        self,
+        *,
+        days: int,
+        limit: int,
+    ) -> list[dict[str, object]]:
+        snapshots = [
+            repo
+            for repo in prefer_ai_repositories(
+                load_repo_snapshots(
+                    parquet_base_path=self._parquet_base_path,
+                    days=days,
+                    include_previous_window=True,
+                )
+            )
+            if _coerce_int(repo["star_count_in_window"]) > 0
+        ]
+        topic_map: dict[str, dict[str, int | set[str]]] = {}
+        for repo in snapshots:
+            for topic in cast("list[str]", repo["topics"]):
+                if not topic:
+                    continue
+                bucket = topic_map.setdefault(
+                    topic,
+                    {"current": 0, "previous": 0, "repos": set()},
+                )
+                bucket["current"] = _coerce_int(bucket["current"]) + _coerce_int(
+                    repo["star_count_in_window"]
+                )
+                bucket["previous"] = _coerce_int(bucket["previous"]) + _coerce_int(
+                    repo["previous_star_count_in_window"]
+                )
+                cast("set[str]", bucket["repos"]).add(str(repo["repo_full_name"]))
+
+        ranked_rows = sorted(
+            [
+                {
+                    "topic": topic,
+                    "current_star_count": _coerce_int(data["current"]),
+                    "previous_star_count": _coerce_int(data["previous"]),
+                    "star_delta": _coerce_int(data["current"]) - _coerce_int(data["previous"]),
+                    "repo_count": len(cast("set[str]", data["repos"])),
+                }
+                for topic, data in topic_map.items()
+            ],
+            key=lambda item: (
+                _coerce_int(item["current_star_count"]),
+                _coerce_int(item["repo_count"]),
+                str(item["topic"]),
+            ),
+            reverse=True,
+        )[:limit]
+        for index, row in enumerate(ranked_rows, start=1):
+            row["rank"] = index
+        return ranked_rows
+
+    def _load_repo_timeseries_from_parquet(
+        self,
+        *,
+        repo_name: str,
+        days: int,
+    ) -> list[dict[str, object]]:
+        return load_repo_timeseries(
+            parquet_base_path=self._parquet_base_path,
+            repo_name=repo_name,
+            days=days,
+        )
+
+    def _load_snapshots_from_parquet(self, *, days: int) -> list[dict[str, object]]:
+        return load_repo_snapshots(
+            parquet_base_path=self._parquet_base_path,
+            days=days,
+        )
+
+    def _decorate_shock_mover(self, repo: dict[str, object]) -> dict[str, object]:
+        current = _coerce_int(repo["star_count_in_window"])
+        previous = _coerce_int(repo["previous_star_count_in_window"])
+        percent_gain = float(current * 100.0) if previous <= 0 else round(
+            ((current - previous) / previous) * 100.0,
+            2,
+        )
+        ratio = float(current) if previous <= 0 else round(current / previous, 4)
+        decorated = dict(repo)
+        decorated["weekly_percent_gain"] = percent_gain
+        decorated["window_over_window_ratio"] = ratio
+        return decorated
 
 
 def _coerce_int(value: object | None) -> int:

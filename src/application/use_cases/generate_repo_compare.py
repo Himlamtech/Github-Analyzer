@@ -6,14 +6,14 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 import structlog
 
-from src.application.dtos.ai_repo_compare_dto import (
+from university.github.src.application.dtos.ai_repo_compare_dto import (
     RepoCompareMetricDTO,
     RepoCompareResponseDTO,
 )
-from src.domain.exceptions import GenerationServiceError, ValidationError
+from university.github.src.domain.exceptions import GenerationServiceError, ValidationError
 
 if TYPE_CHECKING:
-    from src.application.dtos.ai_repo_brief_dto import RepoBriefContextDTO
+    from university.github.src.application.dtos.ai_repo_brief_dto import RepoBriefContextDTO
 
 logger = structlog.get_logger(__name__)
 

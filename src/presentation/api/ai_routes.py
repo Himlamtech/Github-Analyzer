@@ -4,30 +4,30 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Query
 import structlog
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-from src.application.dtos.ai_market_brief_dto import MarketBriefResponseDTO
-from src.application.dtos.ai_related_repo_dto import RelatedReposResponseDTO
-from src.application.dtos.ai_repo_brief_dto import RepoBriefResponseDTO
-from src.application.dtos.ai_repo_compare_dto import RepoCompareResponseDTO
-from src.application.dtos.ai_search_dto import RepoSearchResponseDTO
-from src.domain.exceptions import (
+from university.github.src.application.dtos.ai_market_brief_dto import MarketBriefResponseDTO
+from university.github.src.application.dtos.ai_related_repo_dto import RelatedReposResponseDTO
+from university.github.src.application.dtos.ai_repo_brief_dto import RepoBriefResponseDTO
+from university.github.src.application.dtos.ai_repo_compare_dto import RepoCompareResponseDTO
+from university.github.src.application.dtos.ai_search_dto import RepoSearchResponseDTO
+from university.github.src.domain.exceptions import (
     AIInsightError,
     AISearchError,
     RepoInsightNotFoundError,
     ValidationError,
 )
-from src.infrastructure.config import Settings, get_settings
+from university.github.src.infrastructure.config import Settings, get_settings
 
 if TYPE_CHECKING:
-    from src.application.use_cases.build_market_brief import BuildMarketBriefUseCase
-    from src.application.use_cases.generate_repo_brief import GenerateRepoBriefUseCase
-    from src.application.use_cases.generate_repo_compare import GenerateRepoCompareUseCase
-    from src.application.use_cases.recommend_related_repositories import (
+    from university.github.src.application.use_cases.build_market_brief import BuildMarketBriefUseCase
+    from university.github.src.application.use_cases.generate_repo_brief import GenerateRepoBriefUseCase
+    from university.github.src.application.use_cases.generate_repo_compare import GenerateRepoCompareUseCase
+    from university.github.src.application.use_cases.recommend_related_repositories import (
         RecommendRelatedRepositoriesUseCase,
     )
-    from src.application.use_cases.search_repositories import SearchRepositoriesUseCase
+    from university.github.src.application.use_cases.search_repositories import SearchRepositoriesUseCase
 
 logger = structlog.get_logger(__name__)
 
@@ -38,9 +38,9 @@ def _get_search_use_case(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> object:
     """Construct the AI repository search use case for the request."""
-    from src.application.use_cases.search_repositories import SearchRepositoriesUseCase
-    from src.infrastructure.llm.ollama_embedding_service import OllamaEmbeddingService
-    from src.infrastructure.storage.clickhouse_ai_service import ClickHouseAISearchService
+    from university.github.src.application.use_cases.search_repositories import SearchRepositoriesUseCase
+    from university.github.src.infrastructure.llm.ollama_embedding_service import OllamaEmbeddingService
+    from university.github.src.infrastructure.storage.clickhouse_ai_service import ClickHouseAISearchService
 
     embedding_service: OllamaEmbeddingService | None = None
     if settings.ai_search_semantic_enabled:
@@ -57,6 +57,7 @@ def _get_search_use_case(
             user=settings.clickhouse_user,
             password=settings.clickhouse_password,
             database=settings.clickhouse_database,
+            parquet_base_path=settings.parquet_base_path,
         ),
         embedding_service=embedding_service,
         semantic_enabled=settings.ai_search_semantic_enabled,
@@ -68,9 +69,9 @@ def _get_repo_brief_use_case(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> object:
     """Construct the AI repo brief use case for the request."""
-    from src.application.use_cases.generate_repo_brief import GenerateRepoBriefUseCase
-    from src.infrastructure.llm.ollama_generation_service import OllamaGenerationService
-    from src.infrastructure.storage.clickhouse_ai_insights_service import (
+    from university.github.src.application.use_cases.generate_repo_brief import GenerateRepoBriefUseCase
+    from university.github.src.infrastructure.llm.ollama_generation_service import OllamaGenerationService
+    from university.github.src.infrastructure.storage.clickhouse_ai_insights_service import (
         ClickHouseAIInsightsService,
     )
 
@@ -99,9 +100,9 @@ def _get_market_brief_use_case(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> object:
     """Construct the AI market brief use case for the request."""
-    from src.application.use_cases.build_market_brief import BuildMarketBriefUseCase
-    from src.infrastructure.llm.ollama_generation_service import OllamaGenerationService
-    from src.infrastructure.storage.clickhouse_ai_insights_service import (
+    from university.github.src.application.use_cases.build_market_brief import BuildMarketBriefUseCase
+    from university.github.src.infrastructure.llm.ollama_generation_service import OllamaGenerationService
+    from university.github.src.infrastructure.storage.clickhouse_ai_insights_service import (
         ClickHouseAIInsightsService,
     )
 
@@ -130,9 +131,9 @@ def _get_repo_compare_use_case(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> object:
     """Construct the AI repo compare use case for the request."""
-    from src.application.use_cases.generate_repo_compare import GenerateRepoCompareUseCase
-    from src.infrastructure.llm.ollama_generation_service import OllamaGenerationService
-    from src.infrastructure.storage.clickhouse_ai_insights_service import (
+    from university.github.src.application.use_cases.generate_repo_compare import GenerateRepoCompareUseCase
+    from university.github.src.infrastructure.llm.ollama_generation_service import OllamaGenerationService
+    from university.github.src.infrastructure.storage.clickhouse_ai_insights_service import (
         ClickHouseAIInsightsService,
     )
 
@@ -161,13 +162,13 @@ def _get_related_repos_use_case(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> object:
     """Construct the related repository recommendation use case for the request."""
-    from src.application.use_cases.recommend_related_repositories import (
+    from university.github.src.application.use_cases.recommend_related_repositories import (
         RecommendRelatedRepositoriesUseCase,
     )
-    from src.infrastructure.storage.clickhouse_ai_insights_service import (
+    from university.github.src.infrastructure.storage.clickhouse_ai_insights_service import (
         ClickHouseAIInsightsService,
     )
-    from src.infrastructure.storage.clickhouse_ai_service import ClickHouseAISearchService
+    from university.github.src.infrastructure.storage.clickhouse_ai_service import ClickHouseAISearchService
 
     insights_service = ClickHouseAIInsightsService(
         host=settings.clickhouse_host,
@@ -184,6 +185,7 @@ def _get_related_repos_use_case(
             user=settings.clickhouse_user,
             password=settings.clickhouse_password,
             database=settings.clickhouse_database,
+            parquet_base_path=settings.parquet_base_path,
         ),
         candidate_limit=settings.ai_search_candidate_limit,
     )

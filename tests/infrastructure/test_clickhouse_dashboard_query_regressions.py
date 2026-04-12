@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.infrastructure.storage.clickhouse_dashboard_service import (
+from university.github.src.infrastructure.storage.clickhouse_dashboard_service import (
     _TOP_REPOS_ALL_FALLBACK_QUERY,
     _TOP_REPOS_CATEGORY_FALLBACK_QUERY,
     _TRENDING_FALLBACK_QUERY,

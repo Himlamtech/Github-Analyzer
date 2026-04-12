@@ -6,7 +6,7 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.application.dtos.repo_metadata_dto import RepoMetadataDTO  # noqa: TC001
+from university.github.src.application.dtos.repo_metadata_dto import RepoMetadataDTO  # noqa: TC001
 
 
 class TopRepoResponseDTO(BaseModel):

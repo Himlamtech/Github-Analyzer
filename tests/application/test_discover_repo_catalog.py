@@ -6,7 +6,7 @@ from datetime import date
 import json
 from typing import TYPE_CHECKING
 
-from src.application.use_cases.discover_repo_catalog import DiscoverRepoCatalogUseCase
+from university.github.src.application.use_cases.discover_repo_catalog import DiscoverRepoCatalogUseCase
 
 if TYPE_CHECKING:
     from pathlib import Path

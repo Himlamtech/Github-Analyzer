@@ -8,7 +8,7 @@ from typing import Any
 import httpx
 import structlog
 
-from src.domain.exceptions import GenerationServiceError
+from university.github.src.domain.exceptions import GenerationServiceError
 
 logger = structlog.get_logger(__name__)
 

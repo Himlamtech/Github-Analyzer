@@ -7,8 +7,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from src.domain.exceptions import ClickHouseBackfillError
-from src.infrastructure.storage.clickhouse_backfill_service import ClickHouseBackfillService
+from university.github.src.domain.exceptions import ClickHouseBackfillError
+from university.github.src.infrastructure.storage.clickhouse_backfill_service import ClickHouseBackfillService
 
 if TYPE_CHECKING:
     from pathlib import Path

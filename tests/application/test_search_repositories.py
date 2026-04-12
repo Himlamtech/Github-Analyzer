@@ -6,10 +6,10 @@ from datetime import UTC, datetime
 
 import pytest
 
-from src.application.dtos.ai_search_dto import RepoSearchCandidateDTO
-from src.application.dtos.repo_metadata_dto import RepoMetadataDTO
-from src.application.use_cases.search_repositories import SearchRepositoriesUseCase
-from src.domain.exceptions import EmbeddingServiceError, ValidationError
+from university.github.src.application.dtos.ai_search_dto import RepoSearchCandidateDTO
+from university.github.src.application.dtos.repo_metadata_dto import RepoMetadataDTO
+from university.github.src.application.use_cases.search_repositories import SearchRepositoriesUseCase
+from university.github.src.domain.exceptions import EmbeddingServiceError, ValidationError
 
 _NOW = datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 

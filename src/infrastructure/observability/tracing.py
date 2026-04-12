@@ -19,7 +19,7 @@ from opentelemetry.trace import Status, StatusCode
 if TYPE_CHECKING:
     from fastapi import FastAPI
 
-    from src.infrastructure.config import Settings
+    from university.github.src.infrastructure.config import Settings
 
 logger = structlog.get_logger(__name__)
 

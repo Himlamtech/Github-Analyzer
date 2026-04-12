@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from src.infrastructure.storage.clickhouse_ai_insights_service import (
+from university.github.src.infrastructure.storage.clickhouse_ai_insights_service import (
     _REPO_ACTIVITY_BREAKDOWN_QUERY,
     _REPO_METADATA_FALLBACK_QUERY,
     _REPO_TIMESERIES_QUERY,
     _REPO_WINDOW_METRICS_QUERY,
 )
-from src.infrastructure.storage.clickhouse_ai_service import (
+from university.github.src.infrastructure.storage.clickhouse_ai_service import (
     _SEARCH_CANDIDATES_FALLBACK_QUERY,
 )
 

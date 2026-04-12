@@ -8,7 +8,7 @@ from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from src.application.dtos.dashboard_dto import (
+from university.github.src.application.dtos.dashboard_dto import (
     CategorySummaryDTO,
     LanguageBreakdownDTO,
     ShockMoverDTO,
@@ -19,10 +19,10 @@ from src.application.dtos.dashboard_dto import (
     TopRepoResponseDTO,
     TrendingRepoResponseDTO,
 )
-from src.application.dtos.repo_metadata_dto import RepoMetadataDTO
-from src.domain.exceptions import DashboardQueryError, ValidationError
-from src.infrastructure.config import Settings, get_settings
-from src.infrastructure.storage.clickhouse_dashboard_service import ClickHouseDashboardService
+from university.github.src.application.dtos.repo_metadata_dto import RepoMetadataDTO
+from university.github.src.domain.exceptions import DashboardQueryError, ValidationError
+from university.github.src.infrastructure.config import Settings, get_settings
+from university.github.src.infrastructure.storage.clickhouse_dashboard_service import ClickHouseDashboardService
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 DashboardRow = Mapping[str, object]

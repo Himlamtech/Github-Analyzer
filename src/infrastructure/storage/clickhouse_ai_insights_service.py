@@ -10,19 +10,19 @@ from clickhouse_driver import Client
 from clickhouse_driver.errors import Error as ClickHouseError
 from clickhouse_driver.errors import NetworkError as ClickHouseNetworkError
 
-from src.application.dtos.ai_market_brief_dto import (
+from university.github.src.application.dtos.ai_market_brief_dto import (
     MarketBreakoutRepoDTO,
     MarketBriefContextDTO,
     MarketCategoryMoverDTO,
     MarketTopicShiftDTO,
 )
-from src.application.dtos.ai_repo_brief_dto import (
+from university.github.src.application.dtos.ai_repo_brief_dto import (
     RepoBriefActivityDTO,
     RepoBriefContextDTO,
     RepoBriefTimeseriesPointDTO,
 )
-from src.application.dtos.repo_metadata_dto import RepoMetadataDTO
-from src.domain.exceptions import (
+from university.github.src.application.dtos.repo_metadata_dto import RepoMetadataDTO
+from university.github.src.domain.exceptions import (
     AIInsightError,
     ClickHouseConnectionError,
     RepoInsightNotFoundError,

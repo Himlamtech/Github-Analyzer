@@ -7,13 +7,13 @@ from typing import Any, Literal, Protocol
 
 import structlog
 
-from src.application.dtos.ai_repo_brief_dto import (
+from university.github.src.application.dtos.ai_repo_brief_dto import (
     RepoBriefActivityDTO,
     RepoBriefContextDTO,
     RepoBriefResponseDTO,
     RepoBriefTimeseriesPointDTO,
 )
-from src.domain.exceptions import GenerationServiceError
+from university.github.src.domain.exceptions import GenerationServiceError
 
 logger = structlog.get_logger(__name__)
 

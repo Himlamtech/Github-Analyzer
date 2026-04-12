@@ -7,7 +7,7 @@ from collections.abc import Sequence  # noqa: TC003
 import httpx
 import structlog
 
-from src.domain.exceptions import EmbeddingServiceError
+from university.github.src.domain.exceptions import EmbeddingServiceError
 
 logger = structlog.get_logger(__name__)
 

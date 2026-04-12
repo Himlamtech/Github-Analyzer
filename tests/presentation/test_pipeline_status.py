@@ -5,12 +5,13 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, Protocol, cast
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
-from src.infrastructure.config import get_settings
-from src.presentation.api import routes as routes_module
-from src.presentation.api.routes import _get_clickhouse_repo, app
+from university.github.src.domain.exceptions import ClickHouseWriteError
+from university.github.src.infrastructure.config import get_settings
+from university.github.src.presentation.api import routes as routes_module
+from university.github.src.presentation.api.routes import _get_clickhouse_repo, app
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -91,6 +92,13 @@ class FakeRootSpan:
         self.status_description = getattr(status, "description", None)
 
 
+class FailingBootstrapService:
+    """Bootstrap stub that simulates ClickHouse startup failures."""
+
+    async def execute(self) -> None:
+        raise ClickHouseWriteError("clickhouse unavailable during startup")
+
+
 @pytest.fixture
 def client(tmp_path: Path) -> Iterator[TestClient]:
     settings = get_settings().model_copy(update={"parquet_base_path": str(tmp_path / "raw")})
@@ -158,3 +166,22 @@ def test_pipeline_status_healthy_pipeline_keeps_trace_ok(
     assert response.json()["status"] == "healthy"
     assert root_span.status_code is None
     assert root_span.attributes["pipeline.status"] == "healthy"
+
+
+def test_app_lifespan_ignores_clickhouse_write_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(routes_module, "start_metrics_server", lambda port=9001: None)
+    monkeypatch.setattr(routes_module, "setup_tracing", lambda app, settings: None)
+    monkeypatch.setattr(routes_module, "shutdown_tracing", lambda: None)
+    monkeypatch.setattr(
+        routes_module,
+        "_get_repo_observation_bootstrap_service",
+        lambda settings: FailingBootstrapService(),
+    )
+
+    with TestClient(app) as test_client:
+        response = test_client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"

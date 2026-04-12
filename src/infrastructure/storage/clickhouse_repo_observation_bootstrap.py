@@ -10,7 +10,7 @@ from clickhouse_driver.errors import Error as ClickHouseError
 from clickhouse_driver.errors import NetworkError as ClickHouseNetworkError
 import structlog
 
-from src.domain.exceptions import ClickHouseConnectionError, ClickHouseWriteError
+from university.github.src.domain.exceptions import ClickHouseConnectionError, ClickHouseWriteError
 
 logger = structlog.get_logger(__name__)
 

@@ -6,14 +6,14 @@ from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
-from src.application.dtos.ai_repo_brief_dto import (
+from university.github.src.application.dtos.ai_repo_brief_dto import (
     RepoBriefActivityDTO,
     RepoBriefContextDTO,
     RepoBriefTimeseriesPointDTO,
 )
-from src.application.dtos.repo_metadata_dto import RepoMetadataDTO
-from src.application.use_cases.generate_repo_brief import GenerateRepoBriefUseCase
-from src.domain.exceptions import GenerationServiceError, RepoInsightNotFoundError
+from university.github.src.application.dtos.repo_metadata_dto import RepoMetadataDTO
+from university.github.src.application.use_cases.generate_repo_brief import GenerateRepoBriefUseCase
+from university.github.src.domain.exceptions import GenerationServiceError, RepoInsightNotFoundError
 
 _NOW = datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 

@@ -16,9 +16,9 @@ from clickhouse_driver.errors import NetworkError as ClickHouseDriverNetworkErro
 from fastapi import Depends, FastAPI, Request, Response
 from opentelemetry import trace
 
-from src.domain.exceptions import ClickHouseConnectionError
-from src.infrastructure.config import Settings, get_settings
-from src.infrastructure.observability.tracing import (
+from university.github.src.domain.exceptions import ClickHouseConnectionError, ClickHouseWriteError
+from university.github.src.infrastructure.config import Settings, get_settings
+from university.github.src.infrastructure.observability.tracing import (
     PipelineRootCause,
     PipelineStatus,
     annotate_pipeline_span,
@@ -27,10 +27,11 @@ from src.infrastructure.observability.tracing import (
     setup_tracing,
     shutdown_tracing,
 )
-from src.presentation.api import ai_routes, dashboard_routes
+from university.github.src.presentation.api import dashboard_routes
+from university.github.src.presentation.api import ai_routes
 
 if TYPE_CHECKING:
-    from src.infrastructure.storage.clickhouse_repo_observation_bootstrap import (
+    from university.github.src.infrastructure.storage.clickhouse_repo_observation_bootstrap import (
         ClickHouseRepoObservationBootstrapService,
     )
 
@@ -128,7 +129,7 @@ def _get_repo_observation_bootstrap_service(
 ) -> ClickHouseRepoObservationBootstrapService:
     """Construct the repo-observation bootstrap service."""
 
-    from src.infrastructure.storage.clickhouse_repo_observation_bootstrap import (
+    from university.github.src.infrastructure.storage.clickhouse_repo_observation_bootstrap import (
         ClickHouseRepoObservationBootstrapService,
     )
 
@@ -158,7 +159,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     bootstrap_service = _get_repo_observation_bootstrap_service(settings)
     try:
         await bootstrap_service.execute()
-    except ClickHouseConnectionError:
+    except (ClickHouseConnectionError, ClickHouseWriteError):
         pass
     try:
         yield

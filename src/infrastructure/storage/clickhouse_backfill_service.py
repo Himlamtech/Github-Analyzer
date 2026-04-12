@@ -13,7 +13,7 @@ import pyarrow as pa  # type: ignore[import-untyped]
 import pyarrow.parquet as pq  # type: ignore[import-untyped]
 import structlog
 
-from src.domain.exceptions import (
+from university.github.src.domain.exceptions import (
     ClickHouseBackfillError,
     ClickHouseConnectionError,
 )

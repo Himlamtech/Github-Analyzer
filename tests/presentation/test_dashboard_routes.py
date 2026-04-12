@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 from fastapi.testclient import TestClient
 import pytest
 
-from src.infrastructure.config import get_settings
-from src.presentation.api.dashboard_routes import _get_dashboard_service
-from src.presentation.api.routes import app
+from university.github.src.infrastructure.config import get_settings
+from university.github.src.presentation.api.dashboard_routes import _get_dashboard_service
+from university.github.src.presentation.api.routes import app
 
 _NOW = datetime(2026, 3, 30, 12, 0, tzinfo=UTC)
 

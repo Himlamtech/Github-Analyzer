@@ -9,13 +9,13 @@ from typing import TYPE_CHECKING, Protocol
 
 import structlog
 
-from src.application.dtos.ai_search_dto import (
+from university.github.src.application.dtos.ai_search_dto import (
     RepoSearchCandidateDTO,
     RepoSearchFiltersDTO,
     RepoSearchResponseDTO,
     RepoSearchResultDTO,
 )
-from src.domain.exceptions import EmbeddingServiceError, ValidationError
+from university.github.src.domain.exceptions import EmbeddingServiceError, ValidationError
 
 logger = structlog.get_logger(__name__)
 
