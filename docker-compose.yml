@@ -347,10 +347,17 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8000/health"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').getcode() < 400 else 1)",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 45s
 
   poller:
     image: gha-poller
