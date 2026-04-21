@@ -111,3 +111,49 @@ class TestGithubEventMethods:
             created_at=datetime(2024, 7, 4, 23, 59, 0, tzinfo=timezone.utc)
         )
         assert event.event_date() == "2024-07-04"
+
+    def test_event_date_midnight_boundary_uses_utc(self) -> None:
+        """event_date() at midnight UTC must return the correct UTC date."""
+        event = _make_event(
+            created_at=datetime(2024, 12, 31, 0, 0, 0, tzinfo=timezone.utc)
+        )
+        assert event.event_date() == "2024-12-31"
+
+    def test_is_bot_event_with_github_actions_bot(self) -> None:
+        """github-actions[bot] must be detected as a bot account."""
+        event = _make_event(actor_login="github-actions[bot]")
+        assert event.is_bot_event() is True
+
+    def test_is_bot_event_with_renovate_bot(self) -> None:
+        """renovate[bot] must be detected as a bot account."""
+        event = _make_event(actor_login="renovate[bot]")
+        assert event.is_bot_event() is True
+
+    def test_is_bot_event_false_for_login_containing_bot_substring(self) -> None:
+        """A login merely containing 'bot' in the middle must not be a bot."""
+        event = _make_event(actor_login="robotics_dev")
+        assert event.is_bot_event() is False
+
+    def test_payload_defaults_to_empty_dict(self) -> None:
+        """When payload is omitted, it must default to an empty dict."""
+        event = GithubEvent(
+            event_id="no_payload",
+            event_type=EventType.PUSH,
+            repo_id=RepositoryId.from_api(repo_id=1, repo_name="a/b"),
+            actor_id=1,
+            actor_login="dev",
+            created_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        )
+        assert event.payload == {}
+
+    def test_public_defaults_to_true(self) -> None:
+        """When public is omitted, it must default to True."""
+        event = GithubEvent(
+            event_id="default_public",
+            event_type=EventType.FORK,
+            repo_id=RepositoryId.from_api(repo_id=1, repo_name="a/b"),
+            actor_id=1,
+            actor_login="dev",
+            created_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        )
+        assert event.public is True
