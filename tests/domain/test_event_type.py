@@ -51,3 +51,36 @@ class TestEventTypeFromRaw:
         et = EventType.FORK
         assert isinstance(et, str)
         assert et == "ForkEvent"
+
+
+class TestEventTypeEnumCompleteness:
+    """Tests verifying the full set of supported event types."""
+
+    def test_exactly_five_event_types_are_defined(self) -> None:
+        """Only five event types are supported by this system."""
+        assert len(EventType) == 5
+
+    def test_all_event_types_are_str_instances(self) -> None:
+        """Every EventType member must be a str for transparent serialisation."""
+        for et in EventType:
+            assert isinstance(et, str)
+
+    def test_event_type_values_end_with_event_suffix(self) -> None:
+        """All event type string values must end with 'Event'."""
+        for et in EventType:
+            assert et.value.endswith("Event"), f"{et.value!r} does not end with 'Event'"
+
+    def test_from_raw_case_sensitive_rejection(self) -> None:
+        """from_raw must reject lowercase and mixed-case variants."""
+        from src.domain.exceptions import InvalidEventTypeError
+
+        with pytest.raises(InvalidEventTypeError):
+            EventType.from_raw("watchevent")
+
+        with pytest.raises(InvalidEventTypeError):
+            EventType.from_raw("WATCHEVENT")
+
+    def test_event_type_is_hashable(self) -> None:
+        """EventType values must be usable in sets and as dict keys."""
+        seen = {et for et in EventType}
+        assert len(seen) == 5
