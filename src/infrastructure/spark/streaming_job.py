@@ -168,9 +168,6 @@ class GithubStreamingJob:
             t_start = time.monotonic()
 
             try:
-                # Use clickhouse-driver (Python native client) instead of JDBC.
-                # JDBC fails because Spark's schema inference cannot map
-                # ClickHouse DateTime('UTC') to a Catalyst type.
                 import clickhouse_driver
 
                 normalized_batch = batch_df.select(
