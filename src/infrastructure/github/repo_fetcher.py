@@ -159,16 +159,11 @@ def map_repo_response(
     return result
 
 
-# ---------------------------------------------------------------------------
-# Async fetcher
-# ---------------------------------------------------------------------------
-
 _GITHUB_API_BASE = "https://api.github.com"
 _HEADERS = {
     "Accept": "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
 }
-
 
 async def fetch_repo(
     full_name: str,
