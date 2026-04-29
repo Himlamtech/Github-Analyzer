@@ -398,8 +398,6 @@ GROUP BY normalized_repo_name
 ORDER BY star_count_in_window DESC, any(repo_stargazers_count) DESC
 LIMIT %(limit)s
 """
-# Repos without metadata will have no topics so they are simply excluded.
-# Uses ARRAY JOIN -- ClickHouse native array flattening.
 _TOPIC_BREAKDOWN_QUERY = """
 SELECT
     topic,
