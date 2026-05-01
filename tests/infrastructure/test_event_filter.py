@@ -88,3 +88,43 @@ def test_alias_is_same_class() -> None:
     from src.infrastructure.github.event_filter import AiEventFilter
 
     assert AiEventFilter is PopularRepoFilter
+
+
+class TestPopularRepoFilterAiRelevance:
+    """Additional tests for ai_relevant detection edge cases."""
+
+    def test_is_ai_relevant_description_with_neural_network_returns_true(
+        self, filter_: PopularRepoFilter
+    ) -> None:
+        """'neural network' in description must trigger AI relevance."""
+        event = _make_event(description="A high-performance neural network inference library")
+        assert filter_.is_ai_relevant(event) is True
+
+    def test_is_ai_relevant_topic_diffusion_returns_true(
+        self, filter_: PopularRepoFilter
+    ) -> None:
+        """'diffusion' topic must trigger AI relevance."""
+        event = _make_event(topics=["diffusion", "image-generation"])
+        assert filter_.is_ai_relevant(event) is True
+
+    def test_is_ai_relevant_readme_with_llm_returns_true(
+        self, filter_: PopularRepoFilter
+    ) -> None:
+        """README text containing 'LLM' must trigger AI relevance."""
+        event = _make_event(readme_text="This tool benchmarks LLM inference speed.")
+        assert filter_.is_ai_relevant(event) is True
+
+    def test_is_ai_relevant_topic_rag_returns_true(
+        self, filter_: PopularRepoFilter
+    ) -> None:
+        """'rag' topic must trigger AI relevance."""
+        event = _make_event(topics=["rag", "vector-db"])
+        assert filter_.is_ai_relevant(event) is True
+
+    def test_is_ai_relevant_multiple_non_ai_signals_still_false_when_identity_missing(
+        self, filter_: PopularRepoFilter
+    ) -> None:
+        """Missing repo identity causes rejection regardless of AI signals."""
+        event = _make_event(topics=["llm", "transformer"], description="A GPT wrapper")
+        event["repo"] = {"id": 0, "name": ""}
+        assert filter_.is_ai_relevant(event) is False
