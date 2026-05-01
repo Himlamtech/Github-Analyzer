@@ -16,6 +16,7 @@ volumes:
     name: github-grafana-data
   tempo_data:
   loki_data:
+  promtail_positions:
   ollama_data:
     external: true
     name: github-ollama-data
@@ -71,8 +72,8 @@ services:
       test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
       interval: 15s
       timeout: 10s
-      retries: 10
-      start_period: 30s
+      retries: 20
+      start_period: 90s
     restart: unless-stopped
 
   clickhouse:
@@ -200,6 +201,7 @@ services:
       - ./scheduler/logs:/var/log/gha-scheduler:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - promtail_positions:/var/lib/promtail
     depends_on:
       loki:
         condition: service_healthy
@@ -330,7 +332,7 @@ services:
       REPO_METADATA_PATH: /app/data/repos
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_EMBEDDING_MODEL: bge-m3
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-qwen3-embedding-0.6b}
       SEARXNG_BASE_URL: ${SEARXNG_BASE_URL:-http://host.docker.internal:8080}
       TRACING_ENABLED: ${TRACING_ENABLED:-true}
       TRACING_SERVICE_NAME: ${TRACING_SERVICE_NAME:-gha-api}

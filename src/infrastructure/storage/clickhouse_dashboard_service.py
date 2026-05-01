@@ -21,6 +21,8 @@ from clickhouse_driver.errors import NetworkError as ClickHouseNetworkError
 import structlog
 
 from src.domain.exceptions import ClickHouseConnectionError, DashboardQueryError
+from src.domain.services.category_classifier import CategoryClassifier
+from src.domain.value_objects.repo_category import RepoCategory
 
 logger = structlog.get_logger(__name__)
 
@@ -73,6 +75,43 @@ LIMIT %(limit)s
 """
 )
 
+_TOP_STARRED_REPOS_ALL_QUERY = (
+    """
+SELECT
+    rm.repo_id AS repo_id,
+    rm.repo_full_name AS repo_full_name,
+    rm.repo_name AS repo_name,
+    rm.html_url AS html_url,
+    rm.description AS description,
+    rm.primary_language AS primary_language,
+    rm.topics AS topics,
+    rm.category AS category,
+    rm.stargazers_count AS stargazers_count,
+    rm.watchers_count AS watchers_count,
+    rm.forks_count AS forks_count,
+    rm.open_issues_count AS open_issues_count,
+    rm.subscribers_count AS subscribers_count,
+    rm.owner_login AS owner_login,
+    rm.owner_avatar_url AS owner_avatar_url,
+    rm.license_name AS license_name,
+    rm.github_created_at AS github_created_at,
+    greatest(rm.github_pushed_at, coalesce(metrics.latest_event_at, rm.github_pushed_at))
+        AS github_pushed_at,
+    rm.rank AS rank,
+    coalesce(metrics.star_count_in_window, 0) AS star_count_in_window
+FROM repo_metadata AS rm
+FINAL
+LEFT JOIN (
+    """
+    + _REPO_WINDOW_METRICS_SUBQUERY
+    + """
+) AS metrics
+    ON metrics.repo_name = rm.repo_full_name
+ORDER BY rm.stargazers_count DESC, star_count_in_window DESC
+LIMIT %(limit)s
+"""
+)
+
 _TOP_REPOS_ALL_FALLBACK_QUERY = """
 SELECT
     any(repo_id) AS repo_id,
@@ -104,6 +143,40 @@ FROM (
 ) AS raw
 GROUP BY normalized_repo_name
 ORDER BY star_count_in_window DESC, any(repo_stargazers_count) DESC
+LIMIT %(limit)s
+"""
+
+_TOP_STARRED_REPOS_ALL_FALLBACK_QUERY = """
+SELECT
+    any(repo_id) AS repo_id,
+    normalized_repo_name AS repo_full_name,
+    splitByChar('/', normalized_repo_name)[2] AS repo_name,
+    concat('https://github.com/', normalized_repo_name) AS html_url,
+    any(repo_description) AS description,
+    any(repo_primary_language) AS primary_language,
+    any(repo_topics) AS topics,
+    'Other' AS category,
+    any(repo_stargazers_count) AS stargazers_count,
+    any(repo_stargazers_count) AS watchers_count,
+    toInt64(0) AS forks_count,
+    toInt64(0) AS open_issues_count,
+    toInt64(0) AS subscribers_count,
+    splitByChar('/', normalized_repo_name)[1] AS owner_login,
+    '' AS owner_avatar_url,
+    '' AS license_name,
+    now() AS github_created_at,
+    max(created_at) AS github_pushed_at,
+    toInt32(0) AS rank,
+    countIf(event_type = 'WatchEvent') AS star_count_in_window
+FROM (
+    SELECT
+        *,
+        lowerUTF8(repo_name) AS normalized_repo_name
+    FROM github_analyzer.github_data
+    WHERE created_at >= now() - INTERVAL %(days)s DAY
+) AS raw
+GROUP BY normalized_repo_name
+ORDER BY any(repo_stargazers_count) DESC, star_count_in_window DESC
 LIMIT %(limit)s
 """
 
@@ -145,6 +218,44 @@ LIMIT %(limit)s
 """
 )
 
+_TOP_STARRED_REPOS_CATEGORY_QUERY = (
+    """
+SELECT
+    rm.repo_id AS repo_id,
+    rm.repo_full_name AS repo_full_name,
+    rm.repo_name AS repo_name,
+    rm.html_url AS html_url,
+    rm.description AS description,
+    rm.primary_language AS primary_language,
+    rm.topics AS topics,
+    rm.category AS category,
+    rm.stargazers_count AS stargazers_count,
+    rm.watchers_count AS watchers_count,
+    rm.forks_count AS forks_count,
+    rm.open_issues_count AS open_issues_count,
+    rm.subscribers_count AS subscribers_count,
+    rm.owner_login AS owner_login,
+    rm.owner_avatar_url AS owner_avatar_url,
+    rm.license_name AS license_name,
+    rm.github_created_at AS github_created_at,
+    greatest(rm.github_pushed_at, coalesce(metrics.latest_event_at, rm.github_pushed_at))
+        AS github_pushed_at,
+    rm.rank AS rank,
+    coalesce(metrics.star_count_in_window, 0) AS star_count_in_window
+FROM repo_metadata AS rm
+FINAL
+LEFT JOIN (
+    """
+    + _REPO_WINDOW_METRICS_SUBQUERY
+    + """
+) AS metrics
+    ON metrics.repo_name = rm.repo_full_name
+WHERE rm.category = %(category)s
+ORDER BY rm.stargazers_count DESC, star_count_in_window DESC
+LIMIT %(limit)s
+"""
+)
+
 _TOP_REPOS_CATEGORY_FALLBACK_QUERY = """
 SELECT
     any(repo_id) AS repo_id,
@@ -177,6 +288,41 @@ FROM (
 GROUP BY normalized_repo_name
 HAVING %(category)s = 'Other'
 ORDER BY star_count_in_window DESC, any(repo_stargazers_count) DESC
+LIMIT %(limit)s
+"""
+
+_TOP_STARRED_REPOS_CATEGORY_FALLBACK_QUERY = """
+SELECT
+    any(repo_id) AS repo_id,
+    normalized_repo_name AS repo_full_name,
+    splitByChar('/', normalized_repo_name)[2] AS repo_name,
+    concat('https://github.com/', normalized_repo_name) AS html_url,
+    any(repo_description) AS description,
+    any(repo_primary_language) AS primary_language,
+    any(repo_topics) AS topics,
+    'Other' AS category,
+    any(repo_stargazers_count) AS stargazers_count,
+    any(repo_stargazers_count) AS watchers_count,
+    toInt64(0) AS forks_count,
+    toInt64(0) AS open_issues_count,
+    toInt64(0) AS subscribers_count,
+    splitByChar('/', normalized_repo_name)[1] AS owner_login,
+    '' AS owner_avatar_url,
+    '' AS license_name,
+    now() AS github_created_at,
+    max(created_at) AS github_pushed_at,
+    toInt32(0) AS rank,
+    countIf(event_type = 'WatchEvent') AS star_count_in_window
+FROM (
+    SELECT
+        *,
+        lowerUTF8(repo_name) AS normalized_repo_name
+    FROM github_analyzer.github_data
+    WHERE created_at >= now() - INTERVAL %(days)s DAY
+) AS raw
+GROUP BY normalized_repo_name
+HAVING %(category)s = 'Other'
+ORDER BY any(repo_stargazers_count) DESC, star_count_in_window DESC
 LIMIT %(limit)s
 """
 
@@ -257,13 +403,14 @@ LIMIT %(limit)s
 _TOPIC_BREAKDOWN_QUERY = """
 SELECT
     topic,
-    count()                          AS event_count,
+    countIf(gd.event_type = 'WatchEvent') AS event_count,
     COUNT(DISTINCT gd.repo_name)     AS repo_count
 FROM github_analyzer.github_data AS gd
 ARRAY JOIN gd.repo_topics AS topic
 WHERE gd.created_at >= now() - INTERVAL %(days)s DAY
   AND topic != ''
 GROUP BY topic
+HAVING event_count > 0
 ORDER BY event_count DESC
 LIMIT 30
 """
@@ -271,12 +418,13 @@ LIMIT 30
 _LANGUAGE_BREAKDOWN_QUERY = """
 SELECT
     gd.repo_primary_language         AS language,
-    count()                          AS event_count,
+    countIf(gd.event_type = 'WatchEvent') AS event_count,
     COUNT(DISTINCT gd.repo_name)     AS repo_count
 FROM github_analyzer.github_data AS gd
 WHERE gd.created_at >= now() - INTERVAL %(days)s DAY
   AND gd.repo_primary_language != ''
 GROUP BY gd.repo_primary_language
+HAVING event_count > 0
 ORDER BY event_count DESC
 LIMIT 20
 """
@@ -333,6 +481,39 @@ FROM github_analyzer.github_data AS ge
 WHERE ge.created_at >= now() - INTERVAL 7 DAY
 GROUP BY category
 ORDER BY repo_count DESC
+"""
+
+_CATEGORY_SUMMARY_SOURCE_FALLBACK_QUERY = """
+SELECT
+    any(repo_id) AS repo_id,
+    normalized_repo_name AS repo_full_name,
+    splitByChar('/', normalized_repo_name)[2] AS repo_name,
+    concat('https://github.com/', normalized_repo_name) AS html_url,
+    any(repo_description) AS description,
+    any(repo_primary_language) AS primary_language,
+    any(repo_topics) AS topics,
+    'Other' AS category,
+    max(repo_stargazers_count) AS stargazers_count,
+    max(repo_stargazers_count) AS watchers_count,
+    toInt64(0) AS forks_count,
+    toInt64(0) AS open_issues_count,
+    toInt64(0) AS subscribers_count,
+    splitByChar('/', normalized_repo_name)[1] AS owner_login,
+    '' AS owner_avatar_url,
+    '' AS license_name,
+    min(created_at) AS github_created_at,
+    max(created_at) AS github_pushed_at,
+    toInt32(0) AS rank,
+    countIf(event_type = 'WatchEvent' AND created_at >= now() - INTERVAL 7 DAY)
+        AS star_count_in_window
+FROM (
+    SELECT
+        *,
+        lowerUTF8(repo_name) AS normalized_repo_name
+    FROM github_analyzer.github_data
+) AS raw
+GROUP BY normalized_repo_name
+HAVING star_count_in_window > 0
 """
 
 _MOVER_METRICS_SUBQUERY = """
@@ -645,20 +826,69 @@ ORDER BY star_count_in_window DESC, stargazers_count DESC
 LIMIT ?
 """
 
+_PARQUET_TOP_STARRED_REPOS_QUERY = """
+WITH repo_metrics AS (
+    SELECT
+        repo_id,
+        repo_name AS repo_full_name,
+        split_part(repo_name, '/', 2) AS repo_name_only,
+        max(repo_description) AS description,
+        max(repo_primary_language) AS primary_language,
+        list_distinct(
+            list_filter(flatten(list(repo_topics)), x -> x IS NOT NULL AND x != '')
+        ) AS topics,
+        max(repo_stargazers_count) AS stargazers_count,
+        split_part(repo_name, '/', 1) AS owner_login,
+        min(created_at) AS github_created_at,
+        max(created_at) AS github_pushed_at,
+        count() FILTER (WHERE event_type = 'WatchEvent') AS star_count_in_window
+    FROM read_parquet(?, hive_partitioning = true, union_by_name = true)
+    WHERE event_date >= CAST(? AS DATE)
+    GROUP BY repo_id, repo_name
+)
+SELECT
+    repo_id,
+    repo_full_name,
+    repo_name_only,
+    'https://github.com/' || repo_full_name AS html_url,
+    description,
+    primary_language,
+    topics,
+    'Other' AS category,
+    stargazers_count,
+    stargazers_count AS watchers_count,
+    0 AS forks_count,
+    0 AS open_issues_count,
+    0 AS subscribers_count,
+    owner_login,
+    '' AS owner_avatar_url,
+    '' AS license_name,
+    github_created_at,
+    github_pushed_at,
+    0 AS rank,
+    star_count_in_window
+FROM repo_metrics
+WHERE (? IS NULL OR ? = 'Other')
+ORDER BY stargazers_count DESC, star_count_in_window DESC
+LIMIT ?
+"""
+
 _PARQUET_TOPIC_BREAKDOWN_QUERY = """
 SELECT
     topic,
-    count(*) AS event_count,
+    count(*) FILTER (WHERE event_type = 'WatchEvent') AS event_count,
     count(DISTINCT repo_name) AS repo_count
 FROM (
     SELECT
         repo_name,
+        event_type,
         unnest(repo_topics) AS topic
     FROM read_parquet(?, hive_partitioning = true, union_by_name = true)
     WHERE event_date >= CAST(? AS DATE)
 )
 WHERE topic IS NOT NULL AND topic != ''
 GROUP BY topic
+HAVING event_count > 0
 ORDER BY event_count DESC
 LIMIT 30
 """
@@ -666,13 +896,14 @@ LIMIT 30
 _PARQUET_LANGUAGE_BREAKDOWN_QUERY = """
 SELECT
     repo_primary_language AS language,
-    count(*) AS event_count,
+    count(*) FILTER (WHERE event_type = 'WatchEvent') AS event_count,
     count(DISTINCT repo_name) AS repo_count
 FROM read_parquet(?, hive_partitioning = true, union_by_name = true)
 WHERE event_date >= CAST(? AS DATE)
   AND repo_primary_language IS NOT NULL
   AND repo_primary_language != ''
 GROUP BY repo_primary_language
+HAVING event_count > 0
 ORDER BY event_count DESC
 LIMIT 20
 """
@@ -736,6 +967,8 @@ class ClickHouseDashboardService:
         self._password = password
         self._database = database
         self._parquet_base_path = parquet_base_path.rstrip("/")
+        self._classifier = CategoryClassifier()
+        self._has_categorized_metadata_cache: bool | None = None
 
     def _get_client(self) -> Client:
         """Create a ClickHouse client connection.
@@ -803,6 +1036,30 @@ class ClickHouseDashboardService:
             # Test doubles may stub .execute() with business rows for all queries.
             return True
 
+    def _has_categorized_repo_metadata(self) -> bool:
+        if self._has_categorized_metadata_cache is not None:
+            return self._has_categorized_metadata_cache
+        if not self._repo_metadata_table_exists():
+            self._has_categorized_metadata_cache = False
+            return False
+
+        try:
+            rows = self._execute_query(
+                """
+SELECT countIf(category != 'Other')
+FROM github_analyzer.repo_metadata
+FINAL
+""",
+            )
+        except DashboardQueryError:
+            self._has_categorized_metadata_cache = False
+            return False
+        try:
+            self._has_categorized_metadata_cache = int(rows[0][0]) > 0
+        except (IndexError, TypeError, ValueError):
+            self._has_categorized_metadata_cache = True
+        return self._has_categorized_metadata_cache
+
     def _parquet_glob_path(self) -> str:
         return f"{self._parquet_base_path}/event_date=*/event_type=*/*.parquet"
 
@@ -861,6 +1118,15 @@ class ClickHouseDashboardService:
         """Map a SELECT row (19 repo fields + star_count_in_window) to dict."""
         topics_raw = row[6]
         topics: list[str] = list(topics_raw) if topics_raw else []
+        raw_category = str(row[7])
+        effective_category = raw_category
+        if raw_category == RepoCategory.OTHER.value:
+            effective_category = str(
+                CategoryClassifier().classify(
+                    topics=topics,
+                    description=str(row[4]),
+                )
+            )
         return {
             "repo_id": int(row[0]),
             "repo_full_name": str(row[1]),
@@ -869,7 +1135,7 @@ class ClickHouseDashboardService:
             "description": str(row[4]),
             "primary_language": str(row[5]),
             "topics": topics,
-            "category": str(row[7]),
+            "category": effective_category,
             "stargazers_count": int(row[8]),
             "watchers_count": int(row[9]),
             "forks_count": int(row[10]),
@@ -885,11 +1151,7 @@ class ClickHouseDashboardService:
         }
 
     @staticmethod
-    def _parse_mover_row(
-        row: tuple[Any, ...],
-        *,
-        rank: int,
-    ) -> dict[str, Any]:
+    def _parse_mover_row(row: tuple[Any, ...], *, rank: int) -> dict[str, Any]:
         item = ClickHouseDashboardService._parse_repo_row(row)
         item["previous_star_count_in_window"] = int(row[20])
         item["unique_actors_in_window"] = int(row[21])
@@ -897,6 +1159,24 @@ class ClickHouseDashboardService:
         item["window_over_window_ratio"] = round(float(row[23]), 4)
         item["rank"] = rank
         return item
+
+    @staticmethod
+    def _apply_category_filter(
+        items: list[dict[str, Any]],
+        *,
+        category: str | None,
+        limit: int,
+        exclude_uncategorized: bool = False,
+    ) -> list[dict[str, Any]]:
+        if category is None and exclude_uncategorized:
+            filtered_items = [
+                item for item in items if item["category"] != RepoCategory.OTHER.value
+            ]
+            if filtered_items:
+                return filtered_items[:limit]
+        if category is None:
+            return items[:limit]
+        return [item for item in items if item["category"] == category][:limit]
 
     async def get_top_repos(
         self,
@@ -914,28 +1194,28 @@ class ClickHouseDashboardService:
         Returns:
             List of dicts: repo fields + star_count_in_window.
         """
-        if category:
+        has_categorized_metadata = self._has_categorized_repo_metadata()
+        if category and has_categorized_metadata:
             params: dict[str, Any] = {
                 "category": category,
                 "days": days,
                 "limit": limit,
             }
-            query = (
-                _TOP_REPOS_CATEGORY_QUERY
-                if self._repo_metadata_table_exists()
-                else _TOP_REPOS_CATEGORY_FALLBACK_QUERY
-            )
+            query = _TOP_REPOS_CATEGORY_QUERY
         else:
-            params = {"days": days, "limit": limit}
+            params = {
+                "days": days,
+                "limit": limit if has_categorized_metadata else max(limit * 8, 40),
+            }
             query = (
-                _TOP_REPOS_ALL_QUERY
-                if self._repo_metadata_table_exists()
-                else _TOP_REPOS_ALL_FALLBACK_QUERY
+                _TOP_REPOS_ALL_QUERY if has_categorized_metadata else _TOP_REPOS_ALL_FALLBACK_QUERY
             )
 
         def _run() -> list[dict[str, Any]]:
             fallback_query = (
-                _TOP_REPOS_CATEGORY_FALLBACK_QUERY if category else _TOP_REPOS_ALL_FALLBACK_QUERY
+                _TOP_REPOS_CATEGORY_FALLBACK_QUERY
+                if category and has_categorized_metadata
+                else _TOP_REPOS_ALL_FALLBACK_QUERY
             )
             try:
                 rows = self._execute_query(query, params)
@@ -957,7 +1237,75 @@ class ClickHouseDashboardService:
                         limit,
                     ],
                 )
-            return [self._parse_repo_row(r) for r in rows]
+            items = [self._parse_repo_row(r) for r in rows]
+            return self._apply_category_filter(
+                items,
+                category=category,
+                limit=limit,
+                exclude_uncategorized=not has_categorized_metadata,
+            )
+
+        return await asyncio.to_thread(_run)
+
+    async def get_top_starred_repos(
+        self,
+        category: str | None,
+        days: int,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        """Top repos by current total star count, optionally filtered by category."""
+        has_categorized_metadata = self._has_categorized_repo_metadata()
+        if category and has_categorized_metadata:
+            params: dict[str, Any] = {
+                "category": category,
+                "days": days,
+                "limit": limit,
+            }
+            query = _TOP_STARRED_REPOS_CATEGORY_QUERY
+        else:
+            params = {
+                "days": days,
+                "limit": limit if has_categorized_metadata else max(limit * 8, 40),
+            }
+            query = (
+                _TOP_STARRED_REPOS_ALL_QUERY
+                if has_categorized_metadata
+                else _TOP_STARRED_REPOS_ALL_FALLBACK_QUERY
+            )
+
+        def _run() -> list[dict[str, Any]]:
+            fallback_query = (
+                _TOP_STARRED_REPOS_CATEGORY_FALLBACK_QUERY
+                if category and has_categorized_metadata
+                else _TOP_STARRED_REPOS_ALL_FALLBACK_QUERY
+            )
+            try:
+                rows = self._execute_query(query, params)
+            except DashboardQueryError as exc:
+                if not self._should_fallback_to_raw_events(exc):
+                    raise
+                rows = self._execute_query(fallback_query, params)
+            if not rows:
+                rows = self._execute_query(fallback_query, params)
+            parquet_paths = self._parquet_query_paths(days)
+            if not rows and parquet_paths:
+                rows = self._execute_parquet_query(
+                    _PARQUET_TOP_STARRED_REPOS_QUERY,
+                    [
+                        parquet_paths,
+                        self._cutoff_date(days),
+                        category,
+                        category,
+                        limit,
+                    ],
+                )
+            items = [self._parse_repo_row(r) for r in rows]
+            return self._apply_category_filter(
+                items,
+                category=category,
+                limit=limit,
+                exclude_uncategorized=not has_categorized_metadata,
+            )
 
         return await asyncio.to_thread(_run)
 
@@ -971,8 +1319,12 @@ class ClickHouseDashboardService:
         Returns:
             List of dicts: repo fields + star_count_in_window, with growth_rank added.
         """
-        params: dict[str, Any] = {"days": days, "limit": limit}
-        query = _TRENDING_QUERY if self._repo_metadata_table_exists() else _TRENDING_FALLBACK_QUERY
+        has_categorized_metadata = self._has_categorized_repo_metadata()
+        params: dict[str, Any] = {
+            "days": days,
+            "limit": limit if has_categorized_metadata else max(limit * 8, 40),
+        }
+        query = _TRENDING_QUERY if has_categorized_metadata else _TRENDING_FALLBACK_QUERY
 
         def _run() -> list[dict[str, Any]]:
             try:
@@ -1000,6 +1352,15 @@ class ClickHouseDashboardService:
                 item = self._parse_repo_row(row)
                 item["growth_rank"] = rank
                 results.append(item)
+            if not has_categorized_metadata:
+                filtered_results = [
+                    item for item in results if item["category"] != RepoCategory.OTHER.value
+                ]
+                if filtered_results:
+                    return [
+                        {**item, "growth_rank": rank}
+                        for rank, item in enumerate(filtered_results[:limit], start=1)
+                    ]
             return results
 
         return await asyncio.to_thread(_run)
@@ -1206,12 +1567,13 @@ class ClickHouseDashboardService:
         def _run() -> list[dict[str, Any]]:
             fallback_query = _CATEGORY_SUMMARY_FALLBACK_QUERY
             try:
-                query = (
-                    _CATEGORY_SUMMARY_QUERY
-                    if self._repo_metadata_table_exists()
-                    else fallback_query
-                )
-                rows = self._execute_query(query)
+                if self._has_categorized_repo_metadata():
+                    rows = self._execute_query(_CATEGORY_SUMMARY_QUERY)
+                else:
+                    rows = self._execute_query(_CATEGORY_SUMMARY_SOURCE_FALLBACK_QUERY)
+                    if rows:
+                        return _build_category_summary_from_repo_rows(rows, self._classifier)
+                    rows = self._execute_query(fallback_query)
             except DashboardQueryError as exc:
                 if not self._should_fallback_to_raw_events(exc):
                     raise
@@ -1237,3 +1599,50 @@ class ClickHouseDashboardService:
             ]
 
         return await asyncio.to_thread(_run)
+
+
+def _build_category_summary_from_repo_rows(
+    rows: list[tuple[Any, ...]],
+    classifier: CategoryClassifier,
+) -> list[dict[str, Any]]:
+    summaries: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        topics_raw = row[6]
+        topics: list[str] = list(topics_raw) if topics_raw else []
+        category = str(
+            classifier.classify(
+                topics=topics,
+                description=str(row[4]),
+            )
+        )
+        if category == RepoCategory.OTHER.value:
+            continue
+        summary = summaries.setdefault(
+            category,
+            {
+                "category": category,
+                "repo_count": 0,
+                "total_stars": 0,
+                "top_repo_name": "",
+                "top_repo_stars": 0,
+                "weekly_star_delta": 0,
+            },
+        )
+        stars = int(row[8])
+        weekly_star_delta = int(row[19])
+        summary["repo_count"] += 1
+        summary["total_stars"] += stars
+        summary["weekly_star_delta"] += weekly_star_delta
+        if stars > int(summary["top_repo_stars"]):
+            summary["top_repo_name"] = str(row[1])
+            summary["top_repo_stars"] = stars
+
+    return sorted(
+        summaries.values(),
+        key=lambda item: (
+            int(item["total_stars"]),
+            int(item["weekly_star_delta"]),
+            int(item["repo_count"]),
+        ),
+        reverse=True,
+    )

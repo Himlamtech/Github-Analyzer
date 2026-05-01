@@ -27,6 +27,8 @@ from src.domain.exceptions import (
     ClickHouseConnectionError,
     RepoInsightNotFoundError,
 )
+from src.domain.services.category_classifier import CategoryClassifier
+from src.domain.value_objects.repo_category import RepoCategory
 
 _REPO_METADATA_QUERY = """
 SELECT
@@ -272,6 +274,7 @@ class ClickHouseAIInsightsService:
         self._user = user
         self._password = password
         self._database = database
+        self._has_categorized_metadata_cache: bool | None = None
 
     def _get_client(self) -> Client:
         try:
@@ -312,6 +315,27 @@ class ClickHouseAIInsightsService:
         except (TypeError, ValueError):
             return True
 
+    def _has_categorized_repo_metadata(self) -> bool:
+        if self._has_categorized_metadata_cache is not None:
+            return self._has_categorized_metadata_cache
+        if not self._repo_metadata_table_exists():
+            self._has_categorized_metadata_cache = False
+            return False
+
+        rows = self._execute_query(
+            """
+SELECT countIf(category != 'Other')
+FROM github_analyzer.repo_metadata
+FINAL
+""",
+            {},
+        )
+        try:
+            self._has_categorized_metadata_cache = int(rows[0][0]) > 0
+        except (IndexError, TypeError, ValueError):
+            self._has_categorized_metadata_cache = True
+        return self._has_categorized_metadata_cache
+
     async def get_repo_brief_context(
         self,
         *,
@@ -324,7 +348,7 @@ class ClickHouseAIInsightsService:
         def _run() -> RepoBriefContextDTO:
             metadata_query = (
                 _REPO_METADATA_QUERY
-                if self._repo_metadata_table_exists()
+                if self._has_categorized_repo_metadata()
                 else _REPO_METADATA_FALLBACK_QUERY
             )
             metadata_rows = self._execute_query(
@@ -394,7 +418,7 @@ class ClickHouseAIInsightsService:
         params: dict[str, Any] = {"days": days}
 
         def _run() -> MarketBriefContextDTO:
-            has_metadata = self._repo_metadata_table_exists()
+            has_metadata = self._has_categorized_repo_metadata()
             breakout_query = (
                 _MARKET_BREAKOUT_REPOS_QUERY
                 if has_metadata
@@ -443,6 +467,16 @@ class ClickHouseAIInsightsService:
 
 def _parse_repo_metadata_row(row: tuple[Any, ...]) -> RepoMetadataDTO:
     topics_raw = row[6]
+    topics = list(topics_raw) if topics_raw else []
+    raw_category = str(row[7])
+    effective_category = raw_category
+    if raw_category == RepoCategory.OTHER.value:
+        effective_category = str(
+            CategoryClassifier().classify(
+                topics=topics,
+                description=str(row[4]),
+            )
+        )
     return RepoMetadataDTO(
         repo_id=int(row[0]),
         repo_full_name=str(row[1]),
@@ -450,8 +484,8 @@ def _parse_repo_metadata_row(row: tuple[Any, ...]) -> RepoMetadataDTO:
         html_url=str(row[3]),
         description=str(row[4]),
         primary_language=str(row[5]),
-        topics=list(topics_raw) if topics_raw else [],
-        category=str(row[7]),
+        topics=topics,
+        category=effective_category,
         stargazers_count=int(row[8]),
         watchers_count=int(row[9]),
         forks_count=int(row[10]),

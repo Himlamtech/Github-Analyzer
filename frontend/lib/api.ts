@@ -23,8 +23,8 @@ import type {
 // to the API container, so the browser never needs to resolve 'api:8000'.
 function buildUrl(path: string): URL {
   if (typeof window === "undefined") {
-    // SSR inside Docker: use the internal service hostname
-    const base = process.env.API_INTERNAL_URL ?? "http://api:8000";
+    // SSR inside Docker uses API_INTERNAL_URL; local development falls back to localhost.
+    const base = process.env.API_INTERNAL_URL ?? "http://127.0.0.1:8000";
     return new URL(`${base}${path}`);
   }
   // Browser: relative path, proxied by Next.js rewrites
@@ -123,6 +123,17 @@ export const api = {
     limit = 20,
   ): Promise<TopRepo[]> =>
     apiFetch<TopRepo[]>("/dashboard/top-repos", {
+      ...(category && category !== "all" ? { category } : {}),
+      days,
+      limit,
+    }),
+
+  getTopStarredRepos: (
+    category?: string,
+    days = 7,
+    limit = 20,
+  ): Promise<TopRepo[]> =>
+    apiFetch<TopRepo[]>("/dashboard/top-starred-repos", {
       ...(category && category !== "all" ? { category } : {}),
       days,
       limit,

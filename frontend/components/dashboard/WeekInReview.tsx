@@ -18,33 +18,32 @@ export function WeekInReview({ days, onSelectRepo }: Props) {
   const topPercentage = data?.percentage_movers[0];
 
   return (
-    <section className="card-glow overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="border-b border-border bg-gradient-to-r from-sky-500/12 via-cyan-400/10 to-blue-500/10 px-4 py-4 sm:px-5">
+    <section className="card-glow overflow-hidden rounded-[28px] border border-border bg-card">
+      <div className="border-b border-border bg-gradient-to-r from-slate-950 via-sky-950 to-cyan-950 px-4 py-5 text-white sm:px-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-sm font-semibold">
-              <Flame className="h-4 w-4 text-blue-500" />
+              <Flame className="h-4 w-4 text-cyan-300" />
               This Week Changed
             </div>
-            <p className="max-w-3xl text-sm text-muted-foreground">
-              Stop making the viewer guess. Start with the repos gaining the most stars,
-              the repos growing fastest in percentage terms, and the names driving the
-              current cycle.
+            <p className="max-w-3xl text-sm text-sky-100/76">
+              Lead with delta, not inventory. This band compresses the strongest absolute
+              and percentage movers into one editorial snapshot.
             </p>
           </div>
-          <div className="text-xs text-muted-foreground">window: last {days}d</div>
+          <div className="text-xs text-sky-100/68">window: last {days}d</div>
         </div>
 
         {!isLoading && !error && data && (
-          <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
-            <div className="rounded-2xl border border-blue-300/70 bg-white/72 p-4 shadow-[0_10px_32px_-24px_rgba(37,99,235,0.28)] backdrop-blur-sm">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-blue-600">
+          <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_220px]">
+            <div className="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-cyan-200">
                 Biggest Absolute Mover
               </div>
-              <div className="mt-2 text-lg font-semibold">
+              <div className="mt-2 text-lg font-semibold text-white">
                 {topAbsolute?.repo.repo_full_name ?? "No standout repo yet"}
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-sky-100/74">
                 {topAbsolute
                   ? `+${formatNumber(topAbsolute.star_count_in_window)} stars from ${formatNumber(
                       topAbsolute.unique_actors_in_window,
@@ -53,19 +52,29 @@ export function WeekInReview({ days, onSelectRepo }: Props) {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-cyan-300/70 bg-white/72 p-4 shadow-[0_10px_32px_-24px_rgba(8,145,178,0.26)] backdrop-blur-sm">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-cyan-600">
+            <div className="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-emerald-200">
                 Sharpest Percentage Gainer
               </div>
-              <div className="mt-2 text-lg font-semibold">
+              <div className="mt-2 text-lg font-semibold text-white">
                 {topPercentage?.repo.repo_full_name ?? "No breakout gainer yet"}
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-sky-100/74">
                 {topPercentage
                   ? `+${topPercentage.weekly_percent_gain.toFixed(1)}% versus its baseline, with ${formatNumber(
                       topPercentage.star_count_in_window,
                     )} stars in the current window.`
                   : "No repo met the current baseline guardrail for percentage growth."}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-sky-200">
+                Reading lens
+              </div>
+              <p className="mt-2 text-sm leading-6 text-sky-100/74">
+                Absolute growth captures raw demand. Percentage growth catches new
+                breakouts before they look large on market cap alone.
               </p>
             </div>
           </div>

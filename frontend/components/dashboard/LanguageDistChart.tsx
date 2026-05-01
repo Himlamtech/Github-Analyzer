@@ -44,13 +44,16 @@ export function LanguageDistChart({ days }: Props) {
   const total = chartData.reduce((acc, d) => acc + d.value, 0);
 
   return (
-    <div className="card-glow overflow-hidden rounded-xl border border-border bg-card">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h2 className="text-sm font-semibold">Language Distribution</h2>
+    <div className="card-glow overflow-hidden rounded-[28px] border border-border bg-card">
+      <div className="flex items-center justify-between border-b border-border px-4 py-4">
+        <div>
+          <h2 className="text-sm font-semibold">Language Breakdown</h2>
+          <p className="text-xs text-muted-foreground">Share of current repository activity by language</p>
+        </div>
         <span className="text-xs text-muted-foreground">by stars · last {days}d</span>
       </div>
 
-      <div className="h-72 p-3">
+      <div className="h-80 p-3">
         {isLoading ? (
           <div className="flex h-full items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />

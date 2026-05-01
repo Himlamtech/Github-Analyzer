@@ -15,6 +15,16 @@ export function useTopRepos(category: Category, days: number) {
   });
 }
 
+/** Top repos by current total stars, optionally filtered by category. */
+export function useTopStarredRepos(category: Category, days: number) {
+  return useQuery({
+    queryKey: ["top-starred-repos", category, days],
+    queryFn: () =>
+      api.getTopStarredRepos(category === "all" ? undefined : category, days),
+    staleTime: 60_000,
+  });
+}
+
 /** Trending repos by star growth velocity (all categories). */
 export function useTrending(days: number) {
   return useQuery({
@@ -48,6 +58,7 @@ export function useNewsRadar(days: number) {
     queryKey: ["news-radar", days],
     queryFn: () => api.getNewsRadar(days),
     staleTime: 120_000,
+    retry: false,
   });
 }
 

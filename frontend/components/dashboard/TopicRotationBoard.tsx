@@ -13,10 +13,13 @@ export function TopicRotationBoard({ days }: Props) {
   const { data, isLoading } = useTopicRotation(days);
 
   return (
-    <section className="card-glow overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+    <section className="card-glow overflow-hidden rounded-[28px] border border-border bg-card">
+      <div className="flex items-center gap-2 border-b border-border px-4 py-4">
         <Repeat2 className="h-4 w-4 text-emerald-300" />
-        <h2 className="text-sm font-semibold">Topic Rotation</h2>
+        <div>
+          <h2 className="text-sm font-semibold">Topic Rotation</h2>
+          <p className="text-xs text-muted-foreground">Acceleration versus the prior matching window</p>
+        </div>
         <span className="ml-auto text-xs text-muted-foreground">vs prior {days}d</span>
       </div>
 
@@ -66,6 +69,11 @@ export function TopicRotationBoard({ days }: Props) {
                     className="h-full rounded-full bg-emerald-400"
                     style={{ width: `${width}%` }}
                   />
+                </div>
+                <div className="mt-2 text-[11px] text-muted-foreground">
+                  Delta ratio {topic.current_star_count > 0
+                    ? `${Math.round((topic.star_delta / topic.current_star_count) * 100)}%`
+                    : "0%"}
                 </div>
               </div>
             );

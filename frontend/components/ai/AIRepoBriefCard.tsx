@@ -30,7 +30,7 @@ export function AIRepoBriefCard({ repoName, days }: Props) {
   const { data, isLoading, error } = useAIRepoBrief(repoName, days);
 
   return (
-    <section className="card-glow overflow-hidden rounded-2xl border border-border bg-card">
+    <section className="card-glow overflow-hidden rounded-[28px] border border-border bg-card">
       <div className="flex items-center justify-between border-b border-border bg-gradient-to-r from-emerald-500/10 via-cyan-500/10 to-sky-500/10 px-4 py-3 sm:px-5">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-emerald-400" />
@@ -71,8 +71,8 @@ export function AIRepoBriefCard({ repoName, days }: Props) {
             layer recovers.
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
+              <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className="rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white"
@@ -100,7 +100,7 @@ export function AIRepoBriefCard({ repoName, days }: Props) {
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{data.summary}</p>
               </div>
 
-              <div className="rounded-xl border border-border bg-background/60 p-4">
+              <div className="rounded-2xl border border-border bg-background/60 p-4">
                 <div className="mb-2 flex items-center gap-2 text-sm font-medium">
                   <Flame className="h-4 w-4 text-amber-300" />
                   Why Trending
@@ -109,7 +109,7 @@ export function AIRepoBriefCard({ repoName, days }: Props) {
               </div>
 
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                <div className="rounded-xl border border-border bg-background/60 p-3">
+                <div className="rounded-2xl border border-border bg-background/60 p-3">
                   <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
                     Stars In Window
                   </div>
@@ -117,7 +117,7 @@ export function AIRepoBriefCard({ repoName, days }: Props) {
                     +{formatNumber(data.star_count_in_window)}
                   </div>
                 </div>
-                <div className="rounded-xl border border-border bg-background/60 p-3">
+                <div className="rounded-2xl border border-border bg-background/60 p-3">
                   <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
                     Total Events
                   </div>
@@ -125,7 +125,7 @@ export function AIRepoBriefCard({ repoName, days }: Props) {
                     {formatNumber(data.total_events_in_window)}
                   </div>
                 </div>
-                <div className="rounded-xl border border-border bg-background/60 p-3">
+                <div className="rounded-2xl border border-border bg-background/60 p-3">
                   <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
                     Unique Actors
                   </div>
@@ -137,7 +137,7 @@ export function AIRepoBriefCard({ repoName, days }: Props) {
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-xl border border-border bg-background/60 p-4">
+              <div className="rounded-2xl border border-border bg-background/60 p-4">
                 <div className="mb-3 flex items-center gap-2 text-sm font-medium">
                   <GitBranch className="h-4 w-4 text-cyan-300" />
                   Key Signals
@@ -152,7 +152,7 @@ export function AIRepoBriefCard({ repoName, days }: Props) {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border bg-background/60 p-4">
+              <div className="rounded-2xl border border-border bg-background/60 p-4">
                 <div className="mb-3 flex items-center gap-2 text-sm font-medium">
                   <AlertTriangle className="h-4 w-4 text-amber-300" />
                   Watchouts
@@ -167,7 +167,7 @@ export function AIRepoBriefCard({ repoName, days }: Props) {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border bg-background/60 p-4">
+              <div className="rounded-2xl border border-border bg-background/60 p-4">
                 <div className="mb-3 text-sm font-medium">Activity Breakdown</div>
                 <div className="space-y-2">
                   {data.activity_breakdown.length > 0 ? (

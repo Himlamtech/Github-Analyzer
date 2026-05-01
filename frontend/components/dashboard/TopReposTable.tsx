@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { ExternalLink, Star, GitFork, TrendingUp, TrendingDown } from "lucide-react";
+import { ExternalLink, GitFork, Sparkles, Star } from "lucide-react";
 
-import { useTopRepos } from "@/hooks/useDashboard";
+import { useTopRepos, useTopStarredRepos } from "@/hooks/useDashboard";
 import { CATEGORY_COLORS, type Category } from "@/lib/types";
 import { formatNumber, truncate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,11 @@ interface Props {
   days: number;
   selectedRepo: string | null;
   onSelectRepo: (name: string) => void;
+  limit?: number;
+  title?: string;
+  subtitle?: string;
+  sortBy?: "stargazers_count" | "star_count_in_window";
+  source?: "top-repos" | "top-starred-repos";
 }
 
 function SkeletonRow() {
@@ -38,35 +43,62 @@ function SkeletonRow() {
   );
 }
 
-export function TopReposTable({ category, days, selectedRepo, onSelectRepo }: Props) {
-  const { data, isLoading } = useTopRepos(category, days);
+export function TopReposTable({
+  category,
+  days,
+  selectedRepo,
+  onSelectRepo,
+  limit = 20,
+  title = "Repository Ranking Table",
+  subtitle = "High-signal leaderboard with category and momentum context",
+  sortBy = "star_count_in_window",
+  source = "top-repos",
+}: Props) {
+  const topReposQuery = useTopRepos(category, days);
+  const topStarredReposQuery = useTopStarredRepos(category, days);
+  const activeQuery = source === "top-starred-repos" ? topStarredReposQuery : topReposQuery;
+  const rows = [...(activeQuery.data ?? [])]
+    .sort((left, right) => {
+      if (sortBy === "stargazers_count") {
+        return right.repo.stargazers_count - left.repo.stargazers_count;
+      }
+      return right.star_count_in_window - left.star_count_in_window;
+    })
+    .slice(0, limit);
 
   return (
-    <div className="card-glow overflow-hidden rounded-xl border border-border bg-card">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h2 className="text-sm font-semibold">Top Repositories</h2>
+    <div className="card-glow overflow-hidden rounded-[28px] border border-border bg-card">
+      <div className="flex items-center justify-between border-b border-border px-4 py-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-sky-500" />
+          <div>
+            <h2 className="text-sm font-semibold">{title}</h2>
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
+          </div>
+        </div>
         <span className="text-xs text-muted-foreground">
-          last {days} days · {data?.length ?? 0} repos
+          last {days} days · {rows.length} repos
         </span>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[600px] text-sm">
+        <table className="w-full min-w-[820px] text-sm">
           <thead>
             <tr className="border-b border-border text-xs text-muted-foreground">
               <th className="py-2 pl-4 text-left font-medium">#</th>
               <th className="py-2 px-3 text-left font-medium">Repository</th>
               <th className="py-2 px-3 text-left font-medium">Category</th>
+              <th className="py-2 px-3 text-left font-medium">Language</th>
               <th className="py-2 px-3 text-right font-medium">Stars</th>
               <th className="py-2 px-3 text-right font-medium">Forks</th>
+              <th className="py-2 px-3 text-right font-medium">Watchers</th>
               <th className="py-2 pr-4 text-right font-medium">Window ★</th>
             </tr>
           </thead>
           <tbody>
-            {isLoading
+            {activeQuery.isLoading
               ? Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
-              : (data ?? []).map((item, idx) => {
+              : rows.map((item, idx) => {
                   const repo = item.repo;
                   const color =
                     CATEGORY_COLORS[repo.category] ?? "#6b7280";
@@ -121,7 +153,6 @@ export function TopReposTable({ category, days, selectedRepo, onSelectRepo }: Pr
                         </div>
                       </td>
 
-                      {/* Category */}
                       <td className="py-3 px-3">
                         <span
                           className="rounded-full px-2 py-0.5 text-xs font-medium text-white"
@@ -131,7 +162,10 @@ export function TopReposTable({ category, days, selectedRepo, onSelectRepo }: Pr
                         </span>
                       </td>
 
-                      {/* Stars */}
+                      <td className="py-3 px-3 text-xs text-muted-foreground">
+                        {repo.primary_language || "Unknown"}
+                      </td>
+
                       <td className="py-3 px-3 text-right font-mono text-xs">
                         <div className="flex items-center justify-end gap-1">
                           <Star className="h-3 w-3 text-amber-400" />
@@ -147,7 +181,10 @@ export function TopReposTable({ category, days, selectedRepo, onSelectRepo }: Pr
                         </div>
                       </td>
 
-                      {/* Window stars */}
+                      <td className="py-3 px-3 text-right font-mono text-xs text-muted-foreground">
+                        {formatNumber(repo.watchers_count)}
+                      </td>
+
                       <td className="py-3 pr-4 text-right font-mono text-xs text-emerald-400">
                         +{formatNumber(item.star_count_in_window)}
                       </td>

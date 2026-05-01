@@ -15,11 +15,14 @@ export function NewsRadarPanel({ days, onSelectRepo }: Props) {
   const { data, isLoading, error } = useNewsRadar(days);
 
   return (
-    <section className="card-glow overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+    <section className="card-glow overflow-hidden rounded-[28px] border border-border bg-card">
+      <div className="flex items-center gap-2 border-b border-border px-4 py-4">
         <Newspaper className="h-4 w-4 text-rose-300" />
-        <h2 className="text-sm font-semibold">News Radar</h2>
-        <span className="ml-auto text-xs text-muted-foreground">external signal</span>
+        <div>
+          <h2 className="text-sm font-semibold">News Radar</h2>
+          <p className="text-xs text-muted-foreground">External validation around breakout repos</p>
+        </div>
+        <span className="ml-auto text-xs text-muted-foreground">last {days}d</span>
       </div>
 
       <div className="space-y-3 p-4 sm:p-5">
@@ -71,6 +74,10 @@ export function NewsRadarPanel({ days, onSelectRepo }: Props) {
                     </span>
                   </div>
                   <div className="mt-2 text-sm font-semibold">{repo.repo_full_name}</div>
+                  <div className="mt-2 text-[11px] text-muted-foreground">
+                    External headlines can confirm whether breakout momentum is escaping
+                    GitHub and entering the broader AI conversation.
+                  </div>
                 </div>
                 <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </button>

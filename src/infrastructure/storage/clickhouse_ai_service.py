@@ -13,6 +13,8 @@ from clickhouse_driver.errors import NetworkError as ClickHouseNetworkError
 from src.application.dtos.ai_search_dto import RepoSearchCandidateDTO
 from src.application.dtos.repo_metadata_dto import RepoMetadataDTO
 from src.domain.exceptions import AISearchError, ClickHouseConnectionError
+from src.domain.services.category_classifier import CategoryClassifier
+from src.domain.value_objects.repo_category import RepoCategory
 
 _SEARCH_CANDIDATES_QUERY = """
 SELECT
@@ -109,6 +111,8 @@ class ClickHouseAISearchService:
         self._user = user
         self._password = password
         self._database = database
+        self._classifier = CategoryClassifier()
+        self._has_categorized_metadata_cache: bool | None = None
 
     def _get_client(self) -> Client:
         try:
@@ -149,9 +153,39 @@ class ClickHouseAISearchService:
         except (TypeError, ValueError):
             return True
 
-    @staticmethod
-    def _parse_candidate_row(row: tuple[Any, ...]) -> RepoSearchCandidateDTO:
+    def _has_categorized_repo_metadata(self) -> bool:
+        if self._has_categorized_metadata_cache is not None:
+            return self._has_categorized_metadata_cache
+        if not self._repo_metadata_table_exists():
+            self._has_categorized_metadata_cache = False
+            return False
+
+        rows = self._execute_query(
+            """
+SELECT countIf(category != 'Other')
+FROM github_analyzer.repo_metadata
+FINAL
+""",
+            {},
+        )
+        try:
+            self._has_categorized_metadata_cache = int(rows[0][0]) > 0
+        except (IndexError, TypeError, ValueError):
+            self._has_categorized_metadata_cache = True
+        return self._has_categorized_metadata_cache
+
+    def _parse_candidate_row(self, row: tuple[Any, ...]) -> RepoSearchCandidateDTO:
         topics_raw = row[6]
+        topics = list(topics_raw) if topics_raw else []
+        raw_category = str(row[7])
+        effective_category = raw_category
+        if raw_category == RepoCategory.OTHER.value:
+            effective_category = str(
+                self._classifier.classify(
+                    topics=topics,
+                    description=str(row[4]),
+                )
+            )
         repo = RepoMetadataDTO(
             repo_id=int(row[0]),
             repo_full_name=str(row[1]),
@@ -159,8 +193,8 @@ class ClickHouseAISearchService:
             html_url=str(row[3]),
             description=str(row[4]),
             primary_language=str(row[5]),
-            topics=list(topics_raw) if topics_raw else [],
-            category=str(row[7]),
+            topics=topics,
+            category=effective_category,
             stargazers_count=int(row[8]),
             watchers_count=int(row[9]),
             forks_count=int(row[10]),
@@ -209,17 +243,26 @@ class ClickHouseAISearchService:
             "days": days,
             "limit": limit,
         }
+        has_categorized_metadata = self._has_categorized_repo_metadata()
         query = (
             _SEARCH_CANDIDATES_QUERY
-            if self._repo_metadata_table_exists()
+            if has_categorized_metadata
             else _SEARCH_CANDIDATES_FALLBACK_QUERY
         )
+        if category and not has_categorized_metadata:
+            params["category"] = ""
+            params["limit"] = max(limit * 8, 40)
 
         def _run() -> list[RepoSearchCandidateDTO]:
             rows = self._execute_query(query, params)
             if not rows and query != _SEARCH_CANDIDATES_FALLBACK_QUERY:
                 rows = self._execute_query(_SEARCH_CANDIDATES_FALLBACK_QUERY, params)
-            return [self._parse_candidate_row(row) for row in rows]
+            candidates = [self._parse_candidate_row(row) for row in rows]
+            if category:
+                candidates = [
+                    candidate for candidate in candidates if candidate.repo.category == category
+                ]
+            return candidates[:limit]
 
         return await asyncio.to_thread(_run)
 

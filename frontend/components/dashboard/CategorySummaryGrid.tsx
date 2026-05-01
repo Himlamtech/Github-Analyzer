@@ -1,6 +1,6 @@
 "use client";
 
-import { Star, GitFork, TrendingUp, ExternalLink } from "lucide-react";
+import { ExternalLink, Star, TrendingUp } from "lucide-react";
 
 import { useCategorySummary } from "@/hooks/useDashboard";
 import { CATEGORY_COLORS, CATEGORY_LABELS } from "@/lib/types";
@@ -31,7 +31,7 @@ export function CategorySummaryGrid() {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {(data ?? []).map((item) => {
         const color = CATEGORY_COLORS[item.category] ?? "#6b7280";
         const label = CATEGORY_LABELS[item.category] ?? item.category;
@@ -39,9 +39,8 @@ export function CategorySummaryGrid() {
         return (
           <div
             key={item.category}
-            className="card-glow rounded-xl border border-border bg-card p-4 transition-shadow hover:shadow-md"
+            className="card-glow rounded-2xl border border-border bg-card p-4 transition-shadow hover:shadow-md"
           >
-            {/* Category badge */}
             <div className="mb-2 flex items-center gap-1.5">
               <div
                 className="h-2 w-2 rounded-full"
@@ -52,7 +51,6 @@ export function CategorySummaryGrid() {
               </span>
             </div>
 
-            {/* Total stars */}
             <div className="mb-1 flex items-baseline gap-1">
               <Star className="mt-0.5 h-3.5 w-3.5 text-amber-400" />
               <span className="text-xl font-bold tracking-tight">
@@ -60,12 +58,10 @@ export function CategorySummaryGrid() {
               </span>
             </div>
 
-            {/* Repo count */}
             <div className="mb-2 text-xs text-muted-foreground">
               {item.repo_count} repos
             </div>
 
-            {/* Weekly delta */}
             <div
               className={cn(
                 "flex items-center gap-0.5 text-xs font-medium",
@@ -76,7 +72,6 @@ export function CategorySummaryGrid() {
               {formatDelta(item.weekly_star_delta)} / week
             </div>
 
-            {/* Top repo */}
             {item.top_repo_name && (
               <a
                 href={`https://github.com/${item.top_repo_name}`}

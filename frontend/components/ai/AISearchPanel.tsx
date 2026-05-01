@@ -29,7 +29,7 @@ interface Props {
 export function AISearchPanel({ category, days, onSelectRepo }: Props) {
   const [query, setQuery] = useState("");
   const [language, setLanguage] = useState("");
-  const [minStars, setMinStars] = useState(10_000);
+  const [minStars, setMinStars] = useState(1_000);
   const deferredQuery = useDeferredValue(query.trim());
   const activeCategory = category === "all" ? undefined : category;
   const { data, error, isFetching } = useAISearch({
@@ -92,6 +92,9 @@ export function AISearchPanel({ category, days, onSelectRepo }: Props) {
             onChange={(event) => setMinStars(Number(event.target.value))}
             className="rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none"
           >
+            <option value={500}>500+ stars</option>
+            <option value={1_000}>1k+ stars</option>
+            <option value={5_000}>5k+ stars</option>
             <option value={10_000}>10k+ stars</option>
             <option value={25_000}>25k+ stars</option>
             <option value={50_000}>50k+ stars</option>

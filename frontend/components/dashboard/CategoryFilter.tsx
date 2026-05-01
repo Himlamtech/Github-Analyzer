@@ -34,9 +34,12 @@ export function CategoryFilter({
   onDaysChange,
 }: Props) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      {/* Category pills */}
-      <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="space-y-2">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-800/70">
+          Category filter
+        </div>
+        <div className="flex flex-wrap gap-1.5">
         {CATEGORIES.map((cat) => {
           const isActive = category === cat;
           const color = cat === "all" ? "#3b82f6" : CATEGORY_COLORS[cat] ?? "#6b7280";
@@ -48,10 +51,10 @@ export function CategoryFilter({
               key={cat}
               onClick={() => onCategoryChange(cat)}
               className={cn(
-                "rounded-full border px-3 py-1 text-xs font-medium transition-all",
+                "rounded-full border px-3 py-1.5 text-xs font-medium transition-all",
                 isActive
                   ? "border-transparent text-white shadow-sm"
-                  : "border-border bg-transparent text-muted-foreground hover:text-foreground",
+                  : "border-slate-200 bg-white/85 text-slate-600 hover:text-slate-950",
               )}
               style={isActive ? { backgroundColor: color, borderColor: color } : {}}
             >
@@ -59,24 +62,29 @@ export function CategoryFilter({
             </button>
           );
         })}
+        </div>
       </div>
 
-      {/* Days selector */}
-      <div className="flex items-center gap-1 rounded-lg border border-border bg-muted p-0.5">
-        {DAYS_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => onDaysChange(opt.value)}
-            className={cn(
-              "rounded px-2.5 py-1 text-xs font-medium transition-all",
-              days === opt.value
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {opt.label}
-          </button>
-        ))}
+      <div className="space-y-2">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-800/70">
+          Time window
+        </div>
+        <div className="flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-50/85 p-1">
+          {DAYS_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => onDaysChange(opt.value)}
+              className={cn(
+                "rounded-xl px-3 py-1.5 text-xs font-medium transition-all",
+                days === opt.value
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-slate-600 hover:bg-white hover:text-slate-950",
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

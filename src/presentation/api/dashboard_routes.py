@@ -164,7 +164,7 @@ async def get_top_repos(
     days: Annotated[int, Query(ge=1, le=90)] = 7,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> list[TopRepoDTO]:
-    """Top AI repos by star count in the look-back window.
+    """Top AI repos by star activity in the look-back window.
 
     Args:
         category: Optional category filter. Returns all categories if omitted.
@@ -177,6 +177,35 @@ async def get_top_repos(
         rows = await service.get_top_repos(category=category, days=days, limit=limit)
     except DashboardQueryError as exc:
         logger.error("dashboard.top_repos_failed", category=category, error=str(exc))
+        raise HTTPException(status_code=503, detail="Dashboard query failed") from exc
+
+    return [
+        TopRepoDTO(
+            repo=_to_repo_dto(row),
+            star_count_in_window=int(row.get("star_count_in_window") or 0),
+            star_delta=0,
+        )
+        for row in rows
+    ]
+
+
+@router.get("/top-starred-repos", response_model=list[TopRepoDTO])
+async def get_top_starred_repos(
+    svc: Annotated[object, Depends(_get_dashboard_service)],
+    category: Annotated[
+        str | None,
+        Query(description="Category filter: LLM, Agent, Diffusion, Multimodal, DataEng, Other"),
+    ] = None,
+    days: Annotated[int, Query(ge=1, le=90)] = 7,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> list[TopRepoDTO]:
+    """Top AI repos by current total star count, with window star context attached."""
+    service = cast("ClickHouseDashboardService", svc)
+
+    try:
+        rows = await service.get_top_starred_repos(category=category, days=days, limit=limit)
+    except DashboardQueryError as exc:
+        logger.error("dashboard.top_starred_repos_failed", category=category, error=str(exc))
         raise HTTPException(status_code=503, detail="Dashboard query failed") from exc
 
     return [

@@ -63,7 +63,6 @@ Use this flow for every task:
 - Never use `base`.
 
 ```bash
-conda create -n github python=3.14 -y
 conda activate github
 python --version  # must show Python 3.14.x
 ```

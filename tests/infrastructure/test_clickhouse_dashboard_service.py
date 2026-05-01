@@ -191,6 +191,7 @@ class TestGetTopRepos:
         query_text = str(client.execute.call_args.args[0])
         assert "FROM repo_metadata AS rm" in query_text
         assert "INNER JOIN (" in query_text
+        assert "ORDER BY star_count_in_window DESC, rm.stargazers_count DESC" in query_text
 
     async def test_get_top_repos_with_category_returns_filtered_list(self) -> None:
         """``category="LLM"`` → uses category-filtered query, returns parsed dicts."""
@@ -246,6 +247,29 @@ class TestGetTopRepos:
         execute_parquet_query.assert_called_once()
 
 
+class TestGetTopStarredRepos:
+    async def test_get_top_starred_repos_queries_repo_metadata(self) -> None:
+        svc = _make_service()
+        client = _mock_client([_repo_row()])
+
+        with patch.object(svc, "_get_client", return_value=client):
+            await svc.get_top_starred_repos(category=None, days=7, limit=10)
+
+        query_text = str(client.execute.call_args.args[0])
+        assert "FROM repo_metadata AS rm" in query_text
+        assert "ORDER BY rm.stargazers_count DESC, star_count_in_window DESC" in query_text
+
+    async def test_get_top_starred_repos_returns_parsed_rows(self) -> None:
+        svc = _make_service()
+        rows = [_repo_row(full_name="org/most-starred", stars=999_999, star_count_in_window=3)]
+
+        with patch.object(svc, "_get_client", return_value=_mock_client(rows)):
+            result = await svc.get_top_starred_repos(category=None, days=7, limit=10)
+
+        assert result[0]["repo_full_name"] == "org/most-starred"
+        assert result[0]["stargazers_count"] == 999_999
+
+
 # ── get_trending ──────────────────────────────────────────────────────────────
 
 
@@ -296,6 +320,7 @@ class TestGetTrending:
 
         query_text = str(client.execute.call_args.args[0])
         assert "FROM repo_metadata AS rm" in query_text
+        assert "ORDER BY star_count_in_window DESC, rm.stargazers_count DESC" in query_text
 
     async def test_get_trending_falls_back_to_parquet_when_clickhouse_empty(self) -> None:
         svc = _make_service()
@@ -448,6 +473,16 @@ class TestGetTopicBreakdown:
         assert isinstance(result[0]["event_count"], int)
         assert isinstance(result[0]["repo_count"], int)
 
+    async def test_get_topic_breakdown_counts_watch_events_only(self) -> None:
+        svc = _make_service()
+        client = _mock_client([("llm", 5, 2)])
+
+        with patch.object(svc, "_get_client", return_value=client):
+            await svc.get_topic_breakdown(days=7)
+
+        query_text = str(client.execute.call_args.args[0])
+        assert "countIf(gd.event_type = 'WatchEvent')" in query_text
+
     async def test_get_topic_breakdown_falls_back_to_parquet_when_clickhouse_empty(self) -> None:
         svc = _make_service()
         parquet_rows: list[tuple[Any, ...]] = [("llm", 12, 3)]
@@ -492,6 +527,16 @@ class TestGetLanguageBreakdown:
             result = await svc.get_language_breakdown(days=7)
 
         assert result == []
+
+    async def test_get_language_breakdown_counts_watch_events_only(self) -> None:
+        svc = _make_service()
+        client = _mock_client([("Python", 10, 3)])
+
+        with patch.object(svc, "_get_client", return_value=client):
+            await svc.get_language_breakdown(days=7)
+
+        query_text = str(client.execute.call_args.args[0])
+        assert "countIf(gd.event_type = 'WatchEvent')" in query_text
 
 
 # ── get_repo_timeseries ───────────────────────────────────────────────────────

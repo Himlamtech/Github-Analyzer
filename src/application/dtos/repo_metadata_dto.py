@@ -41,9 +41,9 @@ class RepoMetadataDTO(BaseModel):
 
 
 class TopRepoDTO(BaseModel):
-    """Top repository response — includes star count in the query window.
+    """Top repository response — includes current repo metadata and window star context.
 
-    Returned by ``GET /dashboard/top-repos``.
+    Returned by ``GET /dashboard/top-repos`` and ``GET /dashboard/top-starred-repos``.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -54,7 +54,7 @@ class TopRepoDTO(BaseModel):
 
 
 class TrendingRepoDTO(BaseModel):
-    """Trending repository — ranked by star growth velocity.
+    """Trending repository — ranked by recent star activity velocity.
 
     Returned by ``GET /dashboard/trending``.
     """
