@@ -105,3 +105,42 @@ class TestKafkaEventProducerPublish:
             await producer.start()
             await producer.stop()
             mock_inner.stop.assert_called_once()
+
+
+class TestKafkaEventProducerErrorHandling:
+    """Tests for error propagation in KafkaEventProducer."""
+
+    async def test_publish_wraps_kafka_error_as_producer_exception(
+        self,
+        producer: KafkaEventProducer,
+        output_dto: GithubEventOutputDTO,
+    ) -> None:
+        """When send_and_wait raises, publish() must re-raise as ProducerException."""
+        from aiokafka.errors import KafkaError
+
+        mock_inner = AsyncMock()
+        mock_inner.send_and_wait.side_effect = KafkaError("broker unavailable")
+        with patch(
+            "src.infrastructure.kafka.producer.AIOKafkaProducer",
+            return_value=mock_inner,
+        ):
+            await producer.start()
+            with pytest.raises(ProducerException):
+                await producer.publish(output_dto)
+
+    async def test_publish_serialises_payload_as_json_bytes(
+        self,
+        producer: KafkaEventProducer,
+        output_dto: GithubEventOutputDTO,
+    ) -> None:
+        """publish() must pass value as bytes to the inner producer."""
+        mock_inner = AsyncMock()
+        with patch(
+            "src.infrastructure.kafka.producer.AIOKafkaProducer",
+            return_value=mock_inner,
+        ):
+            await producer.start()
+            await producer.publish(output_dto)
+            call_kwargs = mock_inner.send_and_wait.call_args
+            value_bytes = call_kwargs.kwargs.get("value") or call_kwargs.args[1]
+            assert isinstance(value_bytes, bytes)
