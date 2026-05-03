@@ -257,3 +257,59 @@ class TestSearchRepositoriesUseCase:
                 days=30,
                 limit=5,
             )
+
+    async def test_execute_empty_candidates_returns_empty_results(self) -> None:
+        """When storage returns no candidates, result set must be empty."""
+        provider = FakeCandidateProvider([])
+        use_case = SearchRepositoriesUseCase(
+            provider,
+            embedding_service=None,
+            semantic_enabled=False,
+            candidate_limit=10,
+        )
+
+        result = await use_case.execute(
+            query="llm inference",
+            category=None,
+            primary_language=None,
+            min_stars=1_000,
+            days=7,
+            limit=5,
+        )
+
+        assert result.results == []
+        assert result.total_candidates == 0
+
+    async def test_execute_embedding_failure_falls_back_to_lexical(self) -> None:
+        """When the embedding service raises, the use case must fall back to lexical mode."""
+        provider = FakeCandidateProvider(
+            [
+                _candidate(
+                    repo_id=1,
+                    full_name="openai/openai-python",
+                    description="Official Python client for the OpenAI API.",
+                    category="LLM",
+                    language="Python",
+                    topics=["openai", "gpt", "llm"],
+                    stars=30_000,
+                    star_count_in_window=500,
+                ),
+            ]
+        )
+        use_case = SearchRepositoriesUseCase(
+            provider,
+            embedding_service=FailingEmbeddingService(),
+            semantic_enabled=True,
+            candidate_limit=10,
+        )
+
+        result = await use_case.execute(
+            query="openai python sdk",
+            category=None,
+            primary_language=None,
+            min_stars=1_000,
+            days=30,
+            limit=5,
+        )
+
+        assert result.retrieval_mode == "lexical"
