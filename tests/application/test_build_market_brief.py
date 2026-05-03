@@ -225,3 +225,55 @@ class TestBuildMarketBriefUseCase:
         assert "browser-use/browser-use" in result.headline
         assert result.breakout_repos[0].repo.repo_full_name == "browser-use/browser-use"
         assert result.category_movers[0].category == "Agent"
+
+    async def test_execute_llm_disabled_uses_template_mode(self) -> None:
+        """When llm_enabled=False, use case must skip generation and fall back to template."""
+        provider = FakeContextProvider(_context())
+        generation_service = FakeGenerationService(
+            {
+                "headline": "Should not be called",
+                "summary": "Should not be called",
+                "key_takeaways": [],
+                "watchouts": [],
+            }
+        )
+        use_case = BuildMarketBriefUseCase(
+            provider,
+            generation_service=generation_service,
+            llm_enabled=False,
+        )
+
+        result = await use_case.execute(
+            days=7,
+            breakout_limit=3,
+            category_limit=2,
+            topic_limit=3,
+        )
+
+        assert result.retrieval_mode == "template"
+        assert len(generation_service.calls) == 0
+
+    async def test_execute_passes_correct_parameters_to_context_provider(self) -> None:
+        """Use case must forward all execution arguments to the context provider."""
+        provider = FakeContextProvider(_context())
+        use_case = BuildMarketBriefUseCase(
+            provider,
+            generation_service=FailingGenerationService(),
+            llm_enabled=False,
+        )
+
+        await use_case.execute(
+            days=14,
+            breakout_limit=10,
+            category_limit=5,
+            topic_limit=8,
+        )
+
+        assert provider.calls == [
+            {
+                "days": 14,
+                "breakout_limit": 10,
+                "category_limit": 5,
+                "topic_limit": 8,
+            }
+        ]
