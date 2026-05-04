@@ -67,7 +67,7 @@ export function CategoryFilter({
 
       <div className="space-y-2">
         <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-800/70">
-          Time window
+          Supporting window
         </div>
         <div className="flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-50/85 p-1">
           {DAYS_OPTIONS.map((opt) => (

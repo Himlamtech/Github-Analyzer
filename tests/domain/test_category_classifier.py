@@ -47,9 +47,7 @@ class TestTopicClassification:
         result = classifier.classify(topics=topics, description="")
         assert result == RepoCategory.MULTIMODAL
 
-    def test_classify_dataeng_topic_returns_dataeng(
-        self, classifier: CategoryClassifier
-    ) -> None:
+    def test_classify_dataeng_topic_returns_dataeng(self, classifier: CategoryClassifier) -> None:
         topics = ["vector-db", "embedding"]
         result = classifier.classify(topics=topics, description="")
         assert result == RepoCategory.DATA_ENG
@@ -136,18 +134,14 @@ class TestOtherFallback:
         result = classifier.classify(topics=[], description="")
         assert result == RepoCategory.OTHER
 
-    def test_classify_unrelated_topics_returns_other(
-        self, classifier: CategoryClassifier
-    ) -> None:
+    def test_classify_unrelated_topics_returns_other(self, classifier: CategoryClassifier) -> None:
         result = classifier.classify(
             topics=["web-scraping", "javascript", "nodejs"],
             description="A web scraping utility",
         )
         assert result == RepoCategory.OTHER
 
-    def test_classify_topics_normalised_to_lowercase(
-        self, classifier: CategoryClassifier
-    ) -> None:
+    def test_classify_topics_normalised_to_lowercase(self, classifier: CategoryClassifier) -> None:
         """Topic matching must be case-insensitive."""
         result = classifier.classify(topics=["LLM", "Transformer"], description="")
         assert result == RepoCategory.LLM
@@ -180,9 +174,7 @@ class TestCategoryClassifierEdgeCases:
         )
         assert result == RepoCategory.LLM
 
-    def test_classify_multimodal_topic_beats_dataeng(
-        self, classifier: CategoryClassifier
-    ) -> None:
+    def test_classify_multimodal_topic_beats_dataeng(self, classifier: CategoryClassifier) -> None:
         """Multimodal has higher priority than DataEng."""
         result = classifier.classify(
             topics=["multimodal", "vector-db"],
@@ -190,16 +182,12 @@ class TestCategoryClassifierEdgeCases:
         )
         assert result == RepoCategory.MULTIMODAL
 
-    def test_classify_dataeng_beats_other(
-        self, classifier: CategoryClassifier
-    ) -> None:
+    def test_classify_dataeng_beats_other(self, classifier: CategoryClassifier) -> None:
         """DataEng must win over OTHER when a DataEng topic is present."""
         result = classifier.classify(topics=["vector-db"], description="")
         assert result == RepoCategory.DATA_ENG
 
-    def test_classify_single_llm_topic_returns_llm(
-        self, classifier: CategoryClassifier
-    ) -> None:
+    def test_classify_single_llm_topic_returns_llm(self, classifier: CategoryClassifier) -> None:
         """A single matching LLM topic is sufficient to classify as LLM."""
         result = classifier.classify(topics=["llm"], description="")
         assert result == RepoCategory.LLM

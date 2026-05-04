@@ -2,6 +2,8 @@
 // All functions throw on non-2xx HTTP responses.
 
 import type {
+  AIChatRequest,
+  AIChatResponse,
   AISearchResponse,
   CategorySummary,
   LanguageBreakdown,
@@ -51,7 +53,26 @@ async function apiFetch<T>(
   return res.json() as Promise<T>;
 }
 
+async function apiPost<T>(path: string, body: object): Promise<T> {
+  const url = buildUrl(path);
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw new Error(`API ${res.status}: ${path}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 export const api = {
+  chatWithGithubData: (request: AIChatRequest): Promise<AIChatResponse> =>
+    apiPost<AIChatResponse>("/ai/chat", request),
+
   getMarketBrief: (
     days = 30,
     breakoutLimit = 5,
@@ -130,16 +151,14 @@ export const api = {
 
   getTopStarredRepos: (
     category?: string,
-    days = 7,
     limit = 20,
   ): Promise<TopRepo[]> =>
     apiFetch<TopRepo[]>("/dashboard/top-starred-repos", {
       ...(category && category !== "all" ? { category } : {}),
-      days,
       limit,
     }),
 
-  getTrending: (days = 7, limit = 20): Promise<TrendingRepo[]> =>
+  getTrending: (days = 7, limit = 10): Promise<TrendingRepo[]> =>
     apiFetch<TrendingRepo[]>("/dashboard/trending", { days, limit }),
 
   getShockMovers: (

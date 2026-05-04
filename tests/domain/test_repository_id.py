@@ -43,9 +43,10 @@ class TestRepositoryIdCreation:
             RepositoryId.from_api(repo_id=10**12 + 1, repo_name="owner/repo")
 
     def test_max_valid_repo_id_succeeds(self) -> None:
-        """Boundary: repo_id equal to 10^12 must raise (exclusive upper bound)."""
-        with pytest.raises(InvalidRepositoryIdError):
-            RepositoryId.from_api(repo_id=10**12, repo_name="owner/repo")
+        """Boundary: repo_id equal to 10^12 must still be accepted."""
+        repo_id = RepositoryId.from_api(repo_id=10**12, repo_name="owner/repo")
+        assert repo_id.value == 10**12
+        assert repo_id.name == "owner/repo"
 
 
 class TestRepositoryIdProperties:

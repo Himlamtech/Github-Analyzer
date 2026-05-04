@@ -253,18 +253,20 @@ class TestGetTopStarredRepos:
         client = _mock_client([_repo_row()])
 
         with patch.object(svc, "_get_client", return_value=client):
-            await svc.get_top_starred_repos(category=None, days=7, limit=10)
+            await svc.get_top_starred_repos(category=None, limit=10)
 
         query_text = str(client.execute.call_args.args[0])
         assert "FROM repo_metadata AS rm" in query_text
-        assert "ORDER BY rm.stargazers_count DESC, star_count_in_window DESC" in query_text
+        assert "toInt64(0) AS star_count_in_window" in query_text
+        assert "now() - INTERVAL %(days)s DAY" not in query_text
+        assert "ORDER BY rm.stargazers_count DESC, rm.repo_full_name ASC" in query_text
 
     async def test_get_top_starred_repos_returns_parsed_rows(self) -> None:
         svc = _make_service()
         rows = [_repo_row(full_name="org/most-starred", stars=999_999, star_count_in_window=3)]
 
         with patch.object(svc, "_get_client", return_value=_mock_client(rows)):
-            result = await svc.get_top_starred_repos(category=None, days=7, limit=10)
+            result = await svc.get_top_starred_repos(category=None, limit=10)
 
         assert result[0]["repo_full_name"] == "org/most-starred"
         assert result[0]["stargazers_count"] == 999_999
@@ -311,16 +313,39 @@ class TestGetTrending:
         assert result[0]["star_count_in_window"] == 9999
 
     async def test_get_trending_queries_repo_metadata(self) -> None:
-        """Trending query must be backed by synced repo metadata."""
+        """Trending query must be backed by synced repo metadata and current-week bounds."""
         svc = _make_service()
         client = _mock_client([_repo_row()])
+        week_start = datetime(2026, 5, 3, 17, 0, tzinfo=UTC)
+        week_end = datetime(2026, 5, 4, 6, 0, tzinfo=UTC)
 
-        with patch.object(svc, "_get_client", return_value=client):
+        with (
+            patch.object(svc, "_get_client", return_value=client),
+            patch.object(
+                svc,
+                "_current_gmt7_week_bounds",
+                return_value=(week_start, week_end),
+            ),
+        ):
             await svc.get_trending(days=7, limit=5)
 
         query_text = str(client.execute.call_args.args[0])
+        params = client.execute.call_args.args[1]
         assert "FROM repo_metadata AS rm" in query_text
+        assert "created_at >= %(week_start)s" in query_text
+        assert "created_at < %(week_end)s" in query_text
+        assert "now() - INTERVAL %(days)s DAY" not in query_text
         assert "ORDER BY star_count_in_window DESC, rm.stargazers_count DESC" in query_text
+        assert params["week_start"] == week_start
+        assert params["week_end"] == week_end
+
+    def test_current_gmt7_week_bounds_start_on_monday_local_time(self) -> None:
+        now = datetime(2026, 5, 4, 6, 0, tzinfo=UTC)
+
+        week_start, week_end = ClickHouseDashboardService._current_gmt7_week_bounds(now)
+
+        assert week_start == datetime(2026, 5, 3, 17, 0, tzinfo=UTC)
+        assert week_end == now
 
     async def test_get_trending_falls_back_to_parquet_when_clickhouse_empty(self) -> None:
         svc = _make_service()

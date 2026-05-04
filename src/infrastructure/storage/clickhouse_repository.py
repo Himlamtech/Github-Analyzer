@@ -169,9 +169,7 @@ class ClickHouseEventRepository(EventRepositoryABC):
                 )
                 time.sleep(backoff)
             except ClickHouseError as exc:
-                raise ClickHouseWriteError(
-                    f"ClickHouse insert error: {exc}"
-                ) from exc
+                raise ClickHouseWriteError(f"ClickHouse insert error: {exc}") from exc
 
     async def save(self, event: GithubEvent) -> None:
         """Persist a single GithubEvent to ClickHouse.
@@ -209,9 +207,7 @@ class ClickHouseEventRepository(EventRepositoryABC):
 
         await asyncio.to_thread(_write)
 
-    async def find_by_repo(
-        self, repo_id: RepositoryId, limit: int = 100
-    ) -> list[GithubEvent]:
+    async def find_by_repo(self, repo_id: RepositoryId, limit: int = 100) -> list[GithubEvent]:
         """Return events for a specific repository, most recent first.
 
         Args:

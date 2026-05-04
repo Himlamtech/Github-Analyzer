@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from aiokafka import AIOKafkaProducer
-from aiokafka.errors import KafkaConnectionError, KafkaTimeoutError, ProducerClosed
+from aiokafka.errors import KafkaConnectionError, KafkaError, KafkaTimeoutError, ProducerClosed
 import orjson
 import structlog
 
@@ -109,9 +109,7 @@ class KafkaEventProducer:
             ProducerException: If the producer is not started or publish fails.
         """
         if self._producer is None:
-            raise ProducerException(
-                "KafkaEventProducer.start() must be called before publish()."
-            )
+            raise ProducerException("KafkaEventProducer.start() must be called before publish().")
 
         key = _serialize_key(event.repo_id)
         value = _serialize_value(event)
@@ -130,9 +128,7 @@ class KafkaEventProducer:
                 repo_name=event.repo_name,
             )
         except KafkaTimeoutError as exc:
-            KAFKA_PRODUCER_ERROR_TOTAL.labels(
-                topic=self._topic, error_type="timeout"
-            ).inc()
+            KAFKA_PRODUCER_ERROR_TOTAL.labels(topic=self._topic, error_type="timeout").inc()
             raise ProducerException(
                 f"Kafka publish timed out for event {event.event_id}: {exc}"
             ) from exc
@@ -142,4 +138,9 @@ class KafkaEventProducer:
             ).inc()
             raise ProducerException(
                 f"Kafka producer was closed while publishing event {event.event_id}: {exc}"
+            ) from exc
+        except (KafkaError, RuntimeError, OSError) as exc:
+            KAFKA_PRODUCER_ERROR_TOTAL.labels(topic=self._topic, error_type="kafka").inc()
+            raise ProducerException(
+                f"Kafka publish failed for event {event.event_id}: {exc}"
             ) from exc

@@ -145,6 +145,18 @@ class Settings(BaseSettings):
         le=120.0,
         description="HTTP timeout for Ollama repo brief generation requests in seconds.",
     )
+    yescale_api_key: str = Field(
+        default="",
+        description="Bearer API key for the Yescale Gemini-compatible generation endpoint.",
+    )
+    yescale_base_url: AnyHttpUrl = Field(
+        default="https://api.yescale.io/v1beta",  # type: ignore[assignment]
+        description="Base URL for the Yescale Gemini-compatible generation endpoint.",
+    )
+    yescale_generation_model: str = Field(
+        default="gemini-3.1-flash-lite-preview",
+        description="Gemini model name used by the Yescale-backed chat agent.",
+    )
     searxng_base_url: AnyHttpUrl = Field(
         default="http://localhost:8080",  # type: ignore[assignment]
         description="Base URL for the SearXNG instance used by the news radar.",

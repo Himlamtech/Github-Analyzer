@@ -6,9 +6,9 @@ topic before any producer or consumer attempts to use it.
 
 from __future__ import annotations
 
-import structlog
 from aiokafka.admin import AIOKafkaAdminClient, NewTopic
 from aiokafka.errors import KafkaConnectionError, TopicAlreadyExistsError
+import structlog
 
 from src.domain.exceptions import TopicAdminException
 
@@ -74,9 +74,7 @@ class KafkaTopicAdmin:
                 f"Cannot connect to Kafka at {self._bootstrap_servers}: {exc}"
             ) from exc
         except Exception as exc:
-            raise TopicAdminException(
-                f"Failed to create Kafka topic {topic!r}: {exc}"
-            ) from exc
+            raise TopicAdminException(f"Failed to create Kafka topic {topic!r}: {exc}") from exc
         finally:
             if admin is not None:
                 await admin.close()

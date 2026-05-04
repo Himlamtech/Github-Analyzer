@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -15,7 +15,7 @@ from src.domain.value_objects.repository_id import RepositoryId
 @pytest.fixture
 def utc_now() -> datetime:
     """Return a timezone-aware UTC datetime for use in tests."""
-    return datetime(2024, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
+    return datetime(2024, 6, 15, 12, 0, 0, tzinfo=UTC)
 
 
 @pytest.fixture

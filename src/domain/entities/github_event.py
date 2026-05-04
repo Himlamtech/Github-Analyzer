@@ -8,11 +8,15 @@ Application and Infrastructure layers free of domain logic.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from src.domain.exceptions import ValidationError
-from src.domain.value_objects.event_type import EventType
-from src.domain.value_objects.repository_id import RepositoryId
+
+if TYPE_CHECKING:
+    from datetime import datetime
+
+    from src.domain.value_objects.event_type import EventType
+    from src.domain.value_objects.repository_id import RepositoryId
 
 
 @dataclass
@@ -55,9 +59,7 @@ class GithubEvent:
         if not self.event_id or not self.event_id.strip():
             raise ValidationError("event_id must be a non-empty string.")
         if self.actor_id <= 0:
-            raise ValidationError(
-                f"actor_id must be a positive integer, got {self.actor_id!r}."
-            )
+            raise ValidationError(f"actor_id must be a positive integer, got {self.actor_id!r}.")
         if not self.actor_login or not self.actor_login.strip():
             raise ValidationError("actor_login must be a non-empty string.")
         if self.created_at.tzinfo is None:

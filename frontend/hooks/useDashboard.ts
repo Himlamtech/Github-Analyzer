@@ -6,30 +6,30 @@ import { api } from "@/lib/api";
 import type { Category } from "@/lib/types";
 
 /** Top repos by star count, optionally filtered by category. */
-export function useTopRepos(category: Category, days: number) {
+export function useTopRepos(category: Category, days: number, limit = 20) {
   return useQuery({
-    queryKey: ["top-repos", category, days],
+    queryKey: ["top-repos", category, days, limit],
     queryFn: () =>
-      api.getTopRepos(category === "all" ? undefined : category, days),
+      api.getTopRepos(category === "all" ? undefined : category, days, limit),
     staleTime: 60_000,
   });
 }
 
-/** Top repos by current total stars, optionally filtered by category. */
-export function useTopStarredRepos(category: Category, days: number) {
+/** Top repos by all-time current total stars, optionally filtered by category. */
+export function useTopStarredRepos(category: Category, limit = 20) {
   return useQuery({
-    queryKey: ["top-starred-repos", category, days],
+    queryKey: ["top-starred-repos", category, limit],
     queryFn: () =>
-      api.getTopStarredRepos(category === "all" ? undefined : category, days),
+      api.getTopStarredRepos(category === "all" ? undefined : category, limit),
     staleTime: 60_000,
   });
 }
 
-/** Trending repos by star growth velocity (all categories). */
-export function useTrending(days: number) {
+/** Repos gaining the most stars since Monday 00:00 GMT+7. */
+export function useTrending(days: number, limit = 10) {
   return useQuery({
-    queryKey: ["trending", days],
-    queryFn: () => api.getTrending(days),
+    queryKey: ["trending", days, limit],
+    queryFn: () => api.getTrending(days, limit),
     staleTime: 60_000,
   });
 }

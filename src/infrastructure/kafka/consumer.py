@@ -6,14 +6,17 @@ Deserialises messages from orjson bytes back to Python dicts.
 
 from __future__ import annotations
 
-from typing import AsyncGenerator
+from typing import TYPE_CHECKING
 
-import orjson
-import structlog
 from aiokafka import AIOKafkaConsumer
 from aiokafka.errors import KafkaConnectionError, KafkaError
+import orjson
+import structlog
 
 from src.domain.exceptions import ConsumerException
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 logger = structlog.get_logger(__name__)
 
@@ -90,9 +93,7 @@ class KafkaEventConsumer:
             ConsumerException: If the consumer is not started or a fatal error occurs.
         """
         if self._consumer is None:
-            raise ConsumerException(
-                "KafkaEventConsumer.start() must be called before consume()."
-            )
+            raise ConsumerException("KafkaEventConsumer.start() must be called before consume().")
 
         try:
             async for msg in self._consumer:

@@ -9,18 +9,23 @@ Designed to run periodically (e.g., nightly) or after backfill operations.
 
 from __future__ import annotations
 
+from datetime import UTC, date, timedelta
 import time
-from datetime import date, timedelta
+from typing import TYPE_CHECKING, cast
 
+import pyspark.sql.functions as spark_fn
 import structlog
-from pyspark.sql import DataFrame, SparkSession
-from pyspark.sql import functions as F
 
 from src.infrastructure.observability.metrics import (
     CLICKHOUSE_INSERT_ROWS_TOTAL,
     SPARK_BATCH_DURATION_SECONDS,
     SPARK_RECORDS_PROCESSED_TOTAL,
 )
+
+if TYPE_CHECKING:
+    from pyspark.sql import DataFrame, SparkSession
+
+    from src.infrastructure.config import Settings
 
 logger = structlog.get_logger(__name__)
 
@@ -35,9 +40,7 @@ class GithubBatchJob:
 
     def __init__(self, spark: SparkSession, settings: object) -> None:
         self._spark = spark
-        from src.infrastructure.config import Settings
-
-        self._cfg: Settings = settings  # type: ignore[assignment]
+        self._cfg: Settings = cast("Settings", settings)
 
     def run(
         self,
@@ -51,8 +54,9 @@ class GithubBatchJob:
             reference_date:  End date for the window (default: today UTC).
         """
         if reference_date is None:
-            from datetime import datetime, timezone
-            reference_date = datetime.now(tz=timezone.utc).date()
+            from datetime import datetime
+
+            reference_date = datetime.now(tz=UTC).date()
 
         start_date = reference_date - timedelta(days=lookback_days)
         logger.info(
@@ -87,10 +91,7 @@ class GithubBatchJob:
             dates.append(current.strftime("%Y-%m-%d"))
             current += timedelta(days=1)
 
-        parquet_paths = [
-            f"{self._cfg.parquet_base_path}/event_date={d}"
-            for d in dates
-        ]
+        parquet_paths = [f"{self._cfg.parquet_base_path}/event_date={d}" for d in dates]
 
         return (
             self._spark.read.format("parquet")
@@ -98,7 +99,7 @@ class GithubBatchJob:
             .load(*parquet_paths)
             .withColumn(
                 "created_at",
-                F.to_timestamp(F.col("created_at")),
+                spark_fn.to_timestamp(spark_fn.col("created_at")),
             )
         )
 
@@ -109,10 +110,10 @@ class GithubBatchJob:
             df: Input events DataFrame.
         """
         star_df = (
-            df.filter(F.col("event_type") == "WatchEvent")
+            df.filter(spark_fn.col("event_type") == "WatchEvent")
             .groupBy("repo_name", "event_date")
-            .agg(F.count("*").alias("star_count"))
-            .withColumn("updated_at", F.current_timestamp())
+            .agg(spark_fn.count("*").alias("star_count"))
+            .withColumn("updated_at", spark_fn.current_timestamp())
         )
 
         row_count = star_df.count()
@@ -130,12 +131,12 @@ class GithubBatchJob:
         summary_df = (
             df.groupBy("repo_name", "event_type")
             .agg(
-                F.count("*").alias("event_count"),
-                F.countDistinct("actor_id").alias("unique_actors"),
-                F.min("created_at").alias("first_seen_at"),
-                F.max("created_at").alias("last_seen_at"),
+                spark_fn.count("*").alias("event_count"),
+                spark_fn.countDistinct("actor_id").alias("unique_actors"),
+                spark_fn.min("created_at").alias("first_seen_at"),
+                spark_fn.max("created_at").alias("last_seen_at"),
             )
-            .withColumn("computed_at", F.current_timestamp())
+            .withColumn("computed_at", spark_fn.current_timestamp())
         )
 
         row_count = summary_df.count()

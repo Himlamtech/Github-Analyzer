@@ -15,15 +15,9 @@ _NOW = datetime(2026, 3, 30, 12, 0, tzinfo=UTC)
 
 
 class FakeDashboardService:
-    async def get_shock_movers(
-        self,
-        *,
-        days: int,
-        absolute_limit: int,
-        percentage_limit: int,
-        min_baseline_stars: int,
-    ) -> dict[str, object]:
-        item = {
+    @staticmethod
+    def _repo_item() -> dict[str, object]:
+        return {
             "repo_id": 1,
             "repo_full_name": "browser-use/browser-use",
             "repo_name": "browser-use",
@@ -44,6 +38,36 @@ class FakeDashboardService:
             "github_pushed_at": _NOW,
             "rank": 1,
             "star_count_in_window": 1_200,
+        }
+
+    async def get_top_starred_repos(
+        self,
+        *,
+        category: str | None,
+        limit: int,
+        days: int,
+    ) -> list[dict[str, object]]:
+        del days
+        item = self._repo_item()
+        item["star_count_in_window"] = 0
+        return [item][:limit]
+
+    async def get_trending(self, days: int, limit: int) -> list[dict[str, object]]:
+        del days
+        item = self._repo_item()
+        item["growth_rank"] = 1
+        return [item][:limit]
+
+    async def get_shock_movers(
+        self,
+        *,
+        days: int,
+        absolute_limit: int,
+        percentage_limit: int,
+        min_baseline_stars: int,
+    ) -> dict[str, object]:
+        item = {
+            **self._repo_item(),
             "previous_star_count_in_window": 300,
             "unique_actors_in_window": 250,
             "weekly_percent_gain": 12.5,
@@ -108,6 +132,26 @@ def test_shock_movers_route_returns_market_lists(client: TestClient) -> None:
     assert response.json()["absolute_movers"][0]["repo"]["repo_full_name"] == (
         "browser-use/browser-use"
     )
+
+
+def test_top_starred_route_returns_all_time_star_leaders(client: TestClient) -> None:
+    response = client.get("/dashboard/top-starred-repos", params={"limit": 5, "days": 90})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload[0]["repo"]["repo_full_name"] == "browser-use/browser-use"
+    assert payload[0]["repo"]["stargazers_count"] == 50_000
+    assert payload[0]["star_count_in_window"] == 0
+
+
+def test_trending_route_returns_current_week_growth_rank(client: TestClient) -> None:
+    response = client.get("/dashboard/trending", params={"limit": 10})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload[0]["repo"]["repo_full_name"] == "browser-use/browser-use"
+    assert payload[0]["star_count_in_window"] == 1_200
+    assert payload[0]["growth_rank"] == 1
 
 
 def test_topic_rotation_route_returns_ranked_topics(client: TestClient) -> None:

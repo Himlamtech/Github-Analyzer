@@ -196,14 +196,14 @@ async def get_top_starred_repos(
         str | None,
         Query(description="Category filter: LLM, Agent, Diffusion, Multimodal, DataEng, Other"),
     ] = None,
-    days: Annotated[int, Query(ge=1, le=90)] = 7,
+    days: Annotated[int, Query(ge=1, le=365)] = 7,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> list[TopRepoDTO]:
-    """Top AI repos by current total star count, with window star context attached."""
+    """Top AI repos by all-time current total star count."""
     service = cast("ClickHouseDashboardService", svc)
 
     try:
-        rows = await service.get_top_starred_repos(category=category, days=days, limit=limit)
+        rows = await service.get_top_starred_repos(category=category, limit=limit, days=days)
     except DashboardQueryError as exc:
         logger.error("dashboard.top_starred_repos_failed", category=category, error=str(exc))
         raise HTTPException(status_code=503, detail="Dashboard query failed") from exc
@@ -222,12 +222,12 @@ async def get_top_starred_repos(
 async def get_trending(
     svc: Annotated[object, Depends(_get_dashboard_service)],
     days: Annotated[int, Query(ge=1, le=90)] = 7,
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    limit: Annotated[int, Query(ge=1, le=100)] = 10,
 ) -> list[TrendingRepoDTO]:
-    """Trending repos by star growth velocity across all categories.
+    """Top repos gaining the most stars in the current GMT+7 week.
 
     Args:
-        days:  Look-back window in days (1-90).
+        days:  Accepted for backward compatibility; the ranking uses the current GMT+7 week.
         limit: Maximum repos to return (1-100).
     """
     service = cast("ClickHouseDashboardService", svc)

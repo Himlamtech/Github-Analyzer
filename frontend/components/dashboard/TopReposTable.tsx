@@ -18,9 +18,11 @@ interface Props {
   subtitle?: string;
   sortBy?: "stargazers_count" | "star_count_in_window";
   source?: "top-repos" | "top-starred-repos";
+  timeLabel?: string;
+  showWindowStars?: boolean;
 }
 
-function SkeletonRow() {
+function SkeletonRow({ showWindowStars }: { showWindowStars: boolean }) {
   return (
     <tr className="animate-pulse border-b border-border">
       <td className="py-3 pl-4">
@@ -38,7 +40,11 @@ function SkeletonRow() {
       <td className="py-3 px-3"><div className="h-5 w-14 rounded-full bg-muted" /></td>
       <td className="py-3 px-3"><div className="h-4 w-16 rounded bg-muted" /></td>
       <td className="py-3 px-3"><div className="h-4 w-12 rounded bg-muted" /></td>
+      <td className="py-3 px-3"><div className="h-4 w-12 rounded bg-muted" /></td>
       <td className="py-3 pr-4"><div className="h-4 w-16 rounded bg-muted" /></td>
+      {showWindowStars && (
+        <td className="py-3 pr-4"><div className="h-4 w-16 rounded bg-muted" /></td>
+      )}
     </tr>
   );
 }
@@ -53,10 +59,13 @@ export function TopReposTable({
   subtitle = "High-signal leaderboard with category and momentum context",
   sortBy = "star_count_in_window",
   source = "top-repos",
+  timeLabel,
+  showWindowStars = source !== "top-starred-repos",
 }: Props) {
-  const topReposQuery = useTopRepos(category, days);
-  const topStarredReposQuery = useTopStarredRepos(category, days);
+  const topReposQuery = useTopRepos(category, days, limit);
+  const topStarredReposQuery = useTopStarredRepos(category, limit);
   const activeQuery = source === "top-starred-repos" ? topStarredReposQuery : topReposQuery;
+  const resolvedTimeLabel = timeLabel ?? `last ${days} days`;
   const rows = [...(activeQuery.data ?? [])]
     .sort((left, right) => {
       if (sortBy === "stargazers_count") {
@@ -77,12 +86,12 @@ export function TopReposTable({
           </div>
         </div>
         <span className="text-xs text-muted-foreground">
-          last {days} days · {rows.length} repos
+          {resolvedTimeLabel} · {rows.length} repos
         </span>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[820px] text-sm">
+        <table className="w-full min-w-[760px] text-sm">
           <thead>
             <tr className="border-b border-border text-xs text-muted-foreground">
               <th className="py-2 pl-4 text-left font-medium">#</th>
@@ -92,12 +101,16 @@ export function TopReposTable({
               <th className="py-2 px-3 text-right font-medium">Stars</th>
               <th className="py-2 px-3 text-right font-medium">Forks</th>
               <th className="py-2 px-3 text-right font-medium">Watchers</th>
-              <th className="py-2 pr-4 text-right font-medium">Window ★</th>
+              {showWindowStars && (
+                <th className="py-2 pr-4 text-right font-medium">Window ★</th>
+              )}
             </tr>
           </thead>
           <tbody>
             {activeQuery.isLoading
-              ? Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
+              ? Array.from({ length: 8 }).map((_, i) => (
+                  <SkeletonRow key={i} showWindowStars={showWindowStars} />
+                ))
               : rows.map((item, idx) => {
                   const repo = item.repo;
                   const color =
@@ -185,9 +198,11 @@ export function TopReposTable({
                         {formatNumber(repo.watchers_count)}
                       </td>
 
-                      <td className="py-3 pr-4 text-right font-mono text-xs text-emerald-400">
-                        +{formatNumber(item.star_count_in_window)}
-                      </td>
+                      {showWindowStars && (
+                        <td className="py-3 pr-4 text-right font-mono text-xs text-emerald-400">
+                          +{formatNumber(item.star_count_in_window)}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}

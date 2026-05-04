@@ -31,7 +31,7 @@ class RepositoryId:
     def __post_init__(self) -> None:
         if self.value <= 0 or self.value > _MAX_REPO_ID:
             raise InvalidRepositoryIdError(
-                f"Repository ID must be a positive integer ≤ {_MAX_REPO_ID}, got {self.value!r}."
+                f"Repository ID must be a positive integer <= {_MAX_REPO_ID}, got {self.value!r}."
             )
         if not self.name or "/" not in self.name:
             raise InvalidRepositoryIdError(

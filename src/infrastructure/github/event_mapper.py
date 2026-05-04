@@ -76,9 +76,7 @@ class GitHubEventMapper:
                 public=bool(raw.get("public", True)),
             )
         except (KeyError, TypeError, ValueError) as exc:
-            raise ValidationError(
-                f"Cannot parse GitHub event from raw dict: {exc}"
-            ) from exc
+            raise ValidationError(f"Cannot parse GitHub event from raw dict: {exc}") from exc
 
     def to_domain_entity(self, dto: GithubEventInputDTO) -> GithubEvent:
         """Map a validated input DTO to a GithubEvent domain entity.

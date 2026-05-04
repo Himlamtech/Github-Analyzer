@@ -8,10 +8,13 @@ other concrete storage technology.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from datetime import date
+from typing import TYPE_CHECKING
 
-from src.domain.entities.github_event import GithubEvent
-from src.domain.value_objects.repository_id import RepositoryId
+if TYPE_CHECKING:
+    from datetime import date
+
+    from src.domain.entities.github_event import GithubEvent
+    from src.domain.value_objects.repository_id import RepositoryId
 
 
 class EventRepositoryABC(ABC):
@@ -40,9 +43,7 @@ class EventRepositoryABC(ABC):
         """
 
     @abstractmethod
-    async def find_by_repo(
-        self, repo_id: RepositoryId, limit: int = 100
-    ) -> list[GithubEvent]:
+    async def find_by_repo(self, repo_id: RepositoryId, limit: int = 100) -> list[GithubEvent]:
         """Return events for a specific repository, most recent first.
 
         Args:

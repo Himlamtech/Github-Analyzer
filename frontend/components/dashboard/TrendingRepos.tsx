@@ -9,10 +9,19 @@ import { formatNumber } from "@/lib/utils";
 interface Props {
   days: number;
   onSelectRepo: (name: string) => void;
+  limit?: number;
+  title?: string;
+  subtitle?: string;
 }
 
-export function TrendingRepos({ days, onSelectRepo }: Props) {
-  const { data, isLoading } = useTrending(days);
+export function TrendingRepos({
+  days,
+  onSelectRepo,
+  limit = 10,
+  title = "Weekly Star Growth",
+  subtitle = "Repos gaining the most stars since Monday 00:00 GMT+7",
+}: Props) {
+  const { data, isLoading } = useTrending(days, limit);
   const maxStars = Math.max(...(data ?? []).map((d) => d.star_count_in_window), 1);
 
   return (
@@ -20,10 +29,10 @@ export function TrendingRepos({ days, onSelectRepo }: Props) {
       <div className="flex items-center gap-2 border-b border-border px-4 py-4">
         <TrendingUp className="h-4 w-4 text-emerald-400" />
         <div>
-          <h2 className="text-sm font-semibold">Trending Repositories</h2>
-          <p className="text-xs text-muted-foreground">Fastest current momentum rank</p>
+          <h2 className="text-sm font-semibold">{title}</h2>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
         </div>
-        <span className="ml-auto text-xs text-muted-foreground">last {days}d</span>
+        <span className="ml-auto text-xs text-muted-foreground">top {limit}</span>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -37,7 +46,7 @@ export function TrendingRepos({ days, onSelectRepo }: Props) {
                 <div className="h-2 w-full rounded-full bg-muted" />
               </div>
             ))
-          : (data ?? []).slice(0, 10).map((item) => {
+          : (data ?? []).slice(0, limit).map((item) => {
               const pct = Math.round((item.star_count_in_window / maxStars) * 100);
               const color =
                 CATEGORY_COLORS[item.repo.category] ?? "#6b7280";
@@ -51,22 +60,22 @@ export function TrendingRepos({ days, onSelectRepo }: Props) {
                   <div className="mb-2 flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex min-w-0 items-center gap-1.5">
-                      <span className="w-5 shrink-0 text-center text-xs font-bold text-muted-foreground">
-                        {item.growth_rank}
-                      </span>
-                      <span className="truncate text-sm font-medium">
-                        {item.repo.repo_full_name}
-                      </span>
-                      <a
-                        href={item.repo.html_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="shrink-0"
-                      >
-                        <ExternalLink className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                      </a>
-                    </div>
+                        <span className="w-5 shrink-0 text-center text-xs font-bold text-muted-foreground">
+                          {item.growth_rank}
+                        </span>
+                        <span className="truncate text-sm font-medium">
+                          {item.repo.repo_full_name}
+                        </span>
+                        <a
+                          href={item.repo.html_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="shrink-0"
+                        >
+                          <ExternalLink className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                        </a>
+                      </div>
                       <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
                         {item.repo.primary_language && <span>{item.repo.primary_language}</span>}
                         <span

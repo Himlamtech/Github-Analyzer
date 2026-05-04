@@ -7,12 +7,12 @@ unrecognised data never silently flows downstream.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from src.domain.exceptions import InvalidEventTypeError
 
 
-class EventType(str, Enum):
+class EventType(StrEnum):
     """Enumeration of GitHub event types tracked by this system.
 
     Inherits from ``str`` so that instances serialise directly to their
@@ -42,8 +42,7 @@ class EventType(str, Enum):
             return cls(raw)
         except ValueError as exc:
             raise InvalidEventTypeError(
-                f"Unknown GitHub event type: {raw!r}. "
-                f"Supported types: {[e.value for e in cls]}"
+                f"Unknown GitHub event type: {raw!r}. Supported types: {[e.value for e in cls]}"
             ) from exc
 
     def __str__(self) -> str:

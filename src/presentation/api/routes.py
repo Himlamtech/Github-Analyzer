@@ -68,7 +68,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://frontend:3000",
     ],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
     expose_headers=["X-Request-Id", "X-Trace-Id", "X-Trace-Explore-Url"],
 )

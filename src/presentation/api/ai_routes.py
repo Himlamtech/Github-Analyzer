@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Annotated, cast
 from fastapi import APIRouter, Depends, HTTPException, Query
 import structlog
 
+from src.application.dtos.ai_chat_dto import AIChatRequestDTO, AIChatResponseDTO
 from src.application.dtos.ai_market_brief_dto import MarketBriefResponseDTO
 from src.application.dtos.ai_related_repo_dto import RelatedReposResponseDTO
 from src.application.dtos.ai_repo_brief_dto import RepoBriefResponseDTO
@@ -21,6 +22,9 @@ from src.domain.exceptions import (
 from src.infrastructure.config import Settings, get_settings
 
 if TYPE_CHECKING:
+    from src.application.use_cases.answer_github_data_question import (
+        AnswerGithubDataQuestionUseCase,
+    )
     from src.application.use_cases.build_market_brief import BuildMarketBriefUseCase
     from src.application.use_cases.generate_repo_brief import GenerateRepoBriefUseCase
     from src.application.use_cases.generate_repo_compare import GenerateRepoCompareUseCase
@@ -106,7 +110,7 @@ def _get_market_brief_use_case(
     )
 
     generation_service: OllamaGenerationService | None = None
-    if settings.ai_market_brief_llm_enabled:
+    if settings.ai_market_brief_llm_enabled or settings.ai_repo_brief_llm_enabled:
         generation_service = OllamaGenerationService(
             base_url=str(settings.ollama_base_url),
             model=settings.ollama_generation_model,
@@ -122,7 +126,7 @@ def _get_market_brief_use_case(
             database=settings.clickhouse_database,
         ),
         generation_service=generation_service,
-        llm_enabled=settings.ai_market_brief_llm_enabled,
+        llm_enabled=settings.ai_market_brief_llm_enabled or settings.ai_repo_brief_llm_enabled,
     )
 
 
@@ -187,6 +191,108 @@ def _get_related_repos_use_case(
         ),
         candidate_limit=settings.ai_search_candidate_limit,
     )
+
+
+def _get_chat_use_case(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> object:
+    """Construct the GitHub data chat agent use case for the request."""
+    from src.application.use_cases.answer_github_data_question import (
+        AnswerGithubDataQuestionUseCase,
+    )
+    from src.application.use_cases.build_market_brief import BuildMarketBriefUseCase
+    from src.application.use_cases.generate_repo_brief import GenerateRepoBriefUseCase
+    from src.application.use_cases.search_repositories import SearchRepositoriesUseCase
+    from src.infrastructure.llm.ollama_embedding_service import OllamaEmbeddingService
+    from src.infrastructure.llm.ollama_generation_service import OllamaGenerationService
+    from src.infrastructure.llm.yescale_generation_service import YescaleGenerationService
+    from src.infrastructure.storage.clickhouse_ai_insights_service import (
+        ClickHouseAIInsightsService,
+    )
+    from src.infrastructure.storage.clickhouse_ai_service import ClickHouseAISearchService
+
+    insights_service = ClickHouseAIInsightsService(
+        host=settings.clickhouse_host,
+        port=settings.clickhouse_port,
+        user=settings.clickhouse_user,
+        password=settings.clickhouse_password,
+        database=settings.clickhouse_database,
+    )
+    search_service = ClickHouseAISearchService(
+        host=settings.clickhouse_host,
+        port=settings.clickhouse_port,
+        user=settings.clickhouse_user,
+        password=settings.clickhouse_password,
+        database=settings.clickhouse_database,
+    )
+    embedding_service: OllamaEmbeddingService | None = None
+    if settings.ai_search_semantic_enabled:
+        embedding_service = OllamaEmbeddingService(
+            base_url=str(settings.ollama_base_url),
+            model=settings.ollama_embedding_model,
+            timeout_seconds=settings.ai_search_embedding_timeout_seconds,
+        )
+
+    yescale_api_key = settings.yescale_api_key.strip()
+    generation_service: YescaleGenerationService | OllamaGenerationService | None = None
+    chat_llm_enabled = False
+    if yescale_api_key:
+        generation_service = YescaleGenerationService(
+            base_url=str(settings.yescale_base_url),
+            model=settings.yescale_generation_model,
+            api_key=yescale_api_key,
+            timeout_seconds=settings.ai_repo_brief_timeout_seconds,
+        )
+        chat_llm_enabled = True
+    elif settings.ai_market_brief_llm_enabled:
+        generation_service = OllamaGenerationService(
+            base_url=str(settings.ollama_base_url),
+            model=settings.ollama_generation_model,
+            timeout_seconds=settings.ai_repo_brief_timeout_seconds,
+        )
+        chat_llm_enabled = True
+
+    return AnswerGithubDataQuestionUseCase(
+        market_brief_use_case=BuildMarketBriefUseCase(
+            insights_service,
+            generation_service=generation_service,
+            llm_enabled=settings.ai_market_brief_llm_enabled,
+        ),
+        repo_brief_use_case=GenerateRepoBriefUseCase(
+            insights_service,
+            generation_service=generation_service,
+            llm_enabled=settings.ai_repo_brief_llm_enabled,
+        ),
+        search_use_case=SearchRepositoriesUseCase(
+            search_service,
+            embedding_service=embedding_service,
+            semantic_enabled=settings.ai_search_semantic_enabled,
+            candidate_limit=settings.ai_search_candidate_limit,
+        ),
+        generation_service=generation_service,
+        llm_enabled=chat_llm_enabled,
+    )
+
+
+@router.post("/chat", response_model=AIChatResponseDTO)
+async def chat_with_github_data(
+    use_case: Annotated[object, Depends(_get_chat_use_case)],
+    request: AIChatRequestDTO,
+) -> AIChatResponseDTO:
+    """Answer a natural-language question using grounded GitHub trend data."""
+    chat_use_case = cast("AnswerGithubDataQuestionUseCase", use_case)
+    try:
+        return await chat_use_case.execute(
+            question=request.question,
+            days=request.days,
+            history=request.history,
+        )
+    except ValidationError as exc:
+        logger.warning("ai.chat_validation_failed", error=str(exc))
+        raise HTTPException(status_code=422, detail=exc.message) from exc
+    except AIInsightError as exc:
+        logger.error("ai.chat_failed", error=str(exc))
+        raise HTTPException(status_code=503, detail="AI chat unavailable") from exc
 
 
 @router.get("/search", response_model=RepoSearchResponseDTO)

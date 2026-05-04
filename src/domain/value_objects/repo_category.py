@@ -7,10 +7,10 @@ repo_metadata for fast GROUP BY queries without runtime topic scanning.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class RepoCategory(str, Enum):
+class RepoCategory(StrEnum):
     """AI repository category taxonomy.
 
     Priority order (highest wins when multiple topics match):

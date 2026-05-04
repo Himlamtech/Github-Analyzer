@@ -82,5 +82,5 @@ class TestEventTypeEnumCompleteness:
 
     def test_event_type_is_hashable(self) -> None:
         """EventType values must be usable in sets and as dict keys."""
-        seen = {et for et in EventType}
+        seen = set(EventType)
         assert len(seen) == 5

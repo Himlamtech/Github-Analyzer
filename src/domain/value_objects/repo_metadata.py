@@ -8,10 +8,13 @@ Not an Entity: equality is by repo_full_name, no lifecycle management.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from src.domain.value_objects.repo_category import RepoCategory
+if TYPE_CHECKING:
+    from datetime import datetime
+
+    from src.domain.value_objects.repo_category import RepoCategory
 
 
 @dataclass(frozen=True)

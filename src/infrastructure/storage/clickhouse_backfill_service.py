@@ -29,6 +29,17 @@ INSERT INTO github_data
  repo_full_metadata_json, repo_readme_text, repo_issues_json)
 VALUES
 """
+
+
+def _as_int(value: object) -> int:
+    """Safely coerce a raw record value to int for insertion."""
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int | float | str):
+        return int(value)
+    return 0
+
+
 @dataclass(frozen=True)
 class ClickHouseBackfillResult:
     """Summary of a completed Parquet-to-ClickHouse bootstrap run."""
@@ -137,13 +148,13 @@ class ClickHouseBackfillService:
         return (
             str(record.get("event_id") or ""),
             str(record.get("event_type") or ""),
-            int(record.get("actor_id") or 0),
+            _as_int(record.get("actor_id")),
             str(record.get("actor_login") or ""),
-            int(record.get("repo_id") or 0),
+            _as_int(record.get("repo_id")),
             str(record.get("repo_name") or ""),
             created_at_value,
             str(record.get("payload_json") or ""),
-            int(record.get("repo_stargazers_count") or 0),
+            _as_int(record.get("repo_stargazers_count")),
             str(record.get("repo_primary_language") or ""),
             repo_topics,
             str(record.get("repo_description") or ""),
@@ -211,8 +222,7 @@ class ClickHouseBackfillService:
                 parquet_reader = pq.ParquetFile(str(parquet_file))
                 for batch in parquet_reader.iter_batches(batch_size=self._batch_size):
                     normalized_rows = [
-                        self._normalize_record(record)
-                        for record in batch.to_pylist()
+                        self._normalize_record(record) for record in batch.to_pylist()
                     ]
                     try:
                         client.execute(_INSERT_EVENTS_QUERY, normalized_rows)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -37,9 +37,7 @@ def producer() -> KafkaEventProducer:
 class TestKafkaEventProducerStart:
     """Tests for producer startup."""
 
-    async def test_start_creates_aiokafka_producer(
-        self, producer: KafkaEventProducer
-    ) -> None:
+    async def test_start_creates_aiokafka_producer(self, producer: KafkaEventProducer) -> None:
         """start() must initialise the internal AIOKafkaProducer."""
         mock_inner = AsyncMock()
         with patch(
@@ -93,9 +91,7 @@ class TestKafkaEventProducerPublish:
             call_kwargs = mock_inner.send_and_wait.call_args
             assert call_kwargs.kwargs["key"] == b"1234"
 
-    async def test_stop_calls_inner_stop(
-        self, producer: KafkaEventProducer
-    ) -> None:
+    async def test_stop_calls_inner_stop(self, producer: KafkaEventProducer) -> None:
         """stop() must flush and close the inner producer."""
         mock_inner = AsyncMock()
         with patch(

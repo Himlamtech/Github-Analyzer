@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -20,7 +20,7 @@ def _make_event(**overrides: object) -> GithubEvent:
         "repo_id": RepositoryId.from_api(repo_id=1, repo_name="owner/repo"),
         "actor_id": 42,
         "actor_login": "test_user",
-        "created_at": datetime(2024, 1, 1, tzinfo=timezone.utc),
+        "created_at": datetime(2024, 1, 1, tzinfo=UTC),
         "payload": {},
         "public": True,
     }
@@ -107,16 +107,12 @@ class TestGithubEventMethods:
 
     def test_event_date_returns_yyyy_mm_dd_string(self) -> None:
         """event_date() must return the UTC date in YYYY-MM-DD format."""
-        event = _make_event(
-            created_at=datetime(2024, 7, 4, 23, 59, 0, tzinfo=timezone.utc)
-        )
+        event = _make_event(created_at=datetime(2024, 7, 4, 23, 59, 0, tzinfo=UTC))
         assert event.event_date() == "2024-07-04"
 
     def test_event_date_midnight_boundary_uses_utc(self) -> None:
         """event_date() at midnight UTC must return the correct UTC date."""
-        event = _make_event(
-            created_at=datetime(2024, 12, 31, 0, 0, 0, tzinfo=timezone.utc)
-        )
+        event = _make_event(created_at=datetime(2024, 12, 31, 0, 0, 0, tzinfo=UTC))
         assert event.event_date() == "2024-12-31"
 
     def test_is_bot_event_with_github_actions_bot(self) -> None:
@@ -142,7 +138,7 @@ class TestGithubEventMethods:
             repo_id=RepositoryId.from_api(repo_id=1, repo_name="a/b"),
             actor_id=1,
             actor_login="dev",
-            created_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            created_at=datetime(2024, 1, 1, tzinfo=UTC),
         )
         assert event.payload == {}
 
@@ -154,6 +150,6 @@ class TestGithubEventMethods:
             repo_id=RepositoryId.from_api(repo_id=1, repo_name="a/b"),
             actor_id=1,
             actor_login="dev",
-            created_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            created_at=datetime(2024, 1, 1, tzinfo=UTC),
         )
         assert event.public is True

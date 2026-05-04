@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -12,7 +12,7 @@ from src.domain.value_objects.repo_metadata import RepoLicense, RepoMetadata, Re
 
 def _make_metadata(**overrides: object) -> RepoMetadata:
     """Build a valid RepoMetadata instance with sensible defaults."""
-    now = datetime(2024, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
+    now = datetime(2024, 6, 15, 12, 0, 0, tzinfo=UTC)
     defaults: dict[str, object] = {
         "repo_id": 123456,
         "repo_full_name": "openai/gpt-5",

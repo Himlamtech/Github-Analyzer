@@ -11,7 +11,7 @@ Uses ``clickhouse-driver`` (sync) wrapped in ``asyncio.to_thread``.
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, cast
 
@@ -25,6 +25,8 @@ from src.domain.services.category_classifier import CategoryClassifier
 from src.domain.value_objects.repo_category import RepoCategory
 
 logger = structlog.get_logger(__name__)
+
+_GMT7 = timezone(timedelta(hours=7))
 
 # ── SQL Queries ───────────────────────────────────────────────────────────────
 
@@ -75,8 +77,7 @@ LIMIT %(limit)s
 """
 )
 
-_TOP_STARRED_REPOS_ALL_QUERY = (
-    """
+_TOP_STARRED_REPOS_ALL_QUERY = """
 SELECT
     rm.repo_id AS repo_id,
     rm.repo_full_name AS repo_full_name,
@@ -95,22 +96,14 @@ SELECT
     rm.owner_avatar_url AS owner_avatar_url,
     rm.license_name AS license_name,
     rm.github_created_at AS github_created_at,
-    greatest(rm.github_pushed_at, coalesce(metrics.latest_event_at, rm.github_pushed_at))
-        AS github_pushed_at,
+    rm.github_pushed_at AS github_pushed_at,
     rm.rank AS rank,
-    coalesce(metrics.star_count_in_window, 0) AS star_count_in_window
+    toInt64(0) AS star_count_in_window
 FROM repo_metadata AS rm
 FINAL
-LEFT JOIN (
-    """
-    + _REPO_WINDOW_METRICS_SUBQUERY
-    + """
-) AS metrics
-    ON metrics.repo_name = rm.repo_full_name
-ORDER BY rm.stargazers_count DESC, star_count_in_window DESC
+ORDER BY rm.stargazers_count DESC, rm.repo_full_name ASC
 LIMIT %(limit)s
 """
-)
 
 _TOP_REPOS_ALL_FALLBACK_QUERY = """
 SELECT
@@ -164,19 +157,18 @@ SELECT
     splitByChar('/', normalized_repo_name)[1] AS owner_login,
     '' AS owner_avatar_url,
     '' AS license_name,
-    now() AS github_created_at,
+    min(created_at) AS github_created_at,
     max(created_at) AS github_pushed_at,
     toInt32(0) AS rank,
-    countIf(event_type = 'WatchEvent') AS star_count_in_window
+    toInt64(0) AS star_count_in_window
 FROM (
     SELECT
         *,
         lowerUTF8(repo_name) AS normalized_repo_name
     FROM github_analyzer.github_data
-    WHERE created_at >= now() - INTERVAL %(days)s DAY
 ) AS raw
 GROUP BY normalized_repo_name
-ORDER BY any(repo_stargazers_count) DESC, star_count_in_window DESC
+ORDER BY max(repo_stargazers_count) DESC, normalized_repo_name ASC
 LIMIT %(limit)s
 """
 
@@ -218,8 +210,7 @@ LIMIT %(limit)s
 """
 )
 
-_TOP_STARRED_REPOS_CATEGORY_QUERY = (
-    """
+_TOP_STARRED_REPOS_CATEGORY_QUERY = """
 SELECT
     rm.repo_id AS repo_id,
     rm.repo_full_name AS repo_full_name,
@@ -238,23 +229,15 @@ SELECT
     rm.owner_avatar_url AS owner_avatar_url,
     rm.license_name AS license_name,
     rm.github_created_at AS github_created_at,
-    greatest(rm.github_pushed_at, coalesce(metrics.latest_event_at, rm.github_pushed_at))
-        AS github_pushed_at,
+    rm.github_pushed_at AS github_pushed_at,
     rm.rank AS rank,
-    coalesce(metrics.star_count_in_window, 0) AS star_count_in_window
+    toInt64(0) AS star_count_in_window
 FROM repo_metadata AS rm
 FINAL
-LEFT JOIN (
-    """
-    + _REPO_WINDOW_METRICS_SUBQUERY
-    + """
-) AS metrics
-    ON metrics.repo_name = rm.repo_full_name
 WHERE rm.category = %(category)s
-ORDER BY rm.stargazers_count DESC, star_count_in_window DESC
+ORDER BY rm.stargazers_count DESC, rm.repo_full_name ASC
 LIMIT %(limit)s
 """
-)
 
 _TOP_REPOS_CATEGORY_FALLBACK_QUERY = """
 SELECT
@@ -309,27 +292,24 @@ SELECT
     splitByChar('/', normalized_repo_name)[1] AS owner_login,
     '' AS owner_avatar_url,
     '' AS license_name,
-    now() AS github_created_at,
+    min(created_at) AS github_created_at,
     max(created_at) AS github_pushed_at,
     toInt32(0) AS rank,
-    countIf(event_type = 'WatchEvent') AS star_count_in_window
+    toInt64(0) AS star_count_in_window
 FROM (
     SELECT
         *,
         lowerUTF8(repo_name) AS normalized_repo_name
     FROM github_analyzer.github_data
-    WHERE created_at >= now() - INTERVAL %(days)s DAY
 ) AS raw
 GROUP BY normalized_repo_name
 HAVING %(category)s = 'Other'
-ORDER BY any(repo_stargazers_count) DESC, star_count_in_window DESC
+ORDER BY max(repo_stargazers_count) DESC, normalized_repo_name ASC
 LIMIT %(limit)s
 """
 
-# Trending: ranked by recent event velocity. When WatchEvent data accumulates
-# this naturally surfaces repos gaining stars fastest.
-_TRENDING_QUERY = (
-    """
+# Trending: ranked by stars added since the current GMT+7 week started.
+_TRENDING_QUERY = """
 SELECT
     rm.repo_id AS repo_id,
     rm.repo_full_name AS repo_full_name,
@@ -355,15 +335,19 @@ SELECT
 FROM repo_metadata AS rm
 FINAL
 INNER JOIN (
-    """
-    + _REPO_WINDOW_METRICS_SUBQUERY
-    + """
+    SELECT
+        repo_name,
+        countIf(event_type = 'WatchEvent') AS star_count_in_window,
+        max(created_at) AS latest_event_at
+    FROM github_data
+    WHERE created_at >= %(week_start)s
+      AND created_at < %(week_end)s
+    GROUP BY repo_name
 ) AS metrics
     ON metrics.repo_name = rm.repo_full_name
 ORDER BY star_count_in_window DESC, rm.stargazers_count DESC
 LIMIT %(limit)s
 """
-)
 
 _TRENDING_FALLBACK_QUERY = """
 SELECT
@@ -392,7 +376,8 @@ FROM (
         *,
         lowerUTF8(repo_name) AS normalized_repo_name
     FROM github_analyzer.github_data
-    WHERE created_at >= now() - INTERVAL %(days)s DAY
+    WHERE created_at >= %(week_start)s
+      AND created_at < %(week_end)s
 ) AS raw
 GROUP BY normalized_repo_name
 ORDER BY star_count_in_window DESC, any(repo_stargazers_count) DESC
@@ -839,9 +824,8 @@ WITH repo_metrics AS (
         split_part(repo_name, '/', 1) AS owner_login,
         min(created_at) AS github_created_at,
         max(created_at) AS github_pushed_at,
-        count() FILTER (WHERE event_type = 'WatchEvent') AS star_count_in_window
+        0 AS star_count_in_window
     FROM read_parquet(?, hive_partitioning = true, union_by_name = true)
-    WHERE event_date >= CAST(? AS DATE)
     GROUP BY repo_id, repo_name
 )
 SELECT
@@ -867,7 +851,56 @@ SELECT
     star_count_in_window
 FROM repo_metrics
 WHERE (? IS NULL OR ? = 'Other')
-ORDER BY stargazers_count DESC, star_count_in_window DESC
+ORDER BY stargazers_count DESC, repo_full_name ASC
+LIMIT ?
+"""
+
+_PARQUET_TRENDING_QUERY = """
+WITH repo_metrics AS (
+    SELECT
+        repo_id,
+        repo_name AS repo_full_name,
+        split_part(repo_name, '/', 2) AS repo_name_only,
+        max(repo_description) AS description,
+        max(repo_primary_language) AS primary_language,
+        list_distinct(
+            list_filter(flatten(list(repo_topics)), x -> x IS NOT NULL AND x != '')
+        ) AS topics,
+        max(repo_stargazers_count) AS stargazers_count,
+        split_part(repo_name, '/', 1) AS owner_login,
+        min(created_at) AS github_created_at,
+        max(created_at) AS github_pushed_at,
+        count(*) FILTER (WHERE event_type = 'WatchEvent') AS star_count_in_window
+    FROM read_parquet(?, hive_partitioning = true, union_by_name = true)
+    WHERE event_date >= CAST(? AS DATE)
+      AND created_at >= ?
+      AND created_at < ?
+    GROUP BY repo_id, repo_name
+)
+SELECT
+    repo_id,
+    repo_full_name,
+    repo_name_only,
+    'https://github.com/' || repo_full_name AS html_url,
+    description,
+    primary_language,
+    topics,
+    'Other' AS category,
+    stargazers_count,
+    stargazers_count AS watchers_count,
+    0 AS forks_count,
+    0 AS open_issues_count,
+    0 AS subscribers_count,
+    owner_login,
+    '' AS owner_avatar_url,
+    '' AS license_name,
+    github_created_at,
+    github_pushed_at,
+    0 AS rank,
+    star_count_in_window
+FROM repo_metrics
+WHERE star_count_in_window > 0
+ORDER BY star_count_in_window DESC, stargazers_count DESC
 LIMIT ?
 """
 
@@ -1066,6 +1099,21 @@ FINAL
         cutoff = datetime.now(tz=UTC).date() - timedelta(days=days)
         return cutoff.isoformat()
 
+    @staticmethod
+    def _current_gmt7_week_bounds(
+        now: datetime | None = None,
+    ) -> tuple[datetime, datetime]:
+        """Return the current GMT+7 week window as UTC datetimes."""
+        current_utc = now or datetime.now(tz=UTC)
+        local_now = current_utc.astimezone(_GMT7)
+        week_start_local = datetime.combine(
+            (local_now.date() - timedelta(days=local_now.weekday())),
+            datetime.min.time(),
+            tzinfo=_GMT7,
+        )
+        week_start_utc = week_start_local.astimezone(UTC)
+        return week_start_utc, current_utc
+
     def _parquet_data_exists(self) -> bool:
         return Path(self._parquet_base_path).exists() and any(
             Path(self._parquet_base_path).glob("event_date=*")
@@ -1087,6 +1135,21 @@ FINAL
             f"{self._parquet_base_path}/event_date={partition_date}/event_type=*/*.parquet"
             for partition_date in partition_dates
             if partition_date >= cutoff
+        ]
+
+    def _parquet_all_query_paths(self) -> list[str]:
+        """Return all available parquet partitions."""
+        base_path = Path(self._parquet_base_path)
+        if not base_path.exists():
+            return []
+        partition_dates = sorted(
+            path.name.split("=", maxsplit=1)[1]
+            for path in base_path.glob("event_date=*")
+            if path.is_dir() and "=" in path.name
+        )
+        return [
+            f"{self._parquet_base_path}/event_date={partition_date}/event_type=*/*.parquet"
+            for partition_date in partition_dates
         ]
 
     def _execute_parquet_query(
@@ -1248,10 +1311,10 @@ FINAL
     async def get_top_starred_repos(
         self,
         category: str | None,
-        days: int,
         limit: int,
+        days: int = 7,
     ) -> list[dict[str, Any]]:
-        """Top repos by current total star count, optionally filtered by category."""
+        """Top repos by current all-time star count, optionally filtered by category."""
         has_categorized_metadata = self._has_categorized_repo_metadata()
         if category and has_categorized_metadata:
             params: dict[str, Any] = {
@@ -1285,13 +1348,12 @@ FINAL
                 rows = self._execute_query(fallback_query, params)
             if not rows:
                 rows = self._execute_query(fallback_query, params)
-            parquet_paths = self._parquet_query_paths(days)
+            parquet_paths = self._parquet_all_query_paths()
             if not rows and parquet_paths:
                 rows = self._execute_parquet_query(
                     _PARQUET_TOP_STARRED_REPOS_QUERY,
                     [
                         parquet_paths,
-                        self._cutoff_date(days),
                         category,
                         category,
                         limit,
@@ -1308,18 +1370,20 @@ FINAL
         return await asyncio.to_thread(_run)
 
     async def get_trending(self, days: int, limit: int) -> list[dict[str, Any]]:
-        """Trending repos by star growth velocity across all categories.
+        """Trending repos by stars added in the current GMT+7 week.
 
         Args:
-            days:  Look-back window in days.
+            days:  Retained for API compatibility; current-week ranking ignores it.
             limit: Maximum rows to return.
 
         Returns:
             List of dicts: repo fields + star_count_in_window, with growth_rank added.
         """
         has_categorized_metadata = self._has_categorized_repo_metadata()
+        week_start, week_end = self._current_gmt7_week_bounds()
         params: dict[str, Any] = {
-            "days": days,
+            "week_start": week_start,
+            "week_end": week_end,
             "limit": limit if has_categorized_metadata else max(limit * 8, 40),
         }
         query = _TRENDING_QUERY if has_categorized_metadata else _TRENDING_FALLBACK_QUERY
@@ -1333,15 +1397,19 @@ FINAL
                 rows = self._execute_query(_TRENDING_FALLBACK_QUERY, params)
             if not rows:
                 rows = self._execute_query(_TRENDING_FALLBACK_QUERY, params)
-            parquet_paths = self._parquet_query_paths(days)
+            week_partition_days = max(
+                1,
+                (week_end.date() - week_start.date()).days + 1,
+            )
+            parquet_paths = self._parquet_query_paths(week_partition_days)
             if not rows and parquet_paths:
                 rows = self._execute_parquet_query(
-                    _PARQUET_TOP_REPOS_QUERY,
+                    _PARQUET_TRENDING_QUERY,
                     [
                         parquet_paths,
-                        self._cutoff_date(days),
-                        None,
-                        None,
+                        week_start.date().isoformat(),
+                        week_start,
+                        week_end,
                         limit,
                     ],
                 )

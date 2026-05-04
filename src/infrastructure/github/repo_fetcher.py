@@ -165,6 +165,7 @@ _HEADERS = {
     "X-GitHub-Api-Version": "2022-11-28",
 }
 
+
 async def fetch_repo(
     full_name: str,
     token: str,

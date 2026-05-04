@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { CategoryFilter } from "@/components/dashboard/CategoryFilter";
+import { CategorySummaryGrid } from "@/components/dashboard/CategorySummaryGrid";
 import { LanguageDistChart } from "@/components/dashboard/LanguageDistChart";
 import { NewsRadarPanel } from "@/components/dashboard/NewsRadarPanel";
 import { TopicHeatmap } from "@/components/dashboard/TopicHeatmap";
@@ -17,7 +18,9 @@ import { type Category } from "@/lib/types";
 export default function DashboardPage() {
   const [category, setCategory] = useState<Category>("all");
   const [days, setDays] = useState(7);
+  const [historyLimit, setHistoryLimit] = useState(10);
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
+  const historyLimitOptions = [5, 10, 20];
 
   return (
     <div className="min-h-screen bg-background">
@@ -29,12 +32,12 @@ export default function DashboardPage() {
             <div>
               <div className="section-kicker">Dashboard</div>
               <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-950">
-                Market pulse, movers, and ecosystem shape
+                GitHub leaders, weekly movers, and ecosystem shape
               </h1>
             </div>
             <p className="max-w-2xl text-sm leading-6 text-slate-600">
-              Use this workspace for scanning weekly movement, comparing categories,
-              and picking a repo to inspect later in Intelligence.
+              Start with two primary leaderboards: all-time repositories by stars
+              and the repos adding the most stars in the current GMT+7 week.
             </p>
           </div>
 
@@ -51,38 +54,58 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        <section id="pulse" className="space-y-4">
-          <div>
-            <div className="section-kicker">Pulse</div>
-            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
-              This week changed
-            </h2>
+        <section id="main-dashboards" className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="section-kicker">Main Dashboards</div>
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
+                Historical stars and current-week growth
+              </h2>
+            </div>
+            <div className="flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-50/85 p-1">
+              {historyLimitOptions.map((limit) => (
+                <button
+                  key={limit}
+                  onClick={() => setHistoryLimit(limit)}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
+                    historyLimit === limit
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-slate-600 hover:bg-white hover:text-slate-950"
+                  }`}
+                >
+                  Top {limit}
+                </button>
+              ))}
+            </div>
           </div>
-          <WeekInReview days={days} onSelectRepo={setSelectedRepo} />
-        </section>
 
-        <section id="movement" className="space-y-4">
-          <div>
-            <div className="section-kicker">Movement</div>
-            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
-              Top repos, trending repos, and external signal
-            </h2>
-          </div>
-
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_360px]">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_420px]">
             <TopReposTable
               category={category}
               days={days}
               selectedRepo={selectedRepo}
               onSelectRepo={setSelectedRepo}
-              limit={10}
+              limit={historyLimit}
               sortBy="stargazers_count"
               source="top-starred-repos"
-              title="Top repositories by total stars"
-              subtitle="Current market leaders with category context"
+              showWindowStars={false}
+              timeLabel="all-time"
+              title="Top repositories by all-time stars"
+              subtitle="Historical leaders ranked by current GitHub star count"
             />
-            <TrendingRepos days={days} onSelectRepo={setSelectedRepo} />
+            <TrendingRepos days={days} limit={10} onSelectRepo={setSelectedRepo} />
           </div>
+        </section>
+
+        <section id="supporting-dashboards" className="space-y-4">
+          <div>
+            <div className="section-kicker">Supporting Dashboards</div>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
+              Languages, categories, topics, and external signal
+            </h2>
+          </div>
+
+          <WeekInReview days={days} onSelectRepo={setSelectedRepo} />
 
           <div className="grid gap-4 xl:grid-cols-2">
             <NewsRadarPanel days={days} onSelectRepo={setSelectedRepo} />
@@ -94,9 +117,11 @@ export default function DashboardPage() {
           <div>
             <div className="section-kicker">Ecosystem</div>
             <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
-              Languages and topic concentration
+              Ranking by language, category, and topic concentration
             </h2>
           </div>
+
+          <CategorySummaryGrid />
 
           <div className="grid gap-4 xl:grid-cols-2">
             <LanguageDistChart days={days} />

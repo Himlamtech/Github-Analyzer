@@ -9,8 +9,13 @@ Configuration targets the local hardware profile:
 
 from __future__ import annotations
 
-import structlog
+from typing import TYPE_CHECKING, cast
+
 from pyspark.sql import SparkSession
+import structlog
+
+if TYPE_CHECKING:
+    from src.infrastructure.config import Settings
 
 logger = structlog.get_logger(__name__)
 
@@ -38,9 +43,7 @@ def create_spark_session(settings: object) -> SparkSession:
     Returns:
         A fully configured, started SparkSession.
     """
-    from src.infrastructure.config import Settings
-
-    cfg: Settings = settings  # type: ignore[assignment]
+    cfg: Settings = cast("Settings", settings)
 
     spark = (
         SparkSession.builder.appName("GithubAiTrendAnalyzer")

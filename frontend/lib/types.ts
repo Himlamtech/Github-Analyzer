@@ -241,6 +241,32 @@ export interface RelatedReposResponse {
   results: RelatedRepoResult[];
 }
 
+export interface AIChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AIChatRequest {
+  question: string;
+  days: number;
+  history: AIChatMessage[];
+}
+
+export interface AIChatEvidence {
+  label: string;
+  value: string;
+  source: string;
+}
+
+export interface AIChatResponse {
+  answer: string;
+  mode: "template" | "model";
+  intent: "market" | "repo" | "search" | "mixed";
+  tools_used: string[];
+  evidence: AIChatEvidence[];
+  follow_up_questions: string[];
+}
+
 export const CATEGORY_COLORS: Record<string, string> = {
   LLM: "#3b82f6",       // blue-500
   Agent: "#8b5cf6",     // violet-500

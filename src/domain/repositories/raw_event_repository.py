@@ -7,7 +7,10 @@ and optimised for large sequential writes rather than random access.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from datetime import date
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from datetime import date
 
 
 class RawEventRepositoryABC(ABC):
