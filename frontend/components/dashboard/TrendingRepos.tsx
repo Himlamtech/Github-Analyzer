@@ -36,8 +36,8 @@ export function TrendingRepos({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {isLoading
-          ? Array.from({ length: 10 }).map((_, i) => (
+        {isLoading ? (
+          Array.from({ length: 10 }).map((_, i) => (
               <div
                 key={i}
                 className="animate-pulse border-b border-border/60 px-4 py-3"
@@ -46,7 +46,13 @@ export function TrendingRepos({
                 <div className="h-2 w-full rounded-full bg-muted" />
               </div>
             ))
-          : (data ?? []).slice(0, limit).map((item) => {
+        ) : (data ?? []).length === 0 ? (
+          <div className="px-4 py-10 text-sm leading-6 text-muted-foreground">
+            No positive star-growth delta has been observed from repository snapshots
+            since Monday 00:00 GMT+7.
+          </div>
+        ) : (
+          (data ?? []).slice(0, limit).map((item) => {
               const pct = Math.round((item.star_count_in_window / maxStars) * 100);
               const color =
                 CATEGORY_COLORS[item.repo.category] ?? "#6b7280";
@@ -108,7 +114,8 @@ export function TrendingRepos({
                   </div>
                 </button>
               );
-            })}
+            })
+        )}
       </div>
     </div>
   );

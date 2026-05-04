@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from fastapi.testclient import TestClient
 import pytest
 
+from src.domain.exceptions import DashboardQueryError
 from src.infrastructure.config import get_settings
 from src.presentation.api.dashboard_routes import _get_dashboard_service, _get_news_service
 from src.presentation.api.routes import app
@@ -110,6 +111,17 @@ class FakeNewsService:
         ]
 
 
+class FailingNewsService:
+    async def search_repo_news(
+        self,
+        *,
+        repo_full_name: str,
+        days: int,
+    ) -> list[dict[str, str | None]]:
+        del repo_full_name, days
+        raise DashboardQueryError("SearXNG unavailable")
+
+
 def _override_settings() -> object:
     return get_settings()
 
@@ -168,3 +180,19 @@ def test_news_radar_route_returns_headlines_for_breakout_repos(client: TestClien
     assert response.status_code == 200
     assert response.json()["repos"][0]["headlines"][0]["source"] == "Example News"
     assert response.json()["repos"][0]["repo_full_name"] == "browser-use/browser-use"
+
+
+def test_news_radar_route_returns_empty_payload_when_news_layer_is_unavailable() -> None:
+    app.dependency_overrides[get_settings] = _override_settings
+    app.dependency_overrides[_get_dashboard_service] = lambda: FakeDashboardService()
+    app.dependency_overrides[_get_news_service] = lambda: FailingNewsService()
+    try:
+        response = TestClient(app).get(
+            "/dashboard/news-radar",
+            params={"days": 7, "focus": "percentage"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {"window_days": 7, "repos": []}

@@ -310,42 +310,90 @@ LIMIT %(limit)s
 
 # Trending: ranked by stars added since the current GMT+7 week started.
 _TRENDING_QUERY = """
+WITH
+    latest AS (
+        SELECT
+            repo_full_name,
+            argMax(repo_id, snapshot_at) AS repo_id,
+            argMax(repo_name, snapshot_at) AS repo_name,
+            argMax(html_url, snapshot_at) AS html_url,
+            argMax(description, snapshot_at) AS description,
+            argMax(primary_language, snapshot_at) AS primary_language,
+            argMax(topics, snapshot_at) AS topics,
+            argMax(category, snapshot_at) AS category,
+            argMax(stargazers_count, snapshot_at) AS stargazers_count,
+            argMax(watchers_count, snapshot_at) AS watchers_count,
+            argMax(forks_count, snapshot_at) AS forks_count,
+            argMax(open_issues_count, snapshot_at) AS open_issues_count,
+            argMax(subscribers_count, snapshot_at) AS subscribers_count,
+            argMax(owner_login, snapshot_at) AS owner_login,
+            argMax(owner_avatar_url, snapshot_at) AS owner_avatar_url,
+            argMax(license_name, snapshot_at) AS license_name,
+            argMax(github_created_at, snapshot_at) AS github_created_at,
+            argMax(github_pushed_at, snapshot_at) AS github_pushed_at,
+            argMax(rank, snapshot_at) AS rank
+        FROM repo_metadata_history
+        FINAL
+        WHERE snapshot_at < %(week_end)s
+        GROUP BY repo_full_name
+    ),
+    before_week AS (
+        SELECT
+            repo_full_name,
+            argMax(stargazers_count, snapshot_at) AS baseline_stars
+        FROM repo_metadata_history
+        FINAL
+        WHERE snapshot_at < %(week_start)s
+        GROUP BY repo_full_name
+    ),
+    first_week AS (
+        SELECT
+            repo_full_name,
+            argMin(stargazers_count, snapshot_at) AS first_week_stars
+        FROM repo_metadata_history
+        FINAL
+        WHERE snapshot_at >= %(week_start)s
+          AND snapshot_at < %(week_end)s
+        GROUP BY repo_full_name
+    )
 SELECT
-    rm.repo_id AS repo_id,
-    rm.repo_full_name AS repo_full_name,
-    rm.repo_name AS repo_name,
-    rm.html_url AS html_url,
-    rm.description AS description,
-    rm.primary_language AS primary_language,
-    rm.topics AS topics,
-    rm.category AS category,
-    rm.stargazers_count AS stargazers_count,
-    rm.watchers_count AS watchers_count,
-    rm.forks_count AS forks_count,
-    rm.open_issues_count AS open_issues_count,
-    rm.subscribers_count AS subscribers_count,
-    rm.owner_login AS owner_login,
-    rm.owner_avatar_url AS owner_avatar_url,
-    rm.license_name AS license_name,
-    rm.github_created_at AS github_created_at,
-    greatest(rm.github_pushed_at, coalesce(metrics.latest_event_at, rm.github_pushed_at))
-        AS github_pushed_at,
-    rm.rank AS rank,
-    coalesce(metrics.star_count_in_window, 0) AS star_count_in_window
-FROM repo_metadata AS rm
-FINAL
-INNER JOIN (
+    repo_id,
+    repo_full_name,
+    repo_name,
+    html_url,
+    description,
+    primary_language,
+    topics,
+    category,
+    stargazers_count,
+    watchers_count,
+    forks_count,
+    open_issues_count,
+    subscribers_count,
+    owner_login,
+    owner_avatar_url,
+    license_name,
+    github_created_at,
+    github_pushed_at,
+    rank,
+    star_count_in_window
+FROM (
     SELECT
-        repo_name,
-        countIf(event_type = 'WatchEvent') AS star_count_in_window,
-        max(created_at) AS latest_event_at
-    FROM github_data
-    WHERE created_at >= %(week_start)s
-      AND created_at < %(week_end)s
-    GROUP BY repo_name
-) AS metrics
-    ON metrics.repo_name = rm.repo_full_name
-ORDER BY star_count_in_window DESC, rm.stargazers_count DESC
+        latest.*,
+        greatest(
+            latest.stargazers_count - coalesce(
+                before_week.baseline_stars,
+                first_week.first_week_stars,
+                latest.stargazers_count
+            ),
+            0
+        ) AS star_count_in_window
+    FROM latest
+    LEFT JOIN before_week ON before_week.repo_full_name = latest.repo_full_name
+    LEFT JOIN first_week ON first_week.repo_full_name = latest.repo_full_name
+) AS weekly_growth
+WHERE star_count_in_window > 0
+ORDER BY star_count_in_window DESC, stargazers_count DESC
 LIMIT %(limit)s
 """
 
@@ -1067,6 +1115,17 @@ class ClickHouseDashboardService:
             # Test doubles may stub .execute() with business rows for all queries.
             return True
 
+    def _repo_metadata_history_table_exists(self) -> bool:
+        rows = self._execute_query(
+            "EXISTS TABLE github_analyzer.repo_metadata_history",
+        )
+        if not rows or not rows[0]:
+            return False
+        try:
+            return int(rows[0][0]) == 1
+        except (TypeError, ValueError):
+            return True
+
     def _has_categorized_repo_metadata(self) -> bool:
         if self._has_categorized_metadata_cache is not None:
             return self._has_categorized_metadata_cache
@@ -1315,6 +1374,7 @@ FINAL
         days: int = 7,
     ) -> list[dict[str, Any]]:
         """Top repos by current all-time star count, optionally filtered by category."""
+        has_metadata = self._repo_metadata_table_exists()
         has_categorized_metadata = self._has_categorized_repo_metadata()
         if category and has_categorized_metadata:
             params: dict[str, Any] = {
@@ -1323,16 +1383,19 @@ FINAL
                 "limit": limit,
             }
             query = _TOP_STARRED_REPOS_CATEGORY_QUERY
+        elif has_metadata:
+            overfetch_limit = limit if category is None else max(limit * 10, 100)
+            params = {
+                "days": days,
+                "limit": overfetch_limit,
+            }
+            query = _TOP_STARRED_REPOS_ALL_QUERY
         else:
             params = {
                 "days": days,
                 "limit": limit if has_categorized_metadata else max(limit * 8, 40),
             }
-            query = (
-                _TOP_STARRED_REPOS_ALL_QUERY
-                if has_categorized_metadata
-                else _TOP_STARRED_REPOS_ALL_FALLBACK_QUERY
-            )
+            query = _TOP_STARRED_REPOS_ALL_FALLBACK_QUERY
 
         def _run() -> list[dict[str, Any]]:
             fallback_query = (
@@ -1364,7 +1427,7 @@ FINAL
                 items,
                 category=category,
                 limit=limit,
-                exclude_uncategorized=not has_categorized_metadata,
+                exclude_uncategorized=False,
             )
 
         return await asyncio.to_thread(_run)
@@ -1379,30 +1442,30 @@ FINAL
         Returns:
             List of dicts: repo fields + star_count_in_window, with growth_rank added.
         """
-        has_categorized_metadata = self._has_categorized_repo_metadata()
         week_start, week_end = self._current_gmt7_week_bounds()
+        has_history = self._repo_metadata_history_table_exists()
         params: dict[str, Any] = {
             "week_start": week_start,
             "week_end": week_end,
-            "limit": limit if has_categorized_metadata else max(limit * 8, 40),
+            "limit": limit,
         }
-        query = _TRENDING_QUERY if has_categorized_metadata else _TRENDING_FALLBACK_QUERY
+        query = _TRENDING_QUERY if has_history else _TRENDING_FALLBACK_QUERY
 
         def _run() -> list[dict[str, Any]]:
             try:
                 rows = self._execute_query(query, params)
             except DashboardQueryError as exc:
-                if not self._should_fallback_to_raw_events(exc):
+                if has_history or not self._should_fallback_to_raw_events(exc):
                     raise
                 rows = self._execute_query(_TRENDING_FALLBACK_QUERY, params)
-            if not rows:
+            if not rows and not has_history:
                 rows = self._execute_query(_TRENDING_FALLBACK_QUERY, params)
             week_partition_days = max(
                 1,
                 (week_end.date() - week_start.date()).days + 1,
             )
             parquet_paths = self._parquet_query_paths(week_partition_days)
-            if not rows and parquet_paths:
+            if not rows and parquet_paths and not has_history:
                 rows = self._execute_parquet_query(
                     _PARQUET_TRENDING_QUERY,
                     [
@@ -1418,15 +1481,6 @@ FINAL
                 item = self._parse_repo_row(row)
                 item["growth_rank"] = rank
                 results.append(item)
-            if not has_categorized_metadata:
-                filtered_results = [
-                    item for item in results if item["category"] != RepoCategory.OTHER.value
-                ]
-                if filtered_results:
-                    return [
-                        {**item, "growth_rank": rank}
-                        for rank, item in enumerate(filtered_results[:limit], start=1)
-                    ]
             return results
 
         return await asyncio.to_thread(_run)

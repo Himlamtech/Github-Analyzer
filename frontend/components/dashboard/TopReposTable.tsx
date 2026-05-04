@@ -66,6 +66,7 @@ export function TopReposTable({
   const topStarredReposQuery = useTopStarredRepos(category, limit);
   const activeQuery = source === "top-starred-repos" ? topStarredReposQuery : topReposQuery;
   const resolvedTimeLabel = timeLabel ?? `last ${days} days`;
+  const columnCount = showWindowStars ? 8 : 7;
   const rows = [...(activeQuery.data ?? [])]
     .sort((left, right) => {
       if (sortBy === "stargazers_count") {
@@ -111,6 +112,16 @@ export function TopReposTable({
               ? Array.from({ length: 8 }).map((_, i) => (
                   <SkeletonRow key={i} showWindowStars={showWindowStars} />
                 ))
+              : rows.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={columnCount}
+                      className="px-4 py-10 text-center text-sm text-muted-foreground"
+                    >
+                      No repositories match this leaderboard yet.
+                    </td>
+                  </tr>
+                )
               : rows.map((item, idx) => {
                   const repo = item.repo;
                   const color =

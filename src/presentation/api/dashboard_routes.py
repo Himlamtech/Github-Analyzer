@@ -345,8 +345,8 @@ async def get_news_radar(
             ]
         )
     except DashboardQueryError as exc:
-        logger.error("dashboard.news_radar_failed", error=str(exc), days=days, focus=focus)
-        raise HTTPException(status_code=503, detail="Dashboard query failed") from exc
+        logger.warning("dashboard.news_radar_unavailable", error=str(exc), days=days, focus=focus)
+        return NewsRadarResponseDTO(window_days=days, repos=[])
 
     repos: list[RepoNewsRadarDTO] = []
     for row, headlines in zip(selected_rows, headlines_per_repo, strict=True):

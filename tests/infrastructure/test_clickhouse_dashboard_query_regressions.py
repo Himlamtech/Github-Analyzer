@@ -62,8 +62,10 @@ def test_top_starred_repos_category_fallback_query_normalizes_repo_full_name() -
 
 
 def test_trending_query_uses_current_gmt7_week_bounds() -> None:
-    assert "created_at >= %(week_start)s" in _TRENDING_QUERY
-    assert "created_at < %(week_end)s" in _TRENDING_QUERY
+    assert "FROM repo_metadata_history" in _TRENDING_QUERY
+    assert "snapshot_at >= %(week_start)s" in _TRENDING_QUERY
+    assert "snapshot_at < %(week_end)s" in _TRENDING_QUERY
+    assert "countIf(event_type = 'WatchEvent')" not in _TRENDING_QUERY
     assert "now() - INTERVAL %(days)s DAY" not in _TRENDING_QUERY
 
 

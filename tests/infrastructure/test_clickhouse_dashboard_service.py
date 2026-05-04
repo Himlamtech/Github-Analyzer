@@ -271,6 +271,27 @@ class TestGetTopStarredRepos:
         assert result[0]["repo_full_name"] == "org/most-starred"
         assert result[0]["stargazers_count"] == 999_999
 
+    async def test_get_top_starred_repos_uses_metadata_when_categories_are_uncategorized(
+        self,
+    ) -> None:
+        svc = _make_service()
+        client = MagicMock()
+        client.execute.side_effect = [
+            [(1,)],
+            [(1,)],
+            [(0,)],
+            [_repo_row(category="Other", topics=["llm"], description="LLM toolkit")],
+        ]
+
+        with patch.object(svc, "_get_client", return_value=client):
+            result = await svc.get_top_starred_repos(category=None, limit=10)
+
+        query_text = str(client.execute.call_args.args[0])
+        assert "FROM repo_metadata AS rm" in query_text
+        assert "github_data" not in query_text
+        assert result[0]["repo_full_name"] == "openai/gpt-5"
+        assert result[0]["category"] == "LLM"
+
 
 # ── get_trending ──────────────────────────────────────────────────────────────
 
@@ -313,7 +334,7 @@ class TestGetTrending:
         assert result[0]["star_count_in_window"] == 9999
 
     async def test_get_trending_queries_repo_metadata(self) -> None:
-        """Trending query must be backed by synced repo metadata and current-week bounds."""
+        """Trending query must be backed by snapshot deltas and current-week bounds."""
         svc = _make_service()
         client = _mock_client([_repo_row()])
         week_start = datetime(2026, 5, 3, 17, 0, tzinfo=UTC)
@@ -331,13 +352,33 @@ class TestGetTrending:
 
         query_text = str(client.execute.call_args.args[0])
         params = client.execute.call_args.args[1]
-        assert "FROM repo_metadata AS rm" in query_text
-        assert "created_at >= %(week_start)s" in query_text
-        assert "created_at < %(week_end)s" in query_text
+        assert "FROM repo_metadata_history" in query_text
+        assert "snapshot_at >= %(week_start)s" in query_text
+        assert "snapshot_at < %(week_end)s" in query_text
+        assert "countIf(event_type = 'WatchEvent')" not in query_text
         assert "now() - INTERVAL %(days)s DAY" not in query_text
-        assert "ORDER BY star_count_in_window DESC, rm.stargazers_count DESC" in query_text
+        assert "ORDER BY star_count_in_window DESC, stargazers_count DESC" in query_text
         assert params["week_start"] == week_start
         assert params["week_end"] == week_end
+
+    async def test_get_trending_does_not_fallback_to_watch_events_when_history_is_empty(
+        self,
+    ) -> None:
+        svc = _make_service()
+        client = MagicMock()
+        client.execute.side_effect = [
+            [(1,)],
+            [],
+        ]
+
+        with (
+            patch.object(svc, "_get_client", return_value=client),
+            patch.object(svc, "_parquet_query_paths", return_value=[]),
+        ):
+            result = await svc.get_trending(days=7, limit=5)
+
+        assert result == []
+        assert client.execute.call_count == 2
 
     def test_current_gmt7_week_bounds_start_on_monday_local_time(self) -> None:
         now = datetime(2026, 5, 4, 6, 0, tzinfo=UTC)
