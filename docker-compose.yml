@@ -100,6 +100,8 @@ services:
     volumes:
       - ./observability/promtail.yml:/etc/promtail/config.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - promtail_positions:/var/lib/promtail
 
   tempo:
     image: grafana/tempo:2.5.0
@@ -127,5 +129,6 @@ volumes:
   prometheus_data:
   loki_data:
   ollama_data:
+  promtail_positions:
   tempo_data:
 
