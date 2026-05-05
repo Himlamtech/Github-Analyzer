@@ -31,7 +31,7 @@ services:
       - .env
     environment:
       CLICKHOUSE_HOST: clickhouse
-      TRACING_EXPORTER_OTLP_ENDPOINT: ${TRACING_EXPORTER_OTLP_ENDPOINT:-http://tempo:4318}
+      TRACING_EXPORTER_OTLP_ENDPOINT: ${TRACING_EXPORTER_OTLP_ENDPOINT:-http://tempo:4318/v1/traces}
     ports:
       - "8000:8000"
     volumes:

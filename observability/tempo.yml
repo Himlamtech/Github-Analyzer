@@ -1,5 +1,6 @@
 server:
   http_listen_port: 3200
+  log_level: info
 
 distributor:
   receivers:
@@ -15,7 +16,7 @@ ingester:
 
 compactor:
   compaction:
-    block_retention: 24h
+    block_retention: 48h
     compacted_block_retention: 1h
 
 storage:
