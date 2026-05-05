@@ -11,7 +11,7 @@ datasources:
       # Extract trace IDs from logs so Grafana can jump from logs to Tempo traces.
       derivedFields:
         - datasourceUid: tempo_ds
-          matcherRegex: 'trace_id=([0-9a-f]{32})'
+          matcherRegex: 'trace[_-]id[=": ]+([0-9a-f]{32})'
           name: TraceID
           url: '$${__value.raw}'
           urlDisplayLabel: View trace

@@ -28,7 +28,7 @@ datasources:
         datasourceUid: loki_ds
         filterBySpanID: false
         filterByTraceID: true
-        query: '{compose_service=~".+"} |= "$${__trace.traceId}"'
+        query: '{compose_service=~".+"} |~ "$${__trace.traceId}"'
         spanEndTimeShift: 2m
         spanStartTimeShift: -2m
         tags:
