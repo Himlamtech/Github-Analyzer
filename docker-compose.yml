@@ -14,9 +14,6 @@ volumes:
   grafana_data:
     external: true
     name: github-grafana-data
-  tempo_data:
-  loki_data:
-  promtail_positions:
   ollama_data:
     external: true
     name: github-ollama-data
@@ -145,95 +142,6 @@ services:
       GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
     depends_on:
       - prometheus
-      - tempo
-      - loki
-    restart: unless-stopped
-
-  tempo:
-    image: grafana/tempo:2.8.0
-    container_name: github-tempo
-    hostname: tempo
-    networks:
-      - github-networks
-    command: ["-config.file=/etc/tempo/tempo.yml"]
-    ports:
-      - "${TEMPO_PORT:-3200}:3200"
-      - "${OTLP_GRPC_PORT:-4317}:4317"
-      - "${OTLP_HTTP_PORT:-4318}:4318"
-    volumes:
-      - ./observability/tempo.yml:/etc/tempo/tempo.yml:ro
-      - tempo_data:/var/tempo
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3200/ready"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 20s
-    restart: unless-stopped
-
-  loki:
-    image: grafana/loki:3.1.1
-    container_name: github-loki
-    hostname: loki
-    networks:
-      - github-networks
-    command: ["-config.file=/etc/loki/config.yml"]
-    volumes:
-      - ./observability/loki.yml:/etc/loki/config.yml:ro
-      - loki_data:/loki
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3100/ready"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 20s
-    restart: unless-stopped
-
-  promtail:
-    image: grafana/promtail:3.1.1
-    container_name: github-promtail
-    hostname: promtail
-    networks:
-      - github-networks
-    command: ["-config.file=/etc/promtail/config.yml"]
-    volumes:
-      - ./observability/promtail.yml:/etc/promtail/config.yml:ro
-      - ./scheduler/logs:/var/log/gha-scheduler:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - promtail_positions:/var/lib/promtail
-    depends_on:
-      loki:
-        condition: service_healthy
-    restart: unless-stopped
-
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
-    container_name: github-cadvisor
-    hostname: cadvisor
-    networks:
-      - github-networks
-    privileged: true
-    devices:
-      - /dev/kmsg:/dev/kmsg
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:rw
-      - /sys:/sys:ro
-      - /var/lib/docker:/var/lib/docker:ro
-      - /dev/disk:/dev/disk:ro
-    restart: unless-stopped
-
-  node-exporter:
-    image: prom/node-exporter:v1.8.2
-    container_name: github-node-exporter
-    hostname: node-exporter
-    networks:
-      - github-networks
-    command:
-      - "--path.rootfs=/host"
-    volumes:
-      - /:/host:ro,rslave
     restart: unless-stopped
 
   dcgm-exporter:
@@ -334,18 +242,15 @@ services:
       OLLAMA_BASE_URL: http://ollama:11434
       OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-qwen3-embedding-0.6b}
       SEARXNG_BASE_URL: ${SEARXNG_BASE_URL:-http://host.docker.internal:8080}
-      TRACING_ENABLED: ${TRACING_ENABLED:-true}
+      TRACING_ENABLED: "false"
       TRACING_SERVICE_NAME: ${TRACING_SERVICE_NAME:-gha-api}
       TRACING_SAMPLING_RATIO: ${TRACING_SAMPLING_RATIO:-1.0}
-      TRACING_EXPORTER_OTLP_ENDPOINT: http://tempo:4318/v1/traces
     depends_on:
       kafka:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
       ollama:
-        condition: service_healthy
-      tempo:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
