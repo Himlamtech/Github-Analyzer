@@ -1,965 +1,418 @@
 {
-    "__inputs":  [
-
-                 ],
-    "__requires":  [
-                       {
-                           "type":  "grafana",
-                           "id":  "grafana",
-                           "name":  "Grafana",
-                           "version":  "10.4.0"
-                       },
-                       {
-                           "type":  "datasource",
-                           "id":  "prometheus",
-                           "name":  "Prometheus",
-                           "version":  "1.0.0"
-                       },
-                       {
-                           "type":  "datasource",
-                           "id":  "grafana-clickhouse-datasource",
-                           "name":  "ClickHouse",
-                           "version":  "4.0.0"
-                       },
-                       {
-                           "type":  "datasource",
-                           "id":  "loki",
-                           "name":  "Loki",
-                           "version":  "1.0.0"
-                       }
-                   ],
-    "annotations":  {
-                        "list":  [
-                                     {
-                                         "builtIn":  1,
-                                         "datasource":  {
-                                                            "type":  "grafana",
-                                                            "uid":  "-- Grafana --"
-                                                        },
-                                         "enable":  true,
-                                         "hide":  true,
-                                         "iconColor":  "rgba(0, 211, 255, 1)",
-                                         "name":  "Annotations \u0026 Alerts",
-                                         "type":  "dashboard"
-                                     }
-                                 ]
-                    },
-    "description":  "Demo SaaS dashboard for the narrative: everything looks healthy at the surface while Spark silently breaks business freshness.",
-    "editable":  true,
-    "fiscalYearStartMonth":  0,
-    "graphTooltip":  1,
-    "id":  null,
-    "links":  [
-                  {
-                      "asDropdown":  false,
-                      "icon":  "external link",
-                      "includeVars":  false,
-                      "keepTime":  true,
-                      "tags":  [
-
-                               ],
-                      "targetBlank":  true,
-                      "title":  "Open Grafana Explore",
-                      "type":  "link",
-                      "url":  "http://localhost:3001/explore"
-                  },
-                  {
-                      "asDropdown":  false,
-                      "icon":  "external link",
-                      "includeVars":  false,
-                      "keepTime":  false,
-                      "tags":  [
-
-                               ],
-                      "targetBlank":  true,
-                      "title":  "Open API Docs",
-                      "type":  "link",
-                      "url":  "http://localhost:8000/docs"
-                  }
-              ],
-    "panels":  [
-                   {
-                       "collapsed":  false,
-                       "gridPos":  {
-                                       "h":  1,
-                                       "w":  24,
-                                       "x":  0,
-                                       "y":  0
-                                   },
-                       "id":  1,
-                       "title":  "NhÃ¬n NgoÃ i Váº«n á»”n",
-                       "type":  "row"
-                   },
-                   {
-                       "datasource":  {
-                                          "type":  "prometheus",
-                                          "uid":  "prometheus_ds"
-                                      },
-                       "fieldConfig":  {
-                                           "defaults":  {
-                                                            "color":  {
-                                                                          "mode":  "thresholds"
-                                                                      },
-                                                            "mappings":  [
-                                                                             {
-                                                                                 "options":  {
-                                                                                                 "0":  {
-                                                                                                           "text":  "Down"
-                                                                                                       },
-                                                                                                 "1":  {
-                                                                                                           "text":  "Up"
-                                                                                                       }
-                                                                                             },
-                                                                                 "type":  "value"
-                                                                             }
-                                                                         ],
-                                                            "max":  1,
-                                                            "min":  0,
-                                                            "thresholds":  {
-                                                                               "mode":  "absolute",
-                                                                               "steps":  [
-                                                                                             {
-                                                                                                 "color":  "red",
-                                                                                                 "value":  0
-                                                                                             },
-                                                                                             {
-                                                                                                 "color":  "green",
-                                                                                                 "value":  1
-                                                                                             }
-                                                                                         ]
-                                                                           }
-                                                        }
-                                       },
-                       "gridPos":  {
-                                       "h":  5,
-                                       "w":  6,
-                                       "x":  0,
-                                       "y":  1
-                                   },
-                       "id":  10,
-                       "options":  {
-                                       "colorMode":  "background_solid",
-                                       "graphMode":  "none",
-                                       "justifyMode":  "center",
-                                       "reduceOptions":  {
-                                                             "calcs":  [
-                                                                           "lastNotNull"
-                                                                       ],
-                                                             "fields":  "",
-                                                             "values":  false
-                                                         },
-                                       "textMode":  "value_and_name"
-                                   },
-                       "targets":  [
-                                       {
-                                           "expr":  "max(up{job=\"github_analyzer_api\"}) or on() vector(0)",
-                                           "legendFormat":  "API",
-                                           "refId":  "A"
-                                       }
-                                   ],
-                       "title":  "API Health",
-                       "type":  "stat"
-                   },
-                   {
-                       "datasource":  {
-                                          "type":  "prometheus",
-                                          "uid":  "prometheus_ds"
-                                      },
-                       "fieldConfig":  {
-                                           "defaults":  {
-                                                            "color":  {
-                                                                          "mode":  "thresholds"
-                                                                      },
-                                                            "decimals":  0,
-                                                            "thresholds":  {
-                                                                               "mode":  "absolute",
-                                                                               "steps":  [
-                                                                                             {
-                                                                                                 "color":  "red",
-                                                                                                 "value":  0
-                                                                                             },
-                                                                                             {
-                                                                                                 "color":  "yellow",
-                                                                                                 "value":  1
-                                                                                             },
-                                                                                             {
-                                                                                                 "color":  "green",
-                                                                                                 "value":  3
-                                                                                             }
-                                                                                         ]
-                                                                           },
-                                                            "unit":  "short"
-                                                        }
-                                       },
-                       "gridPos":  {
-                                       "h":  5,
-                                       "w":  6,
-                                       "x":  6,
-                                       "y":  1
-                                   },
-                       "id":  11,
-                       "options":  {
-                                       "colorMode":  "background",
-                                       "graphMode":  "none",
-                                       "justifyMode":  "center",
-                                       "reduceOptions":  {
-                                                             "calcs":  [
-                                                                           "lastNotNull"
-                                                                       ],
-                                                             "fields":  "",
-                                                             "values":  false
-                                                         },
-                                       "textMode":  "value_and_name"
-                                   },
-                       "targets":  [
-                                       {
-                                           "expr":  "sum(up{job=~\"github_analyzer_api|github_analyzer_poller|github_analyzer_processor\"}) or on() vector(0)",
-                                           "legendFormat":  "Core services",
-                                           "refId":  "A"
-                                       }
-                                   ],
-                       "title":  "Pod Running",
-                       "type":  "stat"
-                   },
-                   {
-                       "datasource":  {
-                                          "type":  "prometheus",
-                                          "uid":  "prometheus_ds"
-                                      },
-                       "fieldConfig":  {
-                                           "defaults":  {
-                                                            "color":  {
-                                                                          "mode":  "thresholds"
-                                                                      },
-                                                            "decimals":  3,
-                                                            "thresholds":  {
-                                                                               "mode":  "absolute",
-                                                                               "steps":  [
-                                                                                             {
-                                                                                                 "color":  "green",
-                                                                                                 "value":  0
-                                                                                             },
-                                                                                             {
-                                                                                                 "color":  "yellow",
-                                                                                                 "value":  0.01
-                                                                                             },
-                                                                                             {
-                                                                                                 "color":  "red",
-                                                                                                 "value":  0.05
-                                                                                             }
-                                                                                         ]
-                                                                           },
-                                                            "unit":  "percentunit"
-                                                        }
-                                       },
-                       "gridPos":  {
-                                       "h":  5,
-                                       "w":  6,
-                                       "x":  12,
-                                       "y":  1
-                                   },
-                       "id":  12,
-                       "options":  {
-                                       "colorMode":  "background",
-                                       "graphMode":  "none",
-                                       "justifyMode":  "center",
-                                       "reduceOptions":  {
-                                                             "calcs":  [
-                                                                           "lastNotNull"
-                                                                       ],
-                                                             "fields":  "",
-                                                             "values":  false
-                                                         },
-                                       "textMode":  "value_and_name"
-                                   },
-                       "targets":  [
-                                       {
-                                           "expr":  "(sum(rate(api_requests_total{job=\"github_analyzer_api\",status_code=~\"5..\"}[30s])) / clamp_min(sum(rate(api_requests_total{job=\"github_analyzer_api\"}[30s])), 0.001)) or on() vector(0)",
-                                           "legendFormat":  "5xx rate",
-                                           "refId":  "A"
-                                       }
-                                   ],
-                       "title":  "Error Rate",
-                       "type":  "stat"
-                   },
-                   {
-                       "datasource":  {
-                                          "type":  "prometheus",
-                                          "uid":  "prometheus_ds"
-                                      },
-                       "fieldConfig":  {
-                                           "defaults":  {
-                                                            "color":  {
-                                                                          "mode":  "thresholds"
-                                                                      },
-                                                            "decimals":  2,
-                                                            "thresholds":  {
-                                                                               "mode":  "absolute",
-                                                                               "steps":  [
-                                                                                             {
-                                                                                                 "color":  "red",
-                                                                                                 "value":  0
-                                                                                             },
-                                                                                             {
-                                                                                                 "color":  "yellow",
-                                                                                                 "value":  0.05
-                                                                                             },
-                                                                                             {
-                                                                                                 "color":  "green",
-                                                                                                 "value":  0.1
-                                                                                             }
-                                                                                         ]
-                                                                           },
-                                                            "unit":  "reqps"
-                                                        }
-                                       },
-                       "gridPos":  {
-                                       "h":  5,
-                                       "w":  6,
-                                       "x":  18,
-                                       "y":  1
-                                   },
-                       "id":  13,
-                       "options":  {
-                                       "colorMode":  "background",
-                                       "graphMode":  "none",
-                                       "justifyMode":  "center",
-                                       "reduceOptions":  {
-                                                             "calcs":  [
-                                                                           "lastNotNull"
-                                                                       ],
-                                                             "fields":  "",
-                                                             "values":  false
-                                                         },
-                                       "textMode":  "value_and_name"
-                                   },
-                       "targets":  [
-                                       {
-                                           "expr":  "sum(rate(api_requests_total{job=\"github_analyzer_api\"}[1m])) or on() vector(0)",
-                                           "legendFormat":  "Requests / s",
-                                           "refId":  "A"
-                                       }
-                                   ],
-                       "title":  "Request Rate",
-                       "type":  "stat"
-                   },
-                   {
-                       "collapsed":  false,
-                       "gridPos":  {
-                                       "h":  1,
-                                       "w":  24,
-                                       "x":  0,
-                                       "y":  6
-                                   },
-                       "id":  2,
-                       "title":  "NhÆ°ng Business Äang Sai",
-                       "type":  "row"
-                   },
-                   {
-                       "datasource":  {
-                                          "type":  "prometheus",
-                                          "uid":  "prometheus_ds"
-                                      },
-                       "fieldConfig":  {
-                                           "defaults":  {
-                                                            "color":  {
-                                                                          "mode":  "palette-classic"
-                                                                      },
-                                                            "unit":  "ops"
-                                                        }
-                                       },
-                       "gridPos":  {
-                                       "h":  8,
-                                       "w":  6,
-                                       "x":  0,
-                                       "y":  7
-                                   },
-                       "id":  20,
-                       "options":  {
-                                       "legend":  {
-                                                      "displayMode":  "list",
-                                                      "placement":  "bottom"
-                                                  },
-                                       "tooltip":  {
-                                                       "mode":  "multi",
-                                                       "sort":  "none"
-                                                   }
-                                   },
-                       "targets":  [
-                                       {
-                                           "expr":  "sum(increase(events_ingested_total{job=\"github_analyzer_poller\"}[5m])) / 300 or on() vector(0)",
-                                           "legendFormat":  "Events ingested",
-                                           "refId":  "A"
-                                       },
-                                       {
-                                           "expr":  "sum(increase(kafka_messages_produced_total{job=\"github_analyzer_poller\"}[5m])) / 300 or on() vector(0)",
-                                           "legendFormat":  "Kafka produced",
-                                           "refId":  "B"
-                                       },
-                                       {
-                                           "expr":  "sum(increase(spark_records_processed_total{job=\"github_analyzer_processor\",sink=\"clickhouse\"}[5m])) / 300 or on() vector(0)",
-                                           "legendFormat":  "Spark -\u003e ClickHouse",
-                                           "refId":  "C"
-                                       }
-                                   ],
-                       "title":  "Throughput",
-                       "type":  "timeseries"
-                   },
-                   {
-                       "datasource":  {
-                                          "type":  "grafana-clickhouse-datasource",
-                                          "uid":  "clickhouse_ds"
-                                      },
-                       "fieldConfig":  {
-                                           "defaults":  {
-                                                            "color":  {
-                                                                          "mode":  "thresholds"
-                                                                      },
-                                                            "thresholds":  {
-                                                                               "mode":  "absolute",
-                                                                               "steps":  [
-                                                                                             {
-                                                                                                 "color":  "green",
-                                                                                                 "value":  0
-                                                                                             },
-                                                                                             {
-                                                                                                 "color":  "yellow",
-                                                                                                 "value":  10
-                                                                                             },
-                                                                                             {
-                                                                                                 "color":  "red",
-                                                                                                 "value":  20
-                                                                                             }
-                                                                                         ]
-                                                                           },
-                                                            "unit":  "s"
-                                                        }
-                                       },
-                       "gridPos":  {
-                                       "h":  8,
-                                       "w":  6,
-                                       "x":  6,
-                                       "y":  7
-                                   },
-                       "id":  21,
-                       "options":  {
-                                       "colorMode":  "background",
-                                       "graphMode":  "none",
-                                       "justifyMode":  "center",
-                                       "orientation":  "auto",
-                                       "reduceOptions":  {
-                                                             "calcs":  [
-                                                                           "lastNotNull"
-                                                                       ],
-                                                             "fields":  "",
-                                                             "values":  false
-                                                         },
-                                       "textMode":  "auto",
-                                       "wideLayout":  true
-                                   },
-                       "targets":  [
-                                       {
-                                           "datasource":  {
-                                                              "type":  "grafana-clickhouse-datasource",
-                                                              "uid":  "clickhouse_ds"
-                                                          },
-                                           "format":  0,
-                                           "queryType":  "table",
-                                           "rawSql":  "SELECT dateDiff(\u0027second\u0027, max(ingested_at), now()) AS value FROM github_analyzer.github_data",
-                                           "refId":  "A"
-                                       }
-                                   ],
-                       "title":  "Data Ingest Freshness",
-                       "type":  "stat"
-                   },
-                   {
-                       "datasource":  {
-                                          "type":  "grafana-clickhouse-datasource",
-                                          "uid":  "clickhouse_ds"
-                                      },
-                       "fieldConfig":  {
-                                           "defaults":  {
-                                                            "color":  {
-                                                                          "mode":  "thresholds"
-                                                                      },
-                                                            "thresholds":  {
-                                                                               "mode":  "absolute",
-                                                                               "steps":  [
-                                                                                             {
-                                                                                                 "color":  "green",
-                                                                                                 "value":  0
-                                                                                             },
-                                                                                             {
-                                                                                                 "color":  "yellow",
-                                                                                                 "value":  10
-                                                                                             },
-                                                                                             {
-                                                                                                 "color":  "red",
-                                                                                                 "value":  20
-                                                                                             }
-                                                                                         ]
-                                                                           },
-                                                            "unit":  "dateTimeAsIso"
-                                                        }
-                                       },
-                       "gridPos":  {
-                                       "h":  8,
-                                       "w":  6,
-                                       "x":  12,
-                                       "y":  7
-                                   },
-                       "id":  22,
-                       "options":  {
-                                       "colorMode":  "background",
-                                       "graphMode":  "none",
-                                       "justifyMode":  "center",
-                                       "orientation":  "auto",
-                                       "reduceOptions":  {
-                                                             "calcs":  [
-                                                                           "lastNotNull"
-                                                                       ],
-                                                             "fields":  "",
-                                                             "values":  false
-                                                         },
-                                       "textMode":  "auto",
-                                       "wideLayout":  true
-                                   },
-                       "targets":  [
-                                       {
-                                           "datasource":  {
-                                                              "type":  "grafana-clickhouse-datasource",
-                                                              "uid":  "clickhouse_ds"
-                                                          },
-                                           "format":  0,
-                                           "queryType":  "table",
-                                           "rawSql":  "SELECT toUnixTimestamp(max(ingested_at)) * 1000 AS value FROM github_analyzer.github_data",
-                                           "refId":  "A"
-                                       }
-                                   ],
-                       "title":  "Latest Ingest Timestamp",
-                       "type":  "stat"
-                   },
-                   {
-                       "datasource":  {
-                                          "type":  "prometheus",
-                                          "uid":  "prometheus_ds"
-                                      },
-                       "fieldConfig":  {
-                                           "defaults":  {
-                                                            "color":  {
-                                                                          "mode":  "palette-classic"
-                                                                      },
-                                                            "unit":  "ops"
-                                                        }
-                                       },
-                       "gridPos":  {
-                                       "h":  8,
-                                       "w":  6,
-                                       "x":  18,
-                                       "y":  7
-                                   },
-                       "id":  23,
-                       "options":  {
-                                       "legend":  {
-                                                      "displayMode":  "list",
-                                                      "placement":  "bottom"
-                                                  },
-                                       "tooltip":  {
-                                                       "mode":  "multi",
-                                                       "sort":  "none"
-                                                   }
-                                   },
-                       "targets":  [
-                                       {
-                                           "expr":  "clamp_min((sum(increase(kafka_messages_produced_total{job=\"github_analyzer_poller\"}[5m])) - sum(increase(spark_records_processed_total{job=\"github_analyzer_processor\",sink=\"clickhouse\"}[5m]))) / 300, 0) or on() vector(0)",
-                                           "legendFormat":  "Lag proxy",
-                                           "refId":  "A"
-                                       }
-                                   ],
-                       "title":  "Kafka Lag",
-                       "type":  "timeseries"
-                   },
-                   {
-                       "collapsed":  false,
-                       "gridPos":  {
-                                       "h":  1,
-                                       "w":  24,
-                                       "x":  0,
-                                       "y":  15
-                                   },
-                       "id":  3,
-                       "title":  "Dáº¥u Hiá»‡u á»ž Lá»›p Request",
-                       "type":  "row"
-                   },
-                   {
-                       "datasource":  {
-                                          "type":  "prometheus",
-                                          "uid":  "prometheus_ds"
-                                      },
-                       "fieldConfig":  {
-                                           "defaults":  {
-                                                            "color":  {
-                                                                          "mode":  "palette-classic"
-                                                                      },
-                                                            "unit":  "s"
-                                                        }
-                                       },
-                       "gridPos":  {
-                                       "h":  8,
-                                       "w":  12,
-                                       "x":  0,
-                                       "y":  16
-                                   },
-                       "id":  30,
-                       "options":  {
-                                       "legend":  {
-                                                      "displayMode":  "list",
-                                                      "placement":  "bottom"
-                                                  },
-                                       "tooltip":  {
-                                                       "mode":  "multi",
-                                                       "sort":  "none"
-                                                   }
-                                   },
-                       "targets":  [
-                                       {
-                                           "expr":  "histogram_quantile(0.50, sum(rate(api_request_duration_seconds_bucket{job=\"github_analyzer_api\"}[2m])) by (le)) or on() vector(0)",
-                                           "legendFormat":  "p50",
-                                           "refId":  "A"
-                                       },
-                                       {
-                                           "expr":  "histogram_quantile(0.95, sum(rate(api_request_duration_seconds_bucket{job=\"github_analyzer_api\"}[2m])) by (le)) or on() vector(0)",
-                                           "legendFormat":  "p95",
-                                           "refId":  "B"
-                                       },
-                                       {
-                                           "expr":  "histogram_quantile(0.99, sum(rate(api_request_duration_seconds_bucket{job=\"github_analyzer_api\"}[2m])) by (le)) or on() vector(0)",
-                                           "legendFormat":  "p99",
-                                           "refId":  "C"
-                                       }
-                                   ],
-                       "title":  "p50 / p95 / p99 Latency",
-                       "type":  "timeseries"
-                   },
-                   {
-                       "datasource":  {
-                                          "type":  "prometheus",
-                                          "uid":  "prometheus_ds"
-                                      },
-                       "fieldConfig":  {
-                                           "defaults":  {
-                                                            "color":  {
-                                                                          "mode":  "thresholds"
-                                                                      },
-                                                            "custom":  {
-                                                                           "align":  "auto",
-                                                                           "cellOptions":  {
-                                                                                               "type":  "auto"
-                                                                                           },
-                                                                           "inspect":  false
-                                                                       },
-                                                            "decimals":  3,
-                                                            "thresholds":  {
-                                                                               "mode":  "absolute",
-                                                                               "steps":  [
-                                                                                             {
-                                                                                                 "color":  "green",
-                                                                                                 "value":  0
-                                                                                             }
-                                                                                         ]
-                                                                           },
-                                                            "unit":  "s"
-                                                        }
-                                       },
-                       "gridPos":  {
-                                       "h":  8,
-                                       "w":  12,
-                                       "x":  12,
-                                       "y":  16
-                                   },
-                       "id":  31,
-                       "options":  {
-                                       "cellHeight":  "sm",
-                                       "footer":  {
-                                                      "show":  false
-                                                  },
-                                       "showHeader":  true
-                                   },
-                       "targets":  [
-                                       {
-                                           "expr":  "topk(5, clamp_min(histogram_quantile(0.95, sum by (le, route) (rate(api_request_duration_seconds_bucket{job=\"github_analyzer_api\",route!=\"\"}[5m]))), 0))",
-                                           "format":  "table",
-                                           "instant":  true,
-                                           "legendFormat":  "{{route}}",
-                                           "refId":  "A"
-                                       }
-                                   ],
-                       "title":  "Top Slow Endpoints",
-                       "transformations":  [
-                                               {
-                                                   "id":  "organize",
-                                                   "options":  {
-                                                                   "excludeByName":  {
-                                                                                         "Time":  true,
-                                                                                         "__name__":  true,
-                                                                                         "job":  true
-                                                                                     },
-                                                                   "indexByName":  {
-                                                                                       "route":  0,
-                                                                                       "Value":  1
-                                                                                   },
-                                                                   "renameByName":  {
-                                                                                        "Value":  "p95 latency (s)",
-                                                                                        "route":  "route"
-                                                                                    }
-                                                               }
-                                               }
-                                           ],
-                       "type":  "table"
-                   },
-                   {
-                       "collapsed":  false,
-                       "gridPos":  {
-                                       "h":  1,
-                                       "w":  24,
-                                       "x":  0,
-                                       "y":  24
-                                   },
-                       "id":  4,
-                       "title":  "Äiá»u Tra Root Cause",
-                       "type":  "row"
-                   },
-                   {
-                       "datasource":  {
-                                          "type":  "loki",
-                                          "uid":  "loki_ds"
-                                      },
-                       "gridPos":  {
-                                       "h":  8,
-                                       "w":  6,
-                                       "x":  0,
-                                       "y":  25
-                                   },
-                       "id":  40,
-                       "options":  {
-                                       "dedupStrategy":  "none",
-                                       "enableLogDetails":  true,
-                                       "prettifyLogMessage":  true,
-                                       "showCommonLabels":  false,
-                                       "showLabels":  true,
-                                       "sortOrder":  "Descending",
-                                       "wrapLogMessage":  true
-                                   },
-                       "targets":  [
-                                       {
-                                           "expr":  "{compose_service=\"api\"} |= \"api.request.completed\"",
-                                           "queryType":  "range",
-                                           "refId":  "A"
-                                       }
-                                   ],
-                       "title":  "Slowest Traces",
-                       "type":  "logs"
-                   },
-                   {
-                       "gridPos":  {
-                                       "h":  8,
-                                       "w":  6,
-                                       "x":  6,
-                                       "y":  25
-                                   },
-                       "id":  41,
-                       "options":  {
-                                       "content":  "### Trace Search\n- Trigger `GET /pipeline/status`\n- Copy `X-Trace-Id`\n- Open `X-Trace-Explore-Url`\n- Use Tempo search around the last 2-5 minutes\n- Pivot to metrics and logs from the selected trace",
-                                       "mode":  "markdown"
-                                   },
-                       "title":  "Trace Search",
-                       "type":  "text"
-                   },
-                   {
-                       "datasource":  {
-                                          "type":  "prometheus",
-                                          "uid":  "prometheus_ds"
-                                      },
-                       "fieldConfig":  {
-                                           "defaults":  {
-                                                            "color":  {
-                                                                          "mode":  "palette-classic"
-                                                                      },
-                                                            "unit":  "s"
-                                                        }
-                                       },
-                       "gridPos":  {
-                                       "h":  8,
-                                       "w":  6,
-                                       "x":  12,
-                                       "y":  25
-                                   },
-                       "id":  42,
-                       "options":  {
-                                       "legend":  {
-                                                      "displayMode":  "list",
-                                                      "placement":  "bottom"
-                                                  },
-                                       "tooltip":  {
-                                                       "mode":  "multi",
-                                                       "sort":  "none"
-                                                   }
-                                   },
-                       "targets":  [
-                                       {
-                                           "expr":  "histogram_quantile(0.95, sum by (le, route) (rate(api_request_duration_seconds_bucket{job=\"github_analyzer_api\",route!=\"\"}[5m]))) or on() vector(0)",
-                                           "legendFormat":  "{{route}}",
-                                           "refId":  "A"
-                                       }
-                                   ],
-                       "title":  "Span Duration Breakdown",
-                       "type":  "timeseries"
-                   },
-                   {
-                       "datasource":  {
-                                          "type":  "loki",
-                                          "uid":  "loki_ds"
-                                      },
-                       "gridPos":  {
-                                       "h":  8,
-                                       "w":  6,
-                                       "x":  18,
-                                       "y":  25
-                                   },
-                       "id":  43,
-                       "options":  {
-                                       "dedupStrategy":  "none",
-                                       "enableLogDetails":  true,
-                                       "prettifyLogMessage":  true,
-                                       "showCommonLabels":  false,
-                                       "showLabels":  true,
-                                       "sortOrder":  "Descending",
-                                       "wrapLogMessage":  true
-                                   },
-                       "targets":  [
-                                       {
-                                           "expr":  "{compose_service=\"api\"} |= \"trace_id=\"",
-                                           "queryType":  "range",
-                                           "refId":  "A"
-                                       }
-                                   ],
-                       "title":  "X-Trace-Id Correlation",
-                       "type":  "logs"
-                   },
-                   {
-                       "collapsed":  false,
-                       "gridPos":  {
-                                       "h":  1,
-                                       "w":  24,
-                                       "x":  0,
-                                       "y":  33
-                                   },
-                       "id":  5,
-                       "title":  "XÃ¡c Nháº­n Cuá»‘i",
-                       "type":  "row"
-                   },
-                   {
-                       "datasource":  {
-                                          "type":  "loki",
-                                          "uid":  "loki_ds"
-                                      },
-                       "gridPos":  {
-                                       "h":  9,
-                                       "w":  12,
-                                       "x":  0,
-                                       "y":  34
-                                   },
-                       "id":  50,
-                       "options":  {
-                                       "dedupStrategy":  "none",
-                                       "enableLogDetails":  true,
-                                       "prettifyLogMessage":  true,
-                                       "showCommonLabels":  false,
-                                       "showLabels":  true,
-                                       "sortOrder":  "Descending",
-                                       "wrapLogMessage":  true
-                                   },
-                       "targets":  [
-                                       {
-                                           "expr":  "{compose_service=\"processor\"}",
-                                           "queryType":  "range",
-                                           "refId":  "A"
-                                       }
-                                   ],
-                       "title":  "Processor Logs",
-                       "type":  "logs"
-                   },
-                   {
-                       "datasource":  {
-                                          "type":  "prometheus",
-                                          "uid":  "prometheus_ds"
-                                      },
-                       "fieldConfig":  {
-                                           "defaults":  {
-                                                            "color":  {
-                                                                          "mode":  "palette-classic"
-                                                                      },
-                                                            "unit":  "short"
-                                                        }
-                                       },
-                       "gridPos":  {
-                                       "h":  9,
-                                       "w":  12,
-                                       "x":  12,
-                                       "y":  34
-                                   },
-                       "id":  51,
-                       "options":  {
-                                       "legend":  {
-                                                      "displayMode":  "list",
-                                                      "placement":  "bottom"
-                                                  },
-                                       "tooltip":  {
-                                                       "mode":  "multi",
-                                                       "sort":  "none"
-                                                   }
-                                   },
-                       "targets":  [
-                                       {
-                                           "expr":  "up{job=~\"github_analyzer_api|github_analyzer_poller|github_analyzer_processor\"}",
-                                           "legendFormat":  "{{job}}",
-                                           "refId":  "A"
-                                       },
-                                       {
-                                           "expr":  "clamp_min((sum(increase(kafka_messages_produced_total{job=\"github_analyzer_poller\"}[5m])) - sum(increase(spark_records_processed_total{job=\"github_analyzer_processor\",sink=\"clickhouse\"}[5m]))) / 300, 0) or on() vector(0)",
-                                           "legendFormat":  "lag proxy",
-                                           "refId":  "B"
-                                       }
-                                   ],
-                       "title":  "Event Timeline / Annotations",
-                       "type":  "timeseries"
-                   }
-               ],
-    "refresh":  "5s",
-    "schemaVersion":  39,
-    "style":  "dark",
-    "tags":  [
-                 "demo",
-                 "saas",
-                 "observability",
-                 "tracing",
-                 "spark"
-             ],
-    "templating":  {
-                       "list":  [
-
-                                ]
-                   },
-    "time":  {
-                 "from":  "now-15m",
-                 "to":  "now"
-             },
-    "timepicker":  {
-
-                   },
-    "timezone":  "",
-    "title":  "Demo SaaS",
-    "uid":  "demo-saas",
-    "version":  3,
-    "weekStart":  ""
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus_ds"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "text": "No traffic"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0.001
+              }
+            ]
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(api_requests_total[1m])) or on() vector(0)",
+          "refId": "A"
+        }
+      ],
+      "title": "API Still Receiving Requests",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus_ds"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 300
+              },
+              {
+                "color": "red",
+                "value": 600
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "data_freshness_seconds or on() vector(0)",
+          "refId": "A"
+        }
+      ],
+      "title": "Business Data Freshness",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus_ds"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "text": "inactive"
+                },
+                "1": {
+                  "color": "green",
+                  "text": "active"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "expr": "pipeline_status",
+          "legendFormat": "{{status}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Pipeline Verdict",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus_ds"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 6
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "expr": "data_freshness_seconds",
+          "legendFormat": "freshness",
+          "refId": "A"
+        }
+      ],
+      "title": "Freshness Trend",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus_ds"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "expr": "(sum(rate(api_requests_total{status_code=~\"5..\"}[5m])) / clamp_min(sum(rate(api_requests_total[5m])), 0.001)) or on() vector(0)",
+          "legendFormat": "5xx ratio",
+          "refId": "A"
+        }
+      ],
+      "title": "Request Layer Error Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse_ds"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 14
+      },
+      "id": 6,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "format": 1,
+          "rawSql": "SELECT repo_name, max(created_at) AS latest_event_at, count() AS events FROM github_data GROUP BY repo_name ORDER BY latest_event_at DESC LIMIT 10",
+          "refId": "A"
+        }
+      ],
+      "title": "Latest Repo Events",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki_ds"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 14
+      },
+      "id": 7,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{compose_service=\"api\"} |= \"api.request.completed\"",
+          "refId": "A"
+        }
+      ],
+      "title": "API Logs",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus_ds"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "id": 8,
+      "options": {
+        "content": "Demo flow: call GET /health to show the API is alive, then call GET /pipeline/status. If processing stalls, API traffic can stay green while data_freshness_seconds rises and pipeline_status switches to degraded. Use X-Trace-Explore-Url from the response to open Tempo and pivot to Loki logs.",
+        "mode": "markdown"
+      },
+      "title": "Silent Failure Story",
+      "type": "text"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": [
+    "github-analyzer",
+    "demo",
+    "observability"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "GHA Silent Failure Demo",
+  "uid": "gha-silent-failure-demo",
+  "version": 1,
+  "weekStart": ""
 }
