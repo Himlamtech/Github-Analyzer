@@ -77,3 +77,15 @@ Core metrics:
 - Promtail needs access to Docker container logs, so Docker Desktop or the Docker Engine must expose
   `/var/run/docker.sock` and `/var/lib/docker/containers`.
 - ClickHouse dashboard panels assume the `github_data` table exists.
+
+## Provisioning Checks
+
+Use these checks after changing dashboards or datasources:
+
+```bash
+python -c "import json, pathlib; [json.loads(p.read_text()) for p in pathlib.Path('observability/grafana_provisioning/dashboards').glob('*.json')]"
+python -c "import yaml, pathlib; [yaml.safe_load(p.read_text()) for p in pathlib.Path('observability').glob('*.yml')]"
+docker compose config
+```
+
+`docker compose config` requires a local `.env`; create it from `.env.example` for local validation.
