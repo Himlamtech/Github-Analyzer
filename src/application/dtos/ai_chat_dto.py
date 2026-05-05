@@ -43,7 +43,7 @@ class AIChatResponseDTO(BaseModel):
 
     answer: str
     mode: Literal["template", "model"]
-    intent: Literal["market", "repo", "search", "mixed"]
+    intent: Literal["instant", "search", "knowledge", "market", "repo", "mixed"]
     tools_used: list[str]
     evidence: list[AIChatEvidenceDTO]
     follow_up_questions: list[str]

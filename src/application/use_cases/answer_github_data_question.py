@@ -27,18 +27,24 @@ if TYPE_CHECKING:
 logger = structlog.get_logger(__name__)
 
 _REPO_PATTERN = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
-_TOPIC_PATTERN = re.compile(r"\b(topic|topics|tag|tags|chu de|stack|cong nghe)\b", re.I)
-_CATEGORY_PATTERN = re.compile(r"\b(category|categories|danh muc|nhom|phan khuc)\b", re.I)
-_SEARCH_PATTERN = re.compile(
-    r"\b(search|find|tim|tim kiem|goi y|repo ve|repositories about)\b",
-    re.I,
-)
+
 _SYSTEM_PROMPT = """
 You are a grounded GitHub AI data analyst.
 Answer only from the provided evidence.
 Do not invent repositories, star counts, categories, topics, or causes.
 Keep the answer concise, useful, and direct.
 """
+
+_INTENT_SYSTEM_PROMPT = """
+You are an intent classifier for a GitHub data analytics chatbot.
+Classify the user's question into exactly one of three intents:
+
+- instant: The question can be answered directly from general knowledge without querying any database. Examples: explain what a topic is, define a term, give advice on open source strategy, general questions about GitHub or software.
+- search: The user wants to discover or find repositories matching a description, technology, or use case. Examples: "find repos about X", "search for Y", "goi y repo ve Z", "repositories related to".
+- knowledge: The user wants statistics, trends, rankings, topic shifts, category movements, repo analytics, or any data that must come from the live database. Examples: "repo nao tang nhanh", "topic nao hot", "phan tich owner/repo", "category nao dang dich chuyen", star counts, breakout repos.
+
+Return only valid JSON: {"intent": "instant"|"search"|"knowledge"}
+""".strip()
 
 _CHAT_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -54,7 +60,30 @@ _CHAT_SCHEMA: dict[str, Any] = {
     "required": ["answer", "follow_up_questions"],
 }
 
-Intent = Literal["market", "repo", "search", "mixed"]
+_INTENT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "intent": {"type": "string", "enum": ["instant", "search", "knowledge"]},
+    },
+    "required": ["intent"],
+}
+
+_INSTANT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "answer": {"type": "string"},
+        "follow_up_questions": {
+            "type": "array",
+            "items": {"type": "string"},
+            "minItems": 2,
+            "maxItems": 4,
+        },
+    },
+    "required": ["answer", "follow_up_questions"],
+}
+
+AgentIntent = Literal["instant", "search", "knowledge"]
+Intent = Literal["instant", "search", "knowledge", "market", "repo", "mixed"]
 
 
 class MarketBriefUseCaseProtocol(Protocol):
@@ -133,23 +162,147 @@ class AnswerGithubDataQuestionUseCase:
         if len(normalized_question) < 2:
             raise ValidationError("Chat question must contain at least 2 characters.")
 
-        repo_name = _extract_repo_name(normalized_question)
+        agent_intent = await self._classify_intent(normalized_question)
+        logger.info("ai_chat.intent_classified", intent=agent_intent, question=normalized_question[:80])
+
+        if agent_intent == "instant":
+            return await self._handle_instant(normalized_question, history)
+
+        if agent_intent == "search":
+            return await self._handle_search(normalized_question, days)
+
+        # knowledge intent — fetch data from DB based on query details
+        return await self._handle_knowledge(normalized_question, days, history)
+
+    async def _classify_intent(self, question: str) -> AgentIntent:
+        """Use LLM to classify question intent; fall back to heuristic."""
+        if self._llm_enabled and self._generation_service is not None:
+            try:
+                result = await self._generation_service.generate_json(
+                    prompt=f"Question: {question}",
+                    system_prompt=_INTENT_SYSTEM_PROMPT,
+                    schema=_INTENT_SCHEMA,
+                )
+                intent_value = result.get("intent", "")
+                if intent_value in ("instant", "search", "knowledge"):
+                    return intent_value  # type: ignore[return-value]
+            except GenerationServiceError as exc:
+                logger.warning("ai_chat.intent_classification_failed", error=str(exc))
+
+        return _heuristic_intent(question)
+
+    async def _handle_instant(
+        self,
+        question: str,
+        history: list[AIChatMessageDTO] | None,
+    ) -> AIChatResponseDTO:
+        """Answer directly using LLM general knowledge, no DB queries."""
+        if self._llm_enabled and self._generation_service is not None:
+            try:
+                history_text = _format_history(history)
+                prompt = (
+                    f"{history_text}\nQuestion: {question}"
+                    if history_text
+                    else f"Question: {question}"
+                )
+                result = await self._generation_service.generate_json(
+                    prompt=prompt,
+                    system_prompt=(
+                        "You are a helpful GitHub and open source expert. "
+                        "Answer the user's question clearly and concisely. "
+                        "Also suggest 2-4 follow-up questions."
+                    ),
+                    schema=_INSTANT_SCHEMA,
+                )
+                if _generated_answer_is_valid(result):
+                    return AIChatResponseDTO(
+                        answer=str(result["answer"]).strip(),
+                        mode="model",
+                        intent="instant",
+                        tools_used=[],
+                        evidence=[],
+                        follow_up_questions=[
+                            str(q).strip() for q in result["follow_up_questions"][:4]
+                        ],
+                    )
+            except GenerationServiceError as exc:
+                logger.warning("ai_chat.instant_generation_failed", error=str(exc))
+
+        return AIChatResponseDTO(
+            answer="Xin loi, minh chua the tra loi cau hoi nay ngay luc nay.",
+            mode="template",
+            intent="instant",
+            tools_used=[],
+            evidence=[],
+            follow_up_questions=_default_follow_ups(),
+        )
+
+    async def _handle_search(self, question: str, days: int) -> AIChatResponseDTO:
+        """Search for repositories matching the query."""
+        search = await self._load_search_context(question, days)
+        if search is None or not search.results:
+            raise AIInsightError("No search results found for this query.")
+
+        evidence = _search_evidence(search)
+        tools_used = ["search"]
+
+        generated = await self._maybe_generate_answer(
+            question=question,
+            intent="search",
+            evidence=evidence,
+        )
+        if generated is not None:
+            return AIChatResponseDTO(
+                answer=generated["answer"],
+                mode="model",
+                intent="search",
+                tools_used=tools_used,
+                evidence=evidence[:12],
+                follow_up_questions=generated["follow_up_questions"],
+            )
+
+        lines = ["Cac repo khop nhat voi cau hoi cua ban:"]
+        lines.extend(
+            f"{i + 1}. {r.repo.repo_full_name}: score {r.score:.2f}, "
+            f"+{r.star_count_in_window} stars."
+            for i, r in enumerate(search.results[:5])
+        )
+        return AIChatResponseDTO(
+            answer="\n".join(lines),
+            mode="template",
+            intent="search",
+            tools_used=tools_used,
+            evidence=evidence[:12],
+            follow_up_questions=_search_follow_ups(),
+        )
+
+    async def _handle_knowledge(
+        self,
+        question: str,
+        days: int,
+        history: list[AIChatMessageDTO] | None,
+    ) -> AIChatResponseDTO:
+        """Query DB for market data, repo briefs, or search results based on question details."""
+        repo_name = _extract_repo_name(question)
         if repo_name is None and history:
             repo_name = _extract_repo_name_from_history(history)
-        intent = _detect_intent(normalized_question, repo_name)
+
         tools_used: list[str] = []
         evidence: list[AIChatEvidenceDTO] = []
 
+        # Always load market context for knowledge queries
         market = await self._load_market_context(days)
         if market is not None:
             tools_used.append("market-brief")
-            evidence.extend(_market_evidence(market, normalized_question))
+            evidence.extend(_market_evidence(market, question))
 
-        search = await self._load_search_context(normalized_question, days)
+        # Load search context as additional signal
+        search = await self._load_search_context(question, days)
         if search is not None:
             tools_used.append("search")
             evidence.extend(_search_evidence(search))
 
+        # Load specific repo brief if mentioned
         repo_brief: RepoBriefResponseDTO | None = None
         if repo_name is not None:
             repo_brief = await self._load_repo_context(repo_name, days)
@@ -158,18 +311,21 @@ class AnswerGithubDataQuestionUseCase:
                 evidence.extend(_repo_evidence(repo_brief))
 
         if not evidence:
-            raise AIInsightError("No GitHub trend data was available for chat.")
+            raise AIInsightError("No GitHub trend data was available for this query.")
+
+        # Determine fine-grained intent for template fallback
+        fine_intent: Intent = "repo" if repo_name else "knowledge"
 
         generated = await self._maybe_generate_answer(
-            question=normalized_question,
-            intent=intent,
+            question=question,
+            intent=fine_intent,
             evidence=evidence,
         )
         if generated is not None:
             return AIChatResponseDTO(
                 answer=generated["answer"],
                 mode="model",
-                intent=intent,
+                intent=fine_intent,
                 tools_used=tools_used,
                 evidence=evidence[:12],
                 follow_up_questions=generated["follow_up_questions"],
@@ -177,18 +333,18 @@ class AnswerGithubDataQuestionUseCase:
 
         return AIChatResponseDTO(
             answer=_build_template_answer(
-                question=normalized_question,
-                intent=intent,
+                question=question,
+                intent=fine_intent,
                 evidence=evidence,
                 market=market,
                 search=search,
                 repo_brief=repo_brief,
             ),
             mode="template",
-            intent=intent,
+            intent=fine_intent,
             tools_used=tools_used,
             evidence=evidence[:12],
-            follow_up_questions=_follow_ups(intent, repo_name),
+            follow_up_questions=_knowledge_follow_ups(repo_name),
         )
 
     async def _load_market_context(self, days: int) -> MarketBriefResponseDTO | None:
@@ -257,6 +413,25 @@ class AnswerGithubDataQuestionUseCase:
         }
 
 
+def _heuristic_intent(question: str) -> AgentIntent:
+    """Regex fallback when LLM classifier is unavailable."""
+    if _REPO_PATTERN.search(question):
+        return "knowledge"
+    search_pat = re.compile(
+        r"\b(search|find|tim|tim kiem|goi y|repo ve|repositories about)\b", re.I
+    )
+    if search_pat.search(question):
+        return "search"
+    knowledge_pat = re.compile(
+        r"\b(trend|trending|tang|hot|breakout|sao|star|category|topic|phan tich|"
+        r"chu de|danh muc|nhom|rotation|dich chuyen|nhanh nhat|noi bat)\b",
+        re.I,
+    )
+    if knowledge_pat.search(question):
+        return "knowledge"
+    return "instant"
+
+
 def _extract_repo_name(question: str) -> str | None:
     match = _REPO_PATTERN.search(question)
     return match.group(0) if match else None
@@ -270,20 +445,23 @@ def _extract_repo_name_from_history(history: list[AIChatMessageDTO]) -> str | No
     return None
 
 
-def _detect_intent(question: str, repo_name: str | None) -> Intent:
-    if repo_name is not None:
-        return "repo"
-    if _SEARCH_PATTERN.search(question):
-        return "search"
-    if _TOPIC_PATTERN.search(question) or _CATEGORY_PATTERN.search(question):
-        return "market"
-    return "mixed"
+def _format_history(history: list[AIChatMessageDTO] | None) -> str:
+    if not history:
+        return ""
+    lines = []
+    for msg in history[-6:]:
+        prefix = "User" if msg.role == "user" else "Assistant"
+        lines.append(f"{prefix}: {msg.content}")
+    return "\n".join(lines)
 
 
 def _market_evidence(
     market: MarketBriefResponseDTO,
     question: str,
 ) -> list[AIChatEvidenceDTO]:
+    _TOPIC_PATTERN = re.compile(r"\b(topic|topics|tag|tags|chu de|stack|cong nghe)\b", re.I)
+    _CATEGORY_PATTERN = re.compile(r"\b(category|categories|danh muc|nhom|phan khuc)\b", re.I)
+
     evidence: list[AIChatEvidenceDTO] = []
     wants_categories = _CATEGORY_PATTERN.search(question) is not None
     wants_topics = _TOPIC_PATTERN.search(question) is not None
@@ -371,6 +549,9 @@ def _build_template_answer(
     search: RepoSearchResponseDTO | None,
     repo_brief: RepoBriefResponseDTO | None,
 ) -> str:
+    _TOPIC_PATTERN = re.compile(r"\b(topic|topics|tag|tags|chu de|stack|cong nghe)\b", re.I)
+    _CATEGORY_PATTERN = re.compile(r"\b(category|categories|danh muc|nhom|phan khuc)\b", re.I)
+
     if repo_brief is not None:
         return "\n".join(
             [
@@ -385,17 +566,6 @@ def _build_template_answer(
                 f"Ly do chinh: {repo_brief.why_trending}",
             ]
         )
-
-    if intent == "search" and search is not None and search.results:
-        lines = ["Cac repo khop nhat voi cau hoi cua ban:"]
-        lines.extend(
-            (
-                f"{index + 1}. {result.repo.repo_full_name}: score {result.score:.2f}, "
-                f"+{result.star_count_in_window} stars trong cua so du lieu."
-            )
-            for index, result in enumerate(search.results[:5])
-        )
-        return "\n".join(lines)
 
     if market is not None and _TOPIC_PATTERN.search(question):
         lines = ["Cac topic dang co chuyen dong manh nhat:"]
@@ -419,34 +589,38 @@ def _build_template_answer(
         )
         return "\n".join(lines)
 
-    lines = ["Mình đã truy vấn dữ liệu thật và thấy các tín hiệu chính sau:"]
+    lines = ["Minh da truy van du lieu that va thay cac tin hieu chinh sau:"]
     lines.extend(f"- {item.label}: {item.value} ({item.source})" for item in evidence[:8])
     return "\n".join(lines)
 
 
-def _follow_ups(intent: Intent, repo_name: str | None) -> list[str]:
+def _default_follow_ups() -> list[str]:
+    return [
+        "Repo nao dang tang sao nhanh nhat?",
+        "Topic nao dang nong trong 7 ngay?",
+        "Tim repo ve AI agents",
+    ]
+
+
+def _search_follow_ups() -> list[str]:
+    return [
+        "Loc ket qua chi Python",
+        "Repo nao co momentum tot nhat trong nhom nay?",
+        "Hay phan tich repo dau tien",
+    ]
+
+
+def _knowledge_follow_ups(repo_name: str | None) -> list[str]:
     if repo_name is not None:
         return [
             f"So sanh {repo_name} voi repo trending khac",
             f"Tim cac repo lien quan den {repo_name}",
             f"{repo_name} co watchout nao dang chu y?",
         ]
-    if intent == "market":
-        return [
-            "Category nao dang tang nhanh nhat?",
-            "Topic nao co rotation manh nhat?",
-            "Repo nao nen theo doi tiep?",
-        ]
-    if intent == "search":
-        return [
-            "Loc ket qua chi Python",
-            "Repo nao co momentum tot nhat trong nhom nay?",
-            "Hay phan tich repo dau tien",
-        ]
     return [
-        "Repo nao dang tang sao nhanh nhat?",
-        "Topic nao dang nong trong 7 ngay?",
-        "Tim repo ve AI agents",
+        "Category nao dang tang nhanh nhat?",
+        "Topic nao co rotation manh nhat?",
+        "Repo nao nen theo doi tiep?",
     ]
 
 
