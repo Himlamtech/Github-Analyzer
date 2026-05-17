@@ -1,0 +1,17 @@
+flowchart TD
+    KAFKA["Kafka<br/>github_raw_events<br/>16 partitions"]
+    READ["Spark readStream<br/>parse JSON schema<br/>watermark 10 phút"]
+    KAFKA -->|"consume"| READ
+
+    subgraph SINKS["Hai luồng ghi độc lập"]
+        direction LR
+        PQ["Parquet Sink<br/>append mode<br/>event_date=2026-01-01/<br/>event_type=WatchEvent/<br/>*.parquet"]
+        CH["ClickHouse Sink<br/>foreachBatch<br/>INSERT chunk 1000 rows<br/>github_data (MergeTree)"]
+    end
+
+    READ --> PQ
+    READ --> CH
+
+    BATCH["Spark Batch Job<br/>nightly 02:00 UTC<br/>Parquet → repo_star_counts<br/>Parquet → repo_activity_summary"]
+    PQ -->|"cold read"| BATCH
+    BATCH --> CH

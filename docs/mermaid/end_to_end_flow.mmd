@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant GH as GitHub API
+    participant PL as Poller
+    participant KF as Kafka (16 parts)
+    participant SP as Spark Streaming
+    participant CK as ClickHouse
+    participant PQ as Parquet
+    participant AP as FastAPI
+    participant FE as Next.js
+
+    loop Mỗi 60 giây
+        PL->>GH: GET /events (ETag)
+        GH-->>PL: 200 OK / 304 Not Modified
+        PL->>KF: publish batch events
+    end
+
+    loop Mỗi 60 giây (micro-batch)
+        SP->>KF: consume offset
+        SP->>SP: parse + watermark + dedup
+        SP->>CK: INSERT chunk 1000 rows
+        SP->>PQ: write Parquet partition
+    end
+
+    FE->>AP: GET /dashboard/trending
+    AP->>CK: SELECT ... GROUP BY ...
+    CK-->>AP: result < 200ms
+    AP-->>FE: JSON response

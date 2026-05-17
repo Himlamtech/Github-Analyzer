@@ -1,0 +1,37 @@
+\babel@toc {vietnamese}{}\relax 
+\contentsline {section}{\numberline {1}Giới thiệu bài toán và động lực}{3}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Bối cảnh}{3}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Bài toán cụ thể}{3}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Vấn đề kỹ thuật cốt lõi}{4}{subsection.1.3}%
+\contentsline {section}{\numberline {2}Phân tích phương pháp và lựa chọn giải pháp}{4}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Các phương án đã xem xét}{4}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Lý do chọn ClickHouse thay vì PostgreSQL / MySQL}{5}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Lý do chọn Kafka thay vì truyền trực tiếp}{5}{subsection.2.3}%
+\contentsline {section}{\numberline {3}Kiến trúc hệ thống}{5}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Tổng quan kiến trúc}{5}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Mermaid diagrams — dùng để render hình}{7}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Các dịch vụ trong docker-compose}{9}{subsection.3.3}%
+\contentsline {section}{\numberline {4}Xử lý dữ liệu lớn — Massive Data Pipeline}{9}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Lớp Ingestion: GitHub Events API → Kafka}{9}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Lớp Stream Processing: Spark Structured Streaming}{11}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Schema dữ liệu trong ClickHouse}{12}{subsection.4.3}%
+\contentsline {section}{\numberline {5}Tìm kiếm ngữ nghĩa và AI Endpoints}{13}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Hybrid Search Pipeline}{13}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Các AI Endpoints}{14}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Lý do dùng Ollama thay vì cloud API}{14}{subsection.5.3}%
+\contentsline {section}{\numberline {6}Observability và Độ tin cậy vận hành}{14}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Prometheus Metrics}{14}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Cron Jobs — Kiểm tra sức khoẻ định kỳ}{15}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Grafana Dashboard}{15}{subsection.6.3}%
+\contentsline {section}{\numberline {7}Kết quả và Demo hệ thống}{16}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Frontend Dashboard}{16}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}API Endpoints}{16}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}Số liệu vận hành thực tế}{17}{subsection.7.3}%
+\contentsline {subsection}{\numberline {7.4}Luồng xử lý end-to-end}{17}{subsection.7.4}%
+\contentsline {section}{\numberline {8}Phân tích ưu/nhược điểm và hướng phát triển}{19}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Ưu và nhược điểm của giải pháp hiện tại}{19}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}Hướng phát triển}{19}{subsection.8.2}%
+\contentsline {section}{\numberline {9}Kết luận}{20}{section.9}%
+\contentsline {section}{Phân công công việc}{20}{section.9}%
+\contentsline {section}{Tài liệu tham khảo}{21}{table.caption.19}%
+\contentsline {section}{Ghi chú — Điền ảnh và số liệu}{22}{Item.13}%

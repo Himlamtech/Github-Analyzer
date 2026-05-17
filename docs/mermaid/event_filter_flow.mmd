@@ -1,0 +1,13 @@
+flowchart LR
+    RAW["Raw GitHub Event<br/>JSON payload"]
+    VALID{"Structurally<br/>valid?"}
+    CLASS["CategoryClassifier<br/>kiểm tra topics,<br/>keywords, repo name"]
+    SIGNAL["Gán AI signal<br/>debug only"]
+    KAFKA["Kafka<br/>github_raw_events"]
+    DROP["Drop<br/>log + metric"]
+
+    RAW --> VALID
+    VALID -->|"Không"| DROP
+    VALID -->|"Có"| CLASS
+    CLASS --> SIGNAL
+    SIGNAL --> KAFKA
