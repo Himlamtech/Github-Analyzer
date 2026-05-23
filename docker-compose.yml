@@ -5,6 +5,8 @@ networks:
     driver: bridge
 
 volumes:
+  kafka_data:
+    name: github-kafka-data
   clickhouse_data:
     external: true
     name: github-clickhouse-data
@@ -44,10 +46,13 @@ services:
     networks:
       - github-networks
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
       - "${KAFKA_PORT:-9092}:9092"
       - "${KAFKA_JMX_HOST_PORT:-9101}:9101"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
@@ -163,11 +168,7 @@ services:
     restart: unless-stopped
 
   ollama:
-    image: gha-ollama
-    container_name: github-ollama
-    hostname: ollama
-    networks:
-      - github-networks
+    image: ollama/ollama:latest
     ports:
       - "${OLLAMA_PORT:-11435}:11434"
     volumes:
