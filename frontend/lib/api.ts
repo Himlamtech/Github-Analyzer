@@ -8,7 +8,6 @@ import type {
   CategorySummary,
   LanguageBreakdown,
   MarketBriefResponse,
-  NewsRadarResponse,
   RelatedReposResponse,
   RepoCompareResponse,
   RepoBriefResponse,
@@ -176,19 +175,6 @@ export const api = {
 
   getTopicRotation: (days = 7, limit = 8): Promise<TopicRotation[]> =>
     apiFetch<TopicRotation[]>("/dashboard/topic-rotation", { days, limit }),
-
-  getNewsRadar: (
-    days = 7,
-    repoLimit = 4,
-    focus: "absolute" | "percentage" = "percentage",
-    minBaselineStars = 1_000,
-  ): Promise<NewsRadarResponse> =>
-    apiFetch<NewsRadarResponse>("/dashboard/news-radar", {
-      days,
-      repo_limit: repoLimit,
-      focus,
-      min_baseline_stars: minBaselineStars,
-    }),
 
   getTopicBreakdown: (days = 7): Promise<TopicBreakdown[]> =>
     apiFetch<TopicBreakdown[]>("/dashboard/topic-breakdown", { days }),

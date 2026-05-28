@@ -156,36 +156,3 @@ class TopicRotationDTO(BaseModel):
     star_delta: int
     repo_count: int = Field(..., ge=0)
     rank: int = Field(..., ge=1)
-
-
-class NewsHeadlineDTO(BaseModel):
-    """One external headline returned by the news radar."""
-
-    model_config = ConfigDict(frozen=True)
-
-    title: str
-    url: str
-    source: str
-    snippet: str
-    engine: str | None = None
-
-
-class RepoNewsRadarDTO(BaseModel):
-    """External news bundle for one repository surfaced by the dashboard."""
-
-    model_config = ConfigDict(frozen=True)
-
-    repo_full_name: str
-    category: str
-    star_count_in_window: int = Field(..., ge=0)
-    weekly_percent_gain: float = Field(..., ge=0.0)
-    headlines: list[NewsHeadlineDTO]
-
-
-class NewsRadarResponseDTO(BaseModel):
-    """Top-level response for the external news radar block."""
-
-    model_config = ConfigDict(frozen=True)
-
-    window_days: int = Field(..., ge=1, le=365)
-    repos: list[RepoNewsRadarDTO]

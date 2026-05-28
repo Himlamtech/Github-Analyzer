@@ -96,27 +96,6 @@ export interface TopicRotation {
   rank: number;
 }
 
-export interface NewsHeadline {
-  title: string;
-  url: string;
-  source: string;
-  snippet: string;
-  engine: string | null;
-}
-
-export interface RepoNewsRadar {
-  repo_full_name: string;
-  category: string;
-  star_count_in_window: number;
-  weekly_percent_gain: number;
-  headlines: NewsHeadline[];
-}
-
-export interface NewsRadarResponse {
-  window_days: number;
-  repos: RepoNewsRadar[];
-}
-
 export interface AISearchFilters {
   category: string | null;
   primary_language: string | null;

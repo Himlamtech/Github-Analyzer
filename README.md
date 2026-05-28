@@ -24,8 +24,8 @@ PollGithubEventsUseCase ── AiEventFilter ──▶ Kafka (github_raw_events,
               ┌─────────┴──────────┐
               ▼                    ▼
           FastAPI        Ollama (bge-m3, llama3.2:3b)
-         (port 8000)         SearXNG (external)
-              │           search, grounded briefs, news radar
+         (port 8000)
+              │           search, grounded briefs
               ▼
         Next.js Dashboard
           (port 3000)
@@ -195,7 +195,6 @@ make clean       # docker-compose down -v + remove data/
 | `GET` | `/dashboard/trending` | Trending repos over the past N days |
 | `GET` | `/dashboard/shock-movers` | Biggest star gainers and percentage movers in the current window |
 | `GET` | `/dashboard/topic-rotation` | Topics accelerating fastest versus the prior matching window |
-| `GET` | `/dashboard/news-radar` | External headlines for the current breakout repositories |
 | `GET` | `/dashboard/language-breakdown` | Event distribution by primary language |
 | `GET` | `/dashboard/topic-breakdown` | Event distribution by repo topic |
 | `GET` | `/dashboard/category-summary` | AI/ML category breakdown |
@@ -273,7 +272,6 @@ To add a new AI framework, update the relevant set/list in `event_filter.py`.
 | `OLLAMA_BASE_URL` | — | default `http://localhost:11435` |
 | `OLLAMA_EMBEDDING_MODEL` | — | default `bge-m3` |
 | `OLLAMA_GENERATION_MODEL` | — | default `llama3.2:3b` |
-| `SEARXNG_BASE_URL` | — | default `http://localhost:8080` |
 | `GRAFANA_PASSWORD` | — | default `admin` |
 | `SPARK_MASTER` | — | default `local[16]` |
 | `SPARK_DRIVER_MEMORY` | — | default `8g` |

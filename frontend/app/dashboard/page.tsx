@@ -5,7 +5,6 @@ import { useState } from "react";
 import { CategoryFilter } from "@/components/dashboard/CategoryFilter";
 import { CategorySummaryGrid } from "@/components/dashboard/CategorySummaryGrid";
 import { LanguageDistChart } from "@/components/dashboard/LanguageDistChart";
-import { NewsRadarPanel } from "@/components/dashboard/NewsRadarPanel";
 import { TopicHeatmap } from "@/components/dashboard/TopicHeatmap";
 import { TopicRotationBoard } from "@/components/dashboard/TopicRotationBoard";
 import { TrendingRepos } from "@/components/dashboard/TrendingRepos";
@@ -67,11 +66,10 @@ export default function DashboardPage() {
                 <button
                   key={limit}
                   onClick={() => setHistoryLimit(limit)}
-                  className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
-                    historyLimit === limit
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-slate-600 hover:bg-white hover:text-slate-950"
-                  }`}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${historyLimit === limit
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-slate-600 hover:bg-white hover:text-slate-950"
+                    }`}
                 >
                   Top {limit}
                 </button>
@@ -108,7 +106,6 @@ export default function DashboardPage() {
           <WeekInReview days={days} onSelectRepo={setSelectedRepo} />
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <NewsRadarPanel days={days} onSelectRepo={setSelectedRepo} />
             <TopicRotationBoard days={days} />
           </div>
         </section>

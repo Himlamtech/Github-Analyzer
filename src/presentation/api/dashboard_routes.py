@@ -12,7 +12,6 @@ Tags: ["Dashboard"]
 
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Annotated, cast
 
@@ -22,10 +21,7 @@ import structlog
 from src.application.dtos.repo_metadata_dto import (
     CategorySummaryDTO,
     LanguageBreakdownDTO,
-    NewsHeadlineDTO,
-    NewsRadarResponseDTO,
     RepoMetadataDTO,
-    RepoNewsRadarDTO,
     RepoTimeseriesPointDTO,
     ShockMoverDTO,
     ShockMoversResponseDTO,
@@ -38,7 +34,6 @@ from src.domain.exceptions import DashboardQueryError
 from src.infrastructure.config import Settings, get_settings
 
 if TYPE_CHECKING:
-    from src.infrastructure.news.searxng_news_service import SearXNGNewsService
     from src.infrastructure.storage.clickhouse_dashboard_service import (
         ClickHouseDashboardService,
     )
@@ -66,19 +61,6 @@ def _get_dashboard_service(
         password=settings.clickhouse_password,
         database=settings.clickhouse_database,
         parquet_base_path=settings.parquet_base_path,
-    )
-
-
-def _get_news_service(
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> object:
-    """Construct the SearXNG-backed news service for the request."""
-    from src.infrastructure.news.searxng_news_service import SearXNGNewsService
-
-    return SearXNGNewsService(
-        base_url=str(settings.searxng_base_url),
-        timeout_seconds=settings.searxng_timeout_seconds,
-        headline_limit=settings.searxng_news_limit,
     )
 
 
@@ -309,72 +291,6 @@ async def get_topic_rotation(
         )
         for idx, row in enumerate(rows)
     ]
-
-
-@router.get("/news-radar", response_model=NewsRadarResponseDTO)
-async def get_news_radar(
-    svc: Annotated[object, Depends(_get_dashboard_service)],
-    news_svc: Annotated[object, Depends(_get_news_service)],
-    days: Annotated[int, Query(ge=1, le=90)] = 7,
-    repo_limit: Annotated[int, Query(ge=1, le=8)] = 4,
-    min_baseline_stars: Annotated[int, Query(ge=100, le=2_000_000)] = 1_000,
-    focus: Annotated[str, Query(pattern="^(absolute|percentage)$")] = "percentage",
-) -> NewsRadarResponseDTO:
-    """Return external headlines for the current breakout repositories."""
-    dashboard_service = cast("ClickHouseDashboardService", svc)
-    news_service = cast("SearXNGNewsService", news_svc)
-
-    try:
-        movers = await dashboard_service.get_shock_movers(
-            days=days,
-            absolute_limit=repo_limit,
-            percentage_limit=repo_limit,
-            min_baseline_stars=min_baseline_stars,
-        )
-        selected_rows = cast(
-            "list[dict[str, object]]",
-            movers["percentage_movers" if focus == "percentage" else "absolute_movers"],
-        )
-        headlines_per_repo = await asyncio.gather(
-            *[
-                news_service.search_repo_news(
-                    repo_full_name=str(row.get("repo_full_name") or ""),
-                    days=days,
-                )
-                for row in selected_rows
-            ]
-        )
-    except DashboardQueryError as exc:
-        logger.warning("dashboard.news_radar_unavailable", error=str(exc), days=days, focus=focus)
-        return NewsRadarResponseDTO(window_days=days, repos=[])
-
-    repos: list[RepoNewsRadarDTO] = []
-    for row, headlines in zip(selected_rows, headlines_per_repo, strict=True):
-        repos.append(
-            RepoNewsRadarDTO(
-                repo_full_name=str(row.get("repo_full_name") or ""),
-                category=str(row.get("category") or "Other"),
-                star_count_in_window=int(
-                    cast("int | float | str", row.get("star_count_in_window") or 0)
-                ),
-                weekly_percent_gain=float(
-                    cast("int | float | str", row.get("weekly_percent_gain") or 0.0)
-                ),
-                headlines=[
-                    NewsHeadlineDTO(
-                        title=str(item.get("title") or ""),
-                        url=str(item.get("url") or ""),
-                        source=str(item.get("source") or "web"),
-                        snippet=str(item.get("snippet") or ""),
-                        engine=str(item.get("engine")) if item.get("engine") is not None else None,
-                    )
-                    for item in headlines
-                    if str(item.get("title") or "").strip() and str(item.get("url") or "").strip()
-                ],
-            )
-        )
-
-    return NewsRadarResponseDTO(window_days=days, repos=repos)
 
 
 @router.get("/topic-breakdown", response_model=list[TopicBreakdownDTO])

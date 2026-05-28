@@ -145,40 +145,12 @@ class Settings(BaseSettings):
         le=120.0,
         description="HTTP timeout for Ollama repo brief generation requests in seconds.",
     )
-    yescale_api_key: str = Field(
-        default="",
-        description="Bearer API key for the Yescale Gemini-compatible generation endpoint.",
-    )
-    yescale_base_url: AnyHttpUrl = Field(
-        default="https://api.yescale.io/v1beta",  # type: ignore[assignment]
-        description="Base URL for the Yescale Gemini-compatible generation endpoint.",
-    )
-    yescale_generation_model: str = Field(
-        default="gemini-3.1-flash-lite-preview",
-        description="Gemini model name used by the Yescale-backed chat agent.",
-    )
-    searxng_base_url: AnyHttpUrl = Field(
-        default="http://localhost:8080",  # type: ignore[assignment]
-        description="Base URL for the SearXNG instance used by the news radar.",
-    )
-    searxng_timeout_seconds: float = Field(
-        default=10.0,
-        ge=1.0,
-        le=120.0,
-        description="HTTP timeout for SearXNG news lookups in seconds.",
-    )
-    searxng_news_limit: int = Field(
-        default=3,
-        ge=1,
-        le=10,
-        description="Maximum external headlines returned per repository.",
-    )
 
     # ── Observability ─────────────────────────────────────────────────────────
     metrics_port: int = Field(default=9091, ge=1024, le=65535)
     tracing_enabled: bool = Field(
         default=True,
-        description="Enable OpenTelemetry tracing export to Tempo via OTLP/HTTP.",
+        description="Enable OpenTelemetry tracing export via OTLP/HTTP.",
     )
     tracing_sampling_ratio: float = Field(
         default=1.0,
@@ -193,30 +165,6 @@ class Settings(BaseSettings):
     tracing_exporter_otlp_endpoint: AnyHttpUrl = Field(
         default="http://localhost:4318/v1/traces",  # type: ignore[assignment]
         description="OTLP/HTTP trace ingestion endpoint.",
-    )
-    tracing_grafana_base_url: AnyHttpUrl = Field(
-        default="http://localhost:3001",  # type: ignore[assignment]
-        description="Base URL of the Grafana instance used for trace drilldown links.",
-    )
-    tracing_grafana_org_id: int = Field(
-        default=1,
-        ge=1,
-        description="Grafana organization ID used when building Explore links.",
-    )
-    tracing_grafana_tempo_datasource_uid: str = Field(
-        default="tempo_ds",
-        min_length=1,
-        description="Grafana Tempo datasource UID used for trace drilldown links.",
-    )
-    tracing_grafana_explore_from: str = Field(
-        default="now-1h",
-        min_length=1,
-        description="Default Grafana Explore start range for trace drilldown links.",
-    )
-    tracing_grafana_explore_to: str = Field(
-        default="now",
-        min_length=1,
-        description="Default Grafana Explore end range for trace drilldown links.",
     )
     log_level: str = Field(default="INFO")
 

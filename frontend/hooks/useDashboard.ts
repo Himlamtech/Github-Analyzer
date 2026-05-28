@@ -52,16 +52,6 @@ export function useTopicRotation(days: number) {
   });
 }
 
-/** External headline bundle for the current breakout repositories. */
-export function useNewsRadar(days: number) {
-  return useQuery({
-    queryKey: ["news-radar", days],
-    queryFn: () => api.getNewsRadar(days),
-    staleTime: 120_000,
-    retry: false,
-  });
-}
-
 /** Star counts grouped by GitHub topic tag (top 30). */
 export function useTopicBreakdown(days: number) {
   return useQuery({
