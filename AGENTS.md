@@ -57,21 +57,20 @@ Use this flow for every task:
 
 ### 3.1 Python Environment
 
-- Use Conda only. Do not use `venv` / `pyvenv`.
-- Required environment: `github`.
-- Required interpreter version in this environment: `Python 3.14`.
-- Never use `base`.
+- Use `uv` only. Do not use `conda` / `venv` / `pyvenv`.
+- Required interpreter version: `Python 3.14`.
+- Project virtual environment is managed by `uv` (`.venv/` at project root).
 
 ```bash
-conda activate github
-python --version  # must show Python 3.14.x
+uv sync              # install/update all dependencies from pyproject.toml
+uv run python --version  # must show Python 3.14.x
 ```
 
 ### 3.2 Source of Truth
 
 - `pyproject.toml` is authoritative for Python/lint/type/test configuration.
 - Effective baseline in this repo:
-  - Runtime env: Python `3.14` in conda env `github`
+  - Runtime env: Python `3.14` managed by `uv`
   - Ruff line length `99`
   - Mypy `strict`
   - Pytest configured via `tool.pytest.ini_options`
@@ -79,10 +78,10 @@ python --version  # must show Python 3.14.x
 ### 3.3 Core Commands
 
 ```bash
-ruff check .
-ruff format --check .
-mypy src
-pytest -v
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src
+uv run pytest -v
 make lint
 make test
 ```

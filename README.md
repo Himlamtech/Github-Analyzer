@@ -50,7 +50,7 @@ PollGithubEventsUseCase ── AiEventFilter ──▶ Kafka (github_raw_events,
 ### Prerequisites
 
 - Docker + Docker Compose
-- Conda environment `github` with Python 3.14
+- `uv` package manager with Python 3.14
 - Java 17+ (required for PySpark — included in the Docker image)
 
 ### 1. Configure environment
@@ -58,8 +58,7 @@ PollGithubEventsUseCase ── AiEventFilter ──▶ Kafka (github_raw_events,
 ```bash
 cp .env.example .env
 # Set GITHUB_API_TOKENS and CLICKHOUSE_PASSWORD at minimum
-conda activate github
-pip install -e ".[dev]"
+uv sync
 ```
 
 ### 2. Start all infrastructure services

@@ -28,12 +28,12 @@ while IFS= read -r line; do
 done < "${ENV_FILE}"
 set +a
 
-# ── Conda python interpreter ──────────────────────────────────────────────────
-CONDA_BASE="${CONDA_PREFIX:-/media/aiz/0836a33f-812f-4e69-a6f9-784fe732c6d5/miniconda3}"
-export PYTHON="${CONDA_BASE}/envs/data/bin/python"
+# ── uv python interpreter ─────────────────────────────────────────────────────
+UV_PROJECT_ROOT="${PROJECT_ROOT}"
+export PYTHON="uv run --project ${UV_PROJECT_ROOT} python"
 
-if [[ ! -x "${PYTHON}" ]]; then
-  echo "[ERROR] Python not found at ${PYTHON}" >&2
+if ! command -v uv &>/dev/null; then
+  echo "[ERROR] uv is not installed. See https://docs.astral.sh/uv/getting-started/installation/" >&2
   exit 1
 fi
 

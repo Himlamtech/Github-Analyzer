@@ -1,10 +1,9 @@
 .PHONY: setup bootstrap-clickhouse stream process query monitor discover-repos sync-repos frontend-dev frontend-build frontend-type-check test lint format clean help
 
-CONDA_ENV := github
-PYTHON := conda run -n $(CONDA_ENV) python
-PYTEST := conda run -n $(CONDA_ENV) pytest
-RUFF   := conda run -n $(CONDA_ENV) ruff
-MYPY   := conda run -n $(CONDA_ENV) mypy
+PYTHON := uv run python
+PYTEST := uv run pytest
+RUFF   := uv run ruff
+MYPY   := uv run mypy
 
 # Use locally installed Java 17 (no root required); falls back to system Java
 JAVA_HOME_LOCAL := $(HOME)/.local/jdk17

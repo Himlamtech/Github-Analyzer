@@ -91,6 +91,8 @@ make clean       # docker-compose down -v + rm data/
 
 Config is loaded from `.env` via `pydantic-settings`. Copy `.env.example` and set `GITHUB_API_TOKENS` and `CLICKHOUSE_PASSWORD` before running.
 
+Environment is managed by `uv`. Run `uv sync` to install all dependencies from `pyproject.toml`.
+
 ## Testing Conventions
 
 - Mirror source tree: `src/domain/entities/github_event.py` → `tests/domain/test_github_event.py`
