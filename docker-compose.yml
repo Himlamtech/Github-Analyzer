@@ -16,9 +16,6 @@ volumes:
   grafana_data:
     external: true
     name: github-grafana-data
-  ollama_data:
-    external: true
-    name: github-ollama-data
 
 services:
   zookeeper:
@@ -167,29 +164,6 @@ services:
               capabilities: [gpu]
     restart: unless-stopped
 
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "${OLLAMA_PORT:-11435}:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 20s
-      timeout: 15s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
-    # After first start, pull the embedding model:
-    #   docker compose exec ollama ollama pull bge-m3
-
   frontend:
     image: gha-frontend
     container_name: github-frontend
@@ -240,8 +214,6 @@ services:
       PARQUET_BASE_PATH: /app/data/raw
       REPO_METADATA_PATH: /app/data/repos
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-qwen3-embedding-0.6b}
       TRACING_ENABLED: "false"
       TRACING_SERVICE_NAME: ${TRACING_SERVICE_NAME:-gha-api}
       TRACING_SAMPLING_RATIO: ${TRACING_SAMPLING_RATIO:-1.0}
@@ -249,8 +221,6 @@ services:
       kafka:
         condition: service_healthy
       clickhouse:
-        condition: service_healthy
-      ollama:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:

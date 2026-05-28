@@ -9,7 +9,6 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 import pytest
 
-from src.application.dtos.ai_chat_dto import AIChatEvidenceDTO, AIChatResponseDTO
 from src.application.dtos.ai_market_brief_dto import (
     MarketBreakoutRepoDTO,
     MarketBriefResponseDTO,
@@ -35,9 +34,8 @@ from src.application.dtos.ai_search_dto import (
 )
 from src.application.dtos.repo_metadata_dto import RepoMetadataDTO
 from src.domain.exceptions import AIInsightError, AISearchError, RepoInsightNotFoundError
-from src.infrastructure.config import Settings, get_settings
+from src.infrastructure.config import get_settings
 from src.presentation.api.ai_routes import (
-    _get_chat_use_case,
     _get_market_brief_use_case,
     _get_related_repos_use_case,
     _get_repo_brief_use_case,
@@ -161,25 +159,6 @@ class MissingRelatedReposUseCase:
         raise RepoInsightNotFoundError("Repository not found")
 
 
-class FakeChatUseCase:
-    """Simple async stub that returns a fixed chat response."""
-
-    def __init__(self, response: AIChatResponseDTO) -> None:
-        self._response = response
-        self.received: dict[str, object] | None = None
-
-    async def execute(self, **kwargs: object) -> AIChatResponseDTO:
-        self.received = kwargs
-        return self._response
-
-
-class FailingChatUseCase:
-    """Async stub that simulates a chat runtime failure."""
-
-    async def execute(self, **kwargs: object) -> AIChatResponseDTO:
-        raise AIInsightError("query failed")
-
-
 def _build_response() -> RepoSearchResponseDTO:
     repo = RepoMetadataDTO(
         repo_id=1,
@@ -205,7 +184,7 @@ def _build_response() -> RepoSearchResponseDTO:
     return RepoSearchResponseDTO(
         query="browser agents",
         normalized_query="browser agents",
-        retrieval_mode="hybrid",
+        retrieval_mode="lexical",
         total_candidates=12,
         returned_results=1,
         filters=RepoSearchFiltersDTO(
@@ -220,7 +199,6 @@ def _build_response() -> RepoSearchResponseDTO:
                 star_count_in_window=1_800,
                 score=0.91,
                 lexical_score=0.88,
-                semantic_score=0.93,
                 popularity_score=0.82,
                 matched_terms=["browser", "agent"],
                 why_matched=["Topic overlap: browser, agent."],
@@ -254,7 +232,7 @@ def _build_market_brief_response() -> MarketBriefResponseDTO:
     return MarketBriefResponseDTO(
         window_days=30,
         generated_at=_NOW,
-        retrieval_mode="model",
+        retrieval_mode="template",
         headline="Browser agents are leading the current GitHub AI cycle.",
         summary=(
             "Agent is the strongest category while browser automation repos absorb "
@@ -317,7 +295,7 @@ def _build_repo_brief_response() -> RepoBriefResponseDTO:
     return RepoBriefResponseDTO(
         repo=repo,
         window_days=30,
-        retrieval_mode="model",
+        retrieval_mode="template",
         trend_verdict="accelerating",
         headline="browser-use/browser-use is accelerating in agent tooling.",
         summary="The repo combines large existing adoption with strong fresh event velocity.",
@@ -382,7 +360,7 @@ def _build_repo_compare_response() -> RepoCompareResponseDTO:
         base_repo=base_repo,
         compare_repo=compare_repo,
         window_days=30,
-        retrieval_mode="model",
+        retrieval_mode="template",
         overall_winner="base",
         headline="browser-use/browser-use is stronger on current momentum.",
         summary="browser-use leads on recent adoption while langchain wins on installed base.",
@@ -460,26 +438,6 @@ def _build_related_repos_response() -> RelatedReposResponseDTO:
     )
 
 
-def _build_chat_response() -> AIChatResponseDTO:
-    return AIChatResponseDTO(
-        answer="browser-use/browser-use dang tang nhanh.",
-        mode="model",
-        intent="repo",
-        tools_used=["market-brief", "repo-brief"],
-        evidence=[
-            AIChatEvidenceDTO(
-                label="browser-use/browser-use",
-                value="+5000 stars, 120 events, 80 actors",
-                source="/ai/repo-brief",
-            )
-        ],
-        follow_up_questions=[
-            "So sanh voi langchain-ai/langchain",
-            "Tim repo lien quan",
-        ],
-    )
-
-
 @pytest.fixture()
 def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setenv("GITHUB_API_TOKENS", "test-token")
@@ -511,58 +469,7 @@ class TestAIRoutes:
         assert response.status_code == 200
         assert response.headers["X-Request-Id"]
         assert response.headers["X-Trace-Id"] == trace_id
-        assert trace_id in response.headers["X-Trace-Explore-Url"]
-        assert "tempo_ds" in response.headers["X-Trace-Explore-Url"]
-        assert (
-            response.headers["access-control-expose-headers"]
-            == "X-Request-Id, X-Trace-Id, X-Trace-Explore-Url"
-        )
-
-    def test_chat_use_case_prefers_yescale_generation_when_api_key_exists(self) -> None:
-        settings = Settings(
-            github_api_tokens="test-token",
-            clickhouse_password="test-password",
-            yescale_api_key="test-key",
-        )
-        created_services: list[dict[str, object]] = []
-
-        class SpyYescaleGenerationService:
-            def __init__(self, **kwargs: object) -> None:
-                created_services.append(kwargs)
-
-            async def generate_json(
-                self,
-                *,
-                prompt: str,
-                system_prompt: str,
-                schema: dict[str, object],
-            ) -> dict[str, object]:
-                return {
-                    "answer": "ok",
-                    "follow_up_questions": ["next", "more"],
-                }
-
-        with (
-            patch(
-                "src.infrastructure.llm.yescale_generation_service.YescaleGenerationService",
-                SpyYescaleGenerationService,
-            ),
-            patch(
-                "src.infrastructure.llm.ollama_generation_service.OllamaGenerationService"
-            ) as ollama_generation_service,
-        ):
-            use_case = _get_chat_use_case(settings)
-
-        assert use_case is not None
-        assert created_services == [
-            {
-                "base_url": str(settings.yescale_base_url),
-                "model": "gemini-3.1-flash-lite-preview",
-                "api_key": "test-key",
-                "timeout_seconds": 30.0,
-            }
-        ]
-        ollama_generation_service.assert_not_called()
+        assert response.headers["access-control-expose-headers"] == "X-Request-Id, X-Trace-Id"
 
     def test_search_returns_response_payload(self, client: TestClient) -> None:
         fake_use_case = FakeSearchUseCase(_build_response())
@@ -580,7 +487,7 @@ class TestAIRoutes:
         )
 
         assert response.status_code == 200
-        assert response.json()["retrieval_mode"] == "hybrid"
+        assert response.json()["retrieval_mode"] == "lexical"
         assert fake_use_case.received == {
             "query": "browser agents",
             "category": "Agent",
@@ -598,42 +505,6 @@ class TestAIRoutes:
         assert response.status_code == 503
         assert response.json()["detail"] == "AI search unavailable"
 
-    def test_chat_returns_grounded_response_payload(self, client: TestClient) -> None:
-        fake_use_case = FakeChatUseCase(_build_chat_response())
-        app.dependency_overrides[_get_chat_use_case] = lambda: fake_use_case
-
-        response = client.post(
-            "/ai/chat",
-            json={
-                "question": "Phan tich browser-use/browser-use",
-                "days": 30,
-                "history": [{"role": "user", "content": "repo nao dang hot?"}],
-            },
-        )
-
-        assert response.status_code == 200
-        payload = response.json()
-        assert payload["mode"] == "model"
-        assert payload["intent"] == "repo"
-        assert payload["evidence"][0]["source"] == "/ai/repo-brief"
-        assert fake_use_case.received is not None
-        assert fake_use_case.received["question"] == "Phan tich browser-use/browser-use"
-        assert fake_use_case.received["days"] == 30
-        history = fake_use_case.received["history"]
-        assert isinstance(history, list)
-        assert history[0].content == "repo nao dang hot?"
-
-    def test_chat_returns_503_on_runtime_failure(self, client: TestClient) -> None:
-        app.dependency_overrides[_get_chat_use_case] = lambda: FailingChatUseCase()
-
-        response = client.post(
-            "/ai/chat",
-            json={"question": "Repo nao dang tang nhanh?", "days": 30},
-        )
-
-        assert response.status_code == 503
-        assert response.json()["detail"] == "AI chat unavailable"
-
     def test_market_brief_returns_response_payload(self, client: TestClient) -> None:
         fake_use_case = FakeMarketBriefUseCase(_build_market_brief_response())
         app.dependency_overrides[_get_market_brief_use_case] = lambda: fake_use_case
@@ -649,7 +520,7 @@ class TestAIRoutes:
         )
 
         assert response.status_code == 200
-        assert response.json()["retrieval_mode"] == "model"
+        assert response.json()["retrieval_mode"] == "template"
         assert fake_use_case.received == {
             "days": 30,
             "breakout_limit": 5,

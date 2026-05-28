@@ -1138,7 +1138,7 @@
       },
       "targets": [
         {
-          "expr": "max by (job) (up{job=~\"prometheus|grafana|tempo|loki|promtail|cadvisor|node_exporter|dcgm_exporter\"})",
+          "expr": "max by (job) (up{job=~\"prometheus|grafana|loki|promtail|cadvisor|node_exporter|dcgm_exporter\"})",
           "legendFormat": "{{job}}",
           "refId": "A"
         }
@@ -1411,142 +1411,6 @@
       "title": "GPU Memory Usage",
       "transparent": true,
       "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus_ds"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "drawStyle": "line",
-            "fillOpacity": 14,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "pointSize": 4,
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "unit": "Bps"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 40
-      },
-      "id": 44,
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "expr": "rate(tempo_distributor_bytes_received_total{job=\"tempo\"}[5m])",
-          "legendFormat": "bytes / sec",
-          "refId": "A"
-        }
-      ],
-      "title": "Tempo Ingest Throughput",
-      "transparent": true,
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus_ds"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "drawStyle": "line",
-            "fillOpacity": 14,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "pointSize": 4,
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "unit": "opm"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 18,
-        "y": 40
-      },
-      "id": 45,
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "expr": "sum by (reason) (rate(tempo_discarded_spans_total{job=\"tempo\"}[5m])) * 60",
-          "legendFormat": "{{reason}} / min",
-          "refId": "A"
-        }
-      ],
-      "title": "Tempo Discarded Spans",
-      "transparent": true,
-      "type": "timeseries"
     },
     {
       "datasource": {
@@ -2250,7 +2114,7 @@
       },
       "id": 63,
       "options": {
-        "content": "### Fast drilldown\n- Use `API Request Logs` to search by `request_id` or `trace_id`.\n- Clicking the derived `TraceID` field opens the same trace in Tempo.\n- `Largest Star Delta` proves history snapshots are being appended over time, not overwritten.\n- If infra panels go blank, check `Observability Stack Health` first: it reflects Prometheus scrape reality, not expected services.",
+        "content": "### Fast drilldown\n- Use `API Request Logs` to search by `request_id` or `trace_id`.\n- `Largest Star Delta` proves history snapshots are being appended over time, not overwritten.\n- If infra panels go blank, check `Observability Stack Health` first: it reflects Prometheus scrape reality, not expected services.",
         "mode": "markdown"
       },
       "title": "Investigation Playbook",
@@ -2312,7 +2176,7 @@
       },
       "targets": [
         {
-          "expr": "{compose_service=~\"grafana|prometheus|tempo|loki|promtail\"}",
+          "expr": "{compose_service=~\"grafana|prometheus|loki|promtail\"}",
           "queryType": "range",
           "refId": "A"
         }
@@ -2333,8 +2197,7 @@
     "logs",
     "observability",
     "prometheus",
-    "spark",
-    "tempo"
+    "spark"
   ],
   "templating": {
     "list": []

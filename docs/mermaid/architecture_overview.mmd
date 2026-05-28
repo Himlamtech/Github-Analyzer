@@ -22,10 +22,8 @@ flowchart TD
     subgraph SERVE["Lớp Serving"]
         API["FastAPI<br/>port 8000"]
         FE["Next.js Dashboard<br/>port 3000"]
-        OLLAMA["Ollama<br/>bge-m3 embedding<br/>llama3.2:3b generation"]
         CH --> API
         API --> FE
-        API <-->|"embed + generate"| OLLAMA
     end
 
     subgraph OBS["Lớp Observability"]

@@ -108,7 +108,6 @@ export interface AISearchResult {
   star_count_in_window: number;
   score: number;
   lexical_score: number;
-  semantic_score: number | null;
   popularity_score: number;
   matched_terms: string[];
   why_matched: string[];
@@ -117,7 +116,7 @@ export interface AISearchResult {
 export interface AISearchResponse {
   query: string;
   normalized_query: string;
-  retrieval_mode: "lexical" | "hybrid";
+  retrieval_mode: "lexical";
   total_candidates: number;
   returned_results: number;
   filters: AISearchFilters;
@@ -132,7 +131,7 @@ export interface RepoBriefActivity {
 export interface RepoBriefResponse {
   repo: RepoMetadata;
   window_days: number;
-  retrieval_mode: "template" | "model";
+  retrieval_mode: "template";
   trend_verdict: "accelerating" | "steady" | "emerging" | "quiet";
   headline: string;
   summary: string;
@@ -158,7 +157,7 @@ export interface RepoCompareResponse {
   base_repo: RepoMetadata;
   compare_repo: RepoMetadata;
   window_days: number;
-  retrieval_mode: "template" | "model";
+  retrieval_mode: "template";
   overall_winner: "base" | "compare" | "tie";
   headline: string;
   summary: string;
@@ -195,7 +194,7 @@ export interface MarketTopicShift {
 export interface MarketBriefResponse {
   window_days: number;
   generated_at: string;
-  retrieval_mode: "template" | "model";
+  retrieval_mode: "template";
   headline: string;
   summary: string;
   key_takeaways: string[];

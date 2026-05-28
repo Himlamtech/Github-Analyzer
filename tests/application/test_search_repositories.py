@@ -9,7 +9,7 @@ import pytest
 from src.application.dtos.ai_search_dto import RepoSearchCandidateDTO
 from src.application.dtos.repo_metadata_dto import RepoMetadataDTO
 from src.application.use_cases.search_repositories import SearchRepositoriesUseCase
-from src.domain.exceptions import EmbeddingServiceError, ValidationError
+from src.domain.exceptions import ValidationError
 
 _NOW = datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
@@ -40,24 +40,6 @@ class FakeCandidateProvider:
             }
         )
         return self._candidates
-
-
-class FakeEmbeddingService:
-    """Embedding boundary returning precomputed vectors."""
-
-    def __init__(self, vectors: list[list[float]]) -> None:
-        self._vectors = vectors
-
-    async def embed_texts(self, texts: list[str]) -> list[list[float]]:
-        assert len(texts) == len(self._vectors)
-        return self._vectors
-
-
-class FailingEmbeddingService:
-    """Embedding boundary that simulates an unavailable semantic backend."""
-
-    async def embed_texts(self, texts: list[str]) -> list[list[float]]:
-        raise EmbeddingServiceError("ollama offline")
 
 
 def _candidate(
@@ -131,8 +113,6 @@ class TestSearchRepositoriesUseCase:
         )
         use_case = SearchRepositoriesUseCase(
             provider,
-            embedding_service=None,
-            semantic_enabled=False,
             candidate_limit=10,
         )
 
@@ -152,99 +132,10 @@ class TestSearchRepositoriesUseCase:
         assert provider.calls[0]["category"] == "Agent"
         assert provider.calls[0]["primary_language"] == "Python"
 
-    async def test_execute_uses_semantic_rerank_when_embeddings_available(self) -> None:
-        provider = FakeCandidateProvider(
-            [
-                _candidate(
-                    repo_id=1,
-                    full_name="langchain-ai/langchain",
-                    description="Framework for LLM apps and agent orchestration.",
-                    category="Agent",
-                    language="Python",
-                    topics=["agent", "rag"],
-                    stars=104_000,
-                    star_count_in_window=600,
-                ),
-                _candidate(
-                    repo_id=2,
-                    full_name="browser-use/browser-use",
-                    description="Browser automation agent for web navigation workflows.",
-                    category="Agent",
-                    language="Python",
-                    topics=["browser", "web", "automation"],
-                    stars=52_000,
-                    star_count_in_window=1_900,
-                ),
-            ]
-        )
-        embedding_service = FakeEmbeddingService(
-            [
-                [1.0, 0.0],
-                [0.2, 0.98],
-                [0.98, 0.2],
-            ]
-        )
-        use_case = SearchRepositoriesUseCase(
-            provider,
-            embedding_service=embedding_service,
-            semantic_enabled=True,
-            candidate_limit=10,
-        )
-
-        result = await use_case.execute(
-            query="tools for web agent navigation",
-            category=None,
-            primary_language=None,
-            min_stars=10_000,
-            days=30,
-            limit=5,
-        )
-
-        assert result.retrieval_mode == "hybrid"
-        assert result.results[0].repo.repo_full_name == "browser-use/browser-use"
-        assert result.results[0].semantic_score is not None
-
-    async def test_execute_falls_back_to_lexical_when_embeddings_fail(self) -> None:
-        provider = FakeCandidateProvider(
-            [
-                _candidate(
-                    repo_id=1,
-                    full_name="crewAIInc/crewAI",
-                    description="Agent orchestration framework for collaborative AI teams.",
-                    category="Agent",
-                    language="Python",
-                    topics=["agent", "automation"],
-                    stars=35_000,
-                    star_count_in_window=700,
-                )
-            ]
-        )
-        use_case = SearchRepositoriesUseCase(
-            provider,
-            embedding_service=FailingEmbeddingService(),
-            semantic_enabled=True,
-            candidate_limit=10,
-        )
-
-        result = await use_case.execute(
-            query="agent orchestration teams",
-            category=None,
-            primary_language=None,
-            min_stars=10_000,
-            days=30,
-            limit=5,
-        )
-
-        assert result.retrieval_mode == "lexical"
-        assert result.results[0].repo.repo_full_name == "crewAIInc/crewAI"
-        assert result.results[0].semantic_score is None
-
     async def test_execute_blank_query_raises_validation_error(self) -> None:
         provider = FakeCandidateProvider([])
         use_case = SearchRepositoriesUseCase(
             provider,
-            embedding_service=None,
-            semantic_enabled=False,
             candidate_limit=10,
         )
 
@@ -263,8 +154,6 @@ class TestSearchRepositoriesUseCase:
         provider = FakeCandidateProvider([])
         use_case = SearchRepositoriesUseCase(
             provider,
-            embedding_service=None,
-            semantic_enabled=False,
             candidate_limit=10,
         )
 
@@ -279,37 +168,3 @@ class TestSearchRepositoriesUseCase:
 
         assert result.results == []
         assert result.total_candidates == 0
-
-    async def test_execute_embedding_failure_falls_back_to_lexical(self) -> None:
-        """When the embedding service raises, the use case must fall back to lexical mode."""
-        provider = FakeCandidateProvider(
-            [
-                _candidate(
-                    repo_id=1,
-                    full_name="openai/openai-python",
-                    description="Official Python client for the OpenAI API.",
-                    category="LLM",
-                    language="Python",
-                    topics=["openai", "gpt", "llm"],
-                    stars=30_000,
-                    star_count_in_window=500,
-                ),
-            ]
-        )
-        use_case = SearchRepositoriesUseCase(
-            provider,
-            embedding_service=FailingEmbeddingService(),
-            semantic_enabled=True,
-            candidate_limit=10,
-        )
-
-        result = await use_case.execute(
-            query="openai python sdk",
-            category=None,
-            primary_language=None,
-            min_stars=1_000,
-            days=30,
-            limit=5,
-        )
-
-        assert result.retrieval_mode == "lexical"

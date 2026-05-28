@@ -1,4 +1,4 @@
-.PHONY: setup ai-models bootstrap-clickhouse stream process query monitor discover-repos sync-repos frontend-dev frontend-build frontend-type-check test lint format clean help
+.PHONY: setup bootstrap-clickhouse stream process query monitor discover-repos sync-repos frontend-dev frontend-build frontend-type-check test lint format clean help
 
 CONDA_ENV := github
 PYTHON := conda run -n $(CONDA_ENV) python
@@ -20,7 +20,7 @@ PARQUET_DIR    := ./data/raw
 setup: ## Bring up Docker stack, create Kafka topic, init ClickHouse tables
 	@mkdir -p $(DATA_DIR) $(CHECKPOINT_DIR) $(PARQUET_DIR)
 	@echo "▶ Starting Docker services..."
-	docker compose up -d zookeeper kafka clickhouse prometheus grafana ollama qdrant api frontend
+	docker compose up -d zookeeper kafka clickhouse prometheus grafana api frontend
 	@echo "▶ Waiting for Kafka to be healthy..."
 	@until docker compose exec -T kafka kafka-broker-api-versions --bootstrap-server localhost:9092 > /dev/null 2>&1; do \
 		echo "  Kafka not ready, retrying in 5s..."; sleep 5; done
@@ -35,17 +35,8 @@ setup: ## Bring up Docker stack, create Kafka topic, init ClickHouse tables
 	@echo "▶ Waiting for ClickHouse to be healthy..."
 	@until docker compose exec -T clickhouse wget -q --spider http://localhost:8123/ping > /dev/null 2>&1; do \
 		echo "  ClickHouse not ready, retrying in 5s..."; sleep 5; done
-	@echo "▶ Waiting for Ollama to be healthy..."
-	@until docker compose exec -T ollama ollama list > /dev/null 2>&1; do \
-		echo "  Ollama not ready, retrying in 5s..."; sleep 5; done
 	@echo "▶ ClickHouse tables initialized via init.sql (auto on container start)"
-	@echo "▶ Ollama is healthy. Pull models on demand with: make ai-models"
 	@echo "✓ Setup complete."
-
-ai-models: ## Pull Ollama models required by semantic search and grounded briefs
-	@echo "▶ Pulling Ollama models (bge-m3, llama3.2:3b)..."
-	docker compose exec -T ollama ollama pull bge-m3
-	docker compose exec -T ollama ollama pull llama3.2:3b
 
 bootstrap-clickhouse: ## Backfill ClickHouse github_data from local Parquet archive
 	@echo "▶ Bootstrapping ClickHouse github_data from Parquet..."

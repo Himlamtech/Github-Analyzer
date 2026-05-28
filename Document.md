@@ -399,7 +399,6 @@ flowchart LR
 ## Tracing Systems
 
 * Zipkin
-* Tempo
 * AWS X-Ray
 
 ---

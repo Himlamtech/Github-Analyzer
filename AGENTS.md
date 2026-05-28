@@ -179,7 +179,7 @@ This project ingests GitHub events, streams and aggregates data, and serves dash
 
 - `src/domain`: entities, value objects, services, repository interfaces
 - `src/application`: use cases and DTOs
-- `src/infrastructure`: providers/adapters (GitHub, Kafka, Spark, ClickHouse, embeddings, observability)
+- `src/infrastructure`: providers/adapters (GitHub, Kafka, Spark, ClickHouse, observability)
 - `src/presentation/api`: FastAPI routes
 - `tests`: unit/integration tests
 - `scheduler`: ops/cron/systemd scripts
@@ -192,8 +192,6 @@ This project ingests GitHub events, streams and aggregates data, and serves dash
 - ClickHouse: `:9000`/`:8123`
 - Prometheus: `:9093`
 - Grafana: `:3001`
-- Ollama: `:11434`
-- Qdrant: `:7333`
 
 ---
 

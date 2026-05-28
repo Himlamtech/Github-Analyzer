@@ -23,9 +23,9 @@ PollGithubEventsUseCase ── AiEventFilter ──▶ Kafka (github_raw_events,
                         │
               ┌─────────┴──────────┐
               ▼                    ▼
-          FastAPI        Ollama (bge-m3, llama3.2:3b)
+          FastAPI            AI Search (lexical)
          (port 8000)
-              │           search, grounded briefs
+              │
               ▼
         Next.js Dashboard
           (port 3000)
@@ -44,7 +44,6 @@ PollGithubEventsUseCase ── AiEventFilter ──▶ Kafka (github_raw_events,
 | ClickHouse native | `9100` | Host-mapped native TCP (`9000` inside Docker network) |
 | Prometheus | `9093` | Metrics scraper |
 | Grafana | `3001` | Metrics dashboard |
-| Ollama | `11435` | Embeddings + grounded brief generation |
 
 ## Quickstart
 
@@ -69,13 +68,7 @@ pip install -e ".[dev]"
 make setup
 ```
 
-Starts Zookeeper, Kafka (16 partitions), ClickHouse, Prometheus, Grafana, Ollama, and the FastAPI + Next.js containers. Waits for health checks and initialises ClickHouse tables via `clickhouse/init.sql`.
-
-To enable the AI endpoints, pull the Ollama models on demand after setup:
-
-```bash
-make ai-models
-```
+Starts Zookeeper, Kafka (16 partitions), ClickHouse, Prometheus, Grafana, and the FastAPI + Next.js containers. Waits for health checks and initialises ClickHouse tables via `clickhouse/init.sql`.
 
 If a host port is already occupied by another local stack, override it before `docker compose up`, for example:
 
@@ -94,7 +87,6 @@ CLICKHOUSE_HTTP_PORT
 CLICKHOUSE_NATIVE_PORT
 PROMETHEUS_PORT
 GRAFANA_PORT
-OLLAMA_PORT
 ```
 
 If you already have a local Parquet archive under `data/raw`, bootstrap ClickHouse before opening the dashboard:
@@ -204,18 +196,11 @@ make clean       # docker-compose down -v + remove data/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/ai/search` | Hybrid lexical/semantic repository discovery |
+| `GET` | `/ai/search` | Lexical repository discovery |
 | `GET` | `/ai/repo-brief` | Grounded brief and why-trending narrative for one repo |
 | `GET` | `/ai/repo-compare` | Structured comparison between two repositories |
 | `GET` | `/ai/related-repos` | Graph-lite related repository recommendations |
 | `GET` | `/ai/market-brief` | Weekly market brief over breakout repos and topic shifts |
-
-The AI endpoints require Ollama models `bge-m3` and `llama3.2:3b`. Pull them when you
-want to use the AI features:
-
-```bash
-make ai-models
-```
 
 ## Scheduler
 
@@ -269,9 +254,6 @@ To add a new AI framework, update the relevant set/list in `event_filter.py`.
 | `KAFKA_BOOTSTRAP_SERVERS` | — | default `localhost:9092` |
 | `CLICKHOUSE_HOST` | — | default `localhost` |
 | `CLICKHOUSE_PORT` | — | default `9100` (host) / `9000` (inside Docker network) |
-| `OLLAMA_BASE_URL` | — | default `http://localhost:11435` |
-| `OLLAMA_EMBEDDING_MODEL` | — | default `bge-m3` |
-| `OLLAMA_GENERATION_MODEL` | — | default `llama3.2:3b` |
 | `GRAFANA_PASSWORD` | — | default `admin` |
 | `SPARK_MASTER` | — | default `local[16]` |
 | `SPARK_DRIVER_MEMORY` | — | default `8g` |

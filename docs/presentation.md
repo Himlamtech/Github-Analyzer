@@ -58,7 +58,7 @@ Hai nhóm trước nhiều khả năng đã nói tương đối đủ các ý sa
 - định nghĩa observability
 - ba trụ cột logs, metrics, traces
 - khái niệm trace, span, trace ID
-- giới thiệu OpenTelemetry, Tempo, Prometheus, Grafana
+- giới thiệu OpenTelemetry, Prometheus, Grafana
 - demo xem trace trên UI
 
 Nếu nhóm này đi lại đúng tuyến đó, rủi ro cao là bị ngắt nhịp kiểu `skip đi`.
@@ -97,12 +97,11 @@ Vì sao đây là hướng mạnh nhất:
   - Grafana dashboard
 - tracing qua OpenTelemetry
 - `X-Trace-Id` để correlation
-- `X-Trace-Explore-Url` để mở trace drilldown nhanh trên Grafana
 - dễ làm slide đẹp vì trọng tâm là sơ đồ luồng, kiến trúc và timeline sự cố
 
 Nếu chỉ còn một câu để chốt hướng, hãy dùng câu này:
 
-> Bài của nhóm em không trả lời Prometheus, Tempo, Grafana là gì, mà trả lời khi hệ thống
+> Bài của nhóm em không trả lời Prometheus, Grafana là gì, mà trả lời khi hệ thống
 > trông vẫn ổn thì làm sao biết nó đang hỏng ở đâu.
 
 ### 2.4 Câu mở đầu đề xuất
@@ -131,7 +130,6 @@ Nhóm đang có lợi thế lớn vì demo không phải mô hình toy project m
 - Next.js dashboard
 - Prometheus
 - Grafana
-- Tempo
 - OpenTelemetry
 
 Điểm mạnh có thể tận dụng:
@@ -388,7 +386,7 @@ Thông điệp cần rút ra từ hệ thống này:
 - Processor
 - ClickHouse + Parquet
 - FastAPI + Frontend
-- Prometheus + Grafana + Tempo
+- Prometheus + Grafana
 
 **Người nói**
 
@@ -621,7 +619,7 @@ Flow demo đề xuất:
 3. Dừng processor
 4. Chờ metric thay đổi
 5. Cho thấy API vẫn sống nhưng freshness tăng và throughput giảm
-6. Nếu có request trace, mở trực tiếp `X-Trace-Explore-Url`, hoặc dùng `X-Trace-Id` để tra trong Grafana Explore với Tempo
+6. Nếu có request trace, dùng `X-Trace-Id` để tra trong Grafana Explore
 7. Khôi phục processor
 8. Cho thấy metric hồi lại
 
@@ -704,7 +702,7 @@ Chủ đề chính:
 "Healthy Does Not Mean Correct"
 
 Phụ đề:
-"Từ dashboard còn xanh đến nguyên nhân gốc của sự cố trong microservices bằng Prometheus, Tempo và Grafana"
+"Từ dashboard còn xanh đến nguyên nhân gốc của sự cố trong microservices bằng Prometheus và Grafana"
 
 Đây là yêu cầu bắt buộc:
 - Không tạo một deck giới thiệu observability chung chung.
@@ -733,9 +731,9 @@ Ngữ cảnh demo thật của nhóm:
   GitHub Events API -> Poller -> Kafka -> Spark Structured Streaming -> ClickHouse + Parquet -> FastAPI -> Next.js Dashboard
 - Stack observability của bài:
   Prometheus = metrics
-  Tempo = tracing backend
+  OpenTelemetry = tracing
   Grafana = mặt phẳng quan sát hợp nhất
-- Có X-Trace-Id và X-Trace-Explore-Url để correlation và trace drilldown.
+- Có X-Trace-Id để correlation.
 - Demo trọng tâm:
   API vẫn sống nhưng pipeline stale hoặc latency tăng,
   từ đó đi từ metric bất thường sang trace để khoanh vùng nguyên nhân.
@@ -785,7 +783,7 @@ Quy tắc logic:
   symptom -> confusion -> distributed complexity -> refresher -> core claim -> tracing value -> investigation workflow -> architecture -> signals -> scenario -> expected evidence -> takeaway -> demo bridge
 
 Không được làm các việc sau:
-- không thêm slide lịch sử Prometheus, Tempo, Grafana
+- không thêm slide lịch sử Prometheus, Grafana
 - không thêm slide định nghĩa dài về logs/metrics/traces
 - không dùng bảng chữ dày đặc
 - không dùng icon server/cloud/database/robot/shield/magnifying glass
@@ -916,7 +914,7 @@ Visual chính:
     GitHub Events API -> Poller -> Kafka -> Spark -> ClickHouse/Parquet -> FastAPI -> Frontend
   lớp 2: observability flow
     Prometheus <- metrics
-    Tempo <- traces
+    OpenTelemetry <- traces
     Grafana <- unified analysis
 Lưu ý:
 - đây là slide kiến trúc quan trọng nhất, phải rõ và đẹp
@@ -1008,7 +1006,7 @@ Ràng buộc đầu ra:
 - ưu tiên nhãn ngắn hơn bullet
 - không dùng icon ở bất kỳ slide nào
 - không dùng hình minh họa generic
-- không làm lệch trọng tâm sang "giới thiệu Prometheus/Tempo/Grafana"
+- không làm lệch trọng tâm sang "giới thiệu Prometheus/Grafana"
 - phải giữ nguyên tinh thần: đây là deck điều tra sự cố trong microservices
 
 Nếu phải chọn giữa "đẹp" và "đúng cấu trúc":
@@ -1035,9 +1033,9 @@ Luận điểm trung tâm:
 Ngữ cảnh demo thật:
 - GitHub Events API -> Poller -> Kafka -> Spark -> ClickHouse + Parquet -> FastAPI -> Next.js
 - Prometheus = metrics
-- Tempo = tracing backend
+- OpenTelemetry = tracing
 - Grafana = unified investigation UI
-- Có X-Trace-Id và X-Trace-Explore-Url để correlation
+- Có X-Trace-Id để correlation
 
 Thiết kế bắt buộc:
 - đúng 15 slide

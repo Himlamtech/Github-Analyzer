@@ -65,7 +65,7 @@ class MarketBriefResponseDTO(BaseModel):
 
     window_days: int = Field(..., ge=1, le=365)
     generated_at: datetime
-    retrieval_mode: Literal["template", "model"]
+    retrieval_mode: Literal["template"]
     headline: str
     summary: str
     key_takeaways: list[str]

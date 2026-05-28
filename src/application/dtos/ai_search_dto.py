@@ -39,7 +39,6 @@ class RepoSearchResultDTO(BaseModel):
     star_count_in_window: int = Field(..., ge=0)
     score: float = Field(..., ge=0.0)
     lexical_score: float = Field(..., ge=0.0)
-    semantic_score: float | None = Field(default=None, ge=0.0)
     popularity_score: float = Field(..., ge=0.0)
     matched_terms: list[str]
     why_matched: list[str]
@@ -52,7 +51,7 @@ class RepoSearchResponseDTO(BaseModel):
 
     query: str
     normalized_query: str
-    retrieval_mode: Literal["lexical", "hybrid"]
+    retrieval_mode: Literal["lexical"]
     total_candidates: int = Field(..., ge=0)
     returned_results: int = Field(..., ge=0)
     filters: RepoSearchFiltersDTO

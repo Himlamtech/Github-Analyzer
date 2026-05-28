@@ -13,7 +13,7 @@ from src.application.dtos.ai_repo_brief_dto import (
 )
 from src.application.dtos.repo_metadata_dto import RepoMetadataDTO
 from src.application.use_cases.generate_repo_brief import GenerateRepoBriefUseCase
-from src.domain.exceptions import GenerationServiceError, RepoInsightNotFoundError
+from src.domain.exceptions import RepoInsightNotFoundError
 
 _NOW = datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
@@ -45,43 +45,6 @@ class MissingContextProvider:
         days: int,
     ) -> RepoBriefContextDTO:
         raise RepoInsightNotFoundError(f"Repository not found: {repo_name}")
-
-
-class FakeGenerationService:
-    """Structured generation boundary returning a fixed payload."""
-
-    def __init__(self, payload: dict[str, object]) -> None:
-        self._payload = payload
-        self.calls: list[dict[str, object]] = []
-
-    async def generate_json(
-        self,
-        *,
-        prompt: str,
-        system_prompt: str,
-        schema: dict[str, object],
-    ) -> dict[str, object]:
-        self.calls.append(
-            {
-                "prompt": prompt,
-                "system_prompt": system_prompt,
-                "schema": schema,
-            }
-        )
-        return dict(self._payload)
-
-
-class FailingGenerationService:
-    """Generation boundary that simulates a runtime failure."""
-
-    async def generate_json(
-        self,
-        *,
-        prompt: str,
-        system_prompt: str,
-        schema: dict[str, object],
-    ) -> dict[str, object]:
-        raise GenerationServiceError("model unavailable")
 
 
 def _context() -> RepoBriefContextDTO:
@@ -144,60 +107,20 @@ def _context() -> RepoBriefContextDTO:
 
 
 class TestGenerateRepoBriefUseCase:
-    async def test_execute_returns_model_brief_when_generation_succeeds(self) -> None:
+    async def test_execute_returns_template_brief(self) -> None:
         provider = FakeContextProvider(_context())
-        generation_service = FakeGenerationService(
-            {
-                "headline": "browser-use/browser-use is accelerating in agent tooling.",
-                "summary": "The repo combines strong existing adoption with fresh event velocity.",
-                "why_trending": (
-                    "Recent stars and issue traffic both stepped up in the latest half-window."
-                ),
-                "trend_verdict": "accelerating",
-                "key_signals": [
-                    "Strong recent star intake.",
-                    "Issues and forks are also rising.",
-                ],
-                "watchouts": [
-                    "Momentum is still concentrated in a few event types.",
-                ],
-            }
-        )
-        use_case = GenerateRepoBriefUseCase(
-            provider,
-            generation_service=generation_service,
-            llm_enabled=True,
-        )
-
-        result = await use_case.execute(repo_name="browser-use/browser-use", days=30)
-
-        assert result.retrieval_mode == "model"
-        assert result.trend_verdict == "accelerating"
-        assert result.headline.startswith("browser-use/browser-use")
-        assert provider.calls[0]["repo_name"] == "browser-use/browser-use"
-        assert generation_service.calls
-
-    async def test_execute_falls_back_to_template_when_generation_fails(self) -> None:
-        provider = FakeContextProvider(_context())
-        use_case = GenerateRepoBriefUseCase(
-            provider,
-            generation_service=FailingGenerationService(),
-            llm_enabled=True,
-        )
+        use_case = GenerateRepoBriefUseCase(provider)
 
         result = await use_case.execute(repo_name="browser-use/browser-use", days=30)
 
         assert result.retrieval_mode == "template"
-        assert result.trend_verdict in {"accelerating", "steady"}
+        assert result.trend_verdict in {"accelerating", "steady", "emerging", "quiet"}
         assert any("total GitHub stars" in signal for signal in result.key_signals)
         assert result.watchouts
+        assert provider.calls[0]["repo_name"] == "browser-use/browser-use"
 
     async def test_execute_propagates_missing_repository(self) -> None:
-        use_case = GenerateRepoBriefUseCase(
-            MissingContextProvider(),
-            generation_service=None,
-            llm_enabled=False,
-        )
+        use_case = GenerateRepoBriefUseCase(MissingContextProvider())
 
         with pytest.raises(RepoInsightNotFoundError, match="Repository not found"):
             await use_case.execute(repo_name="missing/repo", days=30)

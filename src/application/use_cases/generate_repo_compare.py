@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 
 import structlog
 
@@ -10,56 +10,12 @@ from src.application.dtos.ai_repo_compare_dto import (
     RepoCompareMetricDTO,
     RepoCompareResponseDTO,
 )
-from src.domain.exceptions import GenerationServiceError, ValidationError
+from src.domain.exceptions import ValidationError
 
 if TYPE_CHECKING:
     from src.application.dtos.ai_repo_brief_dto import RepoBriefContextDTO
 
 logger = structlog.get_logger(__name__)
-
-_SYSTEM_PROMPT = """
-You are a grounded GitHub repository analyst.
-Compare repositories using only the supplied metadata and metrics.
-Be concise, analytical, and avoid hype.
-"""
-
-_COMPARE_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "properties": {
-        "headline": {"type": "string"},
-        "summary": {"type": "string"},
-        "overall_winner": {
-            "type": "string",
-            "enum": ["base", "compare", "tie"],
-        },
-        "key_differences": {
-            "type": "array",
-            "items": {"type": "string"},
-            "minItems": 2,
-            "maxItems": 4,
-        },
-        "when_to_choose_base": {
-            "type": "array",
-            "items": {"type": "string"},
-            "minItems": 1,
-            "maxItems": 3,
-        },
-        "when_to_choose_compare": {
-            "type": "array",
-            "items": {"type": "string"},
-            "minItems": 1,
-            "maxItems": 3,
-        },
-    },
-    "required": [
-        "headline",
-        "summary",
-        "overall_winner",
-        "key_differences",
-        "when_to_choose_base",
-        "when_to_choose_compare",
-    ],
-}
 
 
 class RepoInsightContextProviderProtocol(Protocol):
@@ -73,31 +29,14 @@ class RepoInsightContextProviderProtocol(Protocol):
     ) -> RepoBriefContextDTO: ...
 
 
-class StructuredGenerationServiceProtocol(Protocol):
-    """LLM-backed JSON generation boundary."""
-
-    async def generate_json(
-        self,
-        *,
-        prompt: str,
-        system_prompt: str,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]: ...
-
-
 class GenerateRepoCompareUseCase:
     """Generate a grounded comparison between two repositories."""
 
     def __init__(
         self,
         context_provider: RepoInsightContextProviderProtocol,
-        *,
-        generation_service: StructuredGenerationServiceProtocol | None = None,
-        llm_enabled: bool = True,
     ) -> None:
         self._context_provider = context_provider
-        self._generation_service = generation_service
-        self._llm_enabled = llm_enabled
 
     async def execute(
         self,
@@ -118,124 +57,7 @@ class GenerateRepoCompareUseCase:
             repo_name=compare_repo_name,
             days=days,
         )
-        generated = await self._maybe_generate_model_compare(base_context, compare_context)
-        if generated is None:
-            return _build_template_compare(base_context, compare_context)
-        return _build_model_compare(base_context, compare_context, generated)
-
-    async def _maybe_generate_model_compare(
-        self,
-        base_context: RepoBriefContextDTO,
-        compare_context: RepoBriefContextDTO,
-    ) -> dict[str, Any] | None:
-        if not self._llm_enabled or self._generation_service is None:
-            return None
-
-        prompt = _build_prompt(base_context, compare_context)
-        try:
-            generated = await self._generation_service.generate_json(
-                prompt=prompt,
-                system_prompt=_SYSTEM_PROMPT.strip(),
-                schema=_COMPARE_SCHEMA,
-            )
-        except GenerationServiceError as exc:
-            logger.warning(
-                "ai_repo_compare.generation_unavailable",
-                base_repo=base_context.repo.repo_full_name,
-                compare_repo=compare_context.repo.repo_full_name,
-                error=str(exc),
-            )
-            return None
-
-        if not _generated_compare_is_valid(generated):
-            logger.warning(
-                "ai_repo_compare.invalid_generation_payload",
-                base_repo=base_context.repo.repo_full_name,
-                compare_repo=compare_context.repo.repo_full_name,
-            )
-            return None
-        return generated
-
-
-def _build_prompt(
-    base_context: RepoBriefContextDTO,
-    compare_context: RepoBriefContextDTO,
-) -> str:
-    return f"""
-Compare these two repositories for a product intelligence dashboard.
-
-Base repo:
-- name: {base_context.repo.repo_full_name}
-- category: {base_context.repo.category}
-- language: {base_context.repo.primary_language or "unknown"}
-- description: {base_context.repo.description or "n/a"}
-- topics: {", ".join(base_context.repo.topics) or "n/a"}
-- total stars: {base_context.repo.stargazers_count}
-- stars in {base_context.window_days}d: {base_context.star_count_in_window}
-- total events in {base_context.window_days}d: {base_context.total_events_in_window}
-- unique actors in {base_context.window_days}d: {base_context.unique_actors_in_window}
-- forks: {base_context.repo.forks_count}
-
-Compare repo:
-- name: {compare_context.repo.repo_full_name}
-- category: {compare_context.repo.category}
-- language: {compare_context.repo.primary_language or "unknown"}
-- description: {compare_context.repo.description or "n/a"}
-- topics: {", ".join(compare_context.repo.topics) or "n/a"}
-- total stars: {compare_context.repo.stargazers_count}
-- stars in {compare_context.window_days}d: {compare_context.star_count_in_window}
-- total events in {compare_context.window_days}d: {compare_context.total_events_in_window}
-- unique actors in {compare_context.window_days}d: {compare_context.unique_actors_in_window}
-- forks: {compare_context.repo.forks_count}
-
-Write a compact comparison:
-- identify the stronger repo overall in this window, or tie
-- state the clearest tradeoffs
-- give separate guidance on when to choose each repo
-- use only the supplied facts
-""".strip()
-
-
-def _generated_compare_is_valid(payload: dict[str, Any]) -> bool:
-    headline = payload.get("headline")
-    summary = payload.get("summary")
-    overall_winner = payload.get("overall_winner")
-    key_differences = payload.get("key_differences")
-    when_to_choose_base = payload.get("when_to_choose_base")
-    when_to_choose_compare = payload.get("when_to_choose_compare")
-    return (
-        isinstance(headline, str)
-        and isinstance(summary, str)
-        and overall_winner in {"base", "compare", "tie"}
-        and isinstance(key_differences, list)
-        and all(isinstance(item, str) for item in key_differences)
-        and isinstance(when_to_choose_base, list)
-        and all(isinstance(item, str) for item in when_to_choose_base)
-        and isinstance(when_to_choose_compare, list)
-        and all(isinstance(item, str) for item in when_to_choose_compare)
-    )
-
-
-def _build_model_compare(
-    base_context: RepoBriefContextDTO,
-    compare_context: RepoBriefContextDTO,
-    payload: dict[str, Any],
-) -> RepoCompareResponseDTO:
-    return RepoCompareResponseDTO(
-        base_repo=base_context.repo,
-        compare_repo=compare_context.repo,
-        window_days=base_context.window_days,
-        retrieval_mode="model",
-        overall_winner=payload["overall_winner"],
-        headline=str(payload["headline"]).strip(),
-        summary=str(payload["summary"]).strip(),
-        key_differences=[str(item).strip() for item in payload["key_differences"]][:4],
-        when_to_choose_base=[str(item).strip() for item in payload["when_to_choose_base"]][:3],
-        when_to_choose_compare=[str(item).strip() for item in payload["when_to_choose_compare"]][
-            :3
-        ],
-        metric_snapshot=_metric_snapshot(base_context, compare_context),
-    )
+        return _build_template_compare(base_context, compare_context)
 
 
 def _build_template_compare(

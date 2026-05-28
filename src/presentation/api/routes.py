@@ -14,10 +14,8 @@ Endpoints:
 from __future__ import annotations
 
 from datetime import UTC
-import json
 import time
 from typing import TYPE_CHECKING, Annotated, cast
-from urllib.parse import quote
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
@@ -70,7 +68,7 @@ app.add_middleware(
     ],
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
-    expose_headers=["X-Request-Id", "X-Trace-Id", "X-Trace-Explore-Url"],
+    expose_headers=["X-Request-Id", "X-Trace-Id"],
 )
 
 # Dashboard router (prefix: /dashboard)
@@ -109,37 +107,6 @@ def _get_duckdb_service(
     from src.infrastructure.storage.duckdb_query_service import DuckDBQueryService
 
     return DuckDBQueryService(base_path=settings.parquet_base_path)
-
-
-def _build_trace_explore_url(settings: Settings, trace_id: str) -> str:
-    """Build a Grafana Explore deep link for a specific Tempo trace ID."""
-    pane_state = {
-        "trace": {
-            "datasource": settings.tracing_grafana_tempo_datasource_uid,
-            "queries": [
-                {
-                    "datasource": {
-                        "type": "tempo",
-                        "uid": settings.tracing_grafana_tempo_datasource_uid,
-                    },
-                    "limit": 20,
-                    "query": trace_id,
-                    "queryType": "traceqlSearch",
-                    "refId": "A",
-                }
-            ],
-            "range": {
-                "from": settings.tracing_grafana_explore_from,
-                "to": settings.tracing_grafana_explore_to,
-            },
-        }
-    }
-    encoded_panes = quote(json.dumps(pane_state, separators=(",", ":")), safe="")
-    grafana_base_url = str(settings.tracing_grafana_base_url).rstrip("/")
-    return (
-        f"{grafana_base_url}/explore?orgId={settings.tracing_grafana_org_id}"
-        f"&schemaVersion=1&panes={encoded_panes}"
-    )
 
 
 # ── Response models ───────────────────────────────────────────────────────────
@@ -214,7 +181,6 @@ async def _instrument_request(
 ) -> Response:
     """Record HTTP metrics and expose the active trace ID in responses."""
     next_handler = call_next
-    settings = get_settings()
     start_time = time.perf_counter()
     API_IN_FLIGHT_REQUESTS.inc()
     request_id = request.headers.get("X-Request-ID", str(uuid4()))
@@ -257,10 +223,6 @@ async def _instrument_request(
         if trace_id is not None:
             bind_contextvars(trace_id=trace_id)
             response.headers["X-Trace-Id"] = trace_id
-            response.headers["X-Trace-Explore-Url"] = _build_trace_explore_url(
-                settings,
-                trace_id,
-            )
 
         response.headers["X-Request-Id"] = request_id
         bind_contextvars(

@@ -88,7 +88,7 @@ export function AIMarketBriefCard({ days, onSelectRepo }: Props) {
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground">
-                  {data.retrieval_mode === "model" ? "model brief" : "template brief"}
+                  template brief
                 </span>
                 <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-200">
                   {data.breakout_repos.length} breakout repos

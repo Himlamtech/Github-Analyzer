@@ -12,7 +12,6 @@ from src.application.dtos.ai_market_brief_dto import (
 )
 from src.application.dtos.repo_metadata_dto import RepoMetadataDTO
 from src.application.use_cases.build_market_brief import BuildMarketBriefUseCase
-from src.domain.exceptions import GenerationServiceError
 
 _NOW = datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
@@ -41,43 +40,6 @@ class FakeContextProvider:
             }
         )
         return self._context
-
-
-class FakeGenerationService:
-    """Structured generation boundary returning a fixed payload."""
-
-    def __init__(self, payload: dict[str, object]) -> None:
-        self._payload = payload
-        self.calls: list[dict[str, object]] = []
-
-    async def generate_json(
-        self,
-        *,
-        prompt: str,
-        system_prompt: str,
-        schema: dict[str, object],
-    ) -> dict[str, object]:
-        self.calls.append(
-            {
-                "prompt": prompt,
-                "system_prompt": system_prompt,
-                "schema": schema,
-            }
-        )
-        return dict(self._payload)
-
-
-class FailingGenerationService:
-    """Generation boundary that simulates a runtime failure."""
-
-    async def generate_json(
-        self,
-        *,
-        prompt: str,
-        system_prompt: str,
-        schema: dict[str, object],
-    ) -> dict[str, object]:
-        raise GenerationServiceError("model unavailable")
 
 
 def _repo(repo_full_name: str, *, stars: int, category: str, topics: list[str]) -> RepoMetadataDTO:
@@ -164,55 +126,9 @@ def _context() -> MarketBriefContextDTO:
 
 
 class TestBuildMarketBriefUseCase:
-    async def test_execute_returns_model_brief_when_generation_succeeds(self) -> None:
+    async def test_execute_returns_template_brief(self) -> None:
         provider = FakeContextProvider(_context())
-        generation_service = FakeGenerationService(
-            {
-                "headline": "Browser agents are leading the current GitHub AI cycle.",
-                "summary": (
-                    "browser-use and stagehand are concentrating fresh attention while "
-                    "Agent remains the strongest category."
-                ),
-                "key_takeaways": [
-                    "browser-use is the top breakout repo.",
-                    "Agent leads category star flow.",
-                    "Browser is the fastest-moving topic cluster.",
-                ],
-                "watchouts": ["Attention is concentrated in a narrow slice of repos."],
-            }
-        )
-        use_case = BuildMarketBriefUseCase(
-            provider,
-            generation_service=generation_service,
-            llm_enabled=True,
-        )
-
-        result = await use_case.execute(
-            days=30,
-            breakout_limit=5,
-            category_limit=4,
-            topic_limit=6,
-        )
-
-        assert result.retrieval_mode == "model"
-        assert result.headline == "Browser agents are leading the current GitHub AI cycle."
-        assert provider.calls == [
-            {
-                "days": 30,
-                "breakout_limit": 5,
-                "category_limit": 4,
-                "topic_limit": 6,
-            }
-        ]
-        assert generation_service.calls
-
-    async def test_execute_falls_back_to_template_when_generation_fails(self) -> None:
-        provider = FakeContextProvider(_context())
-        use_case = BuildMarketBriefUseCase(
-            provider,
-            generation_service=FailingGenerationService(),
-            llm_enabled=True,
-        )
+        use_case = BuildMarketBriefUseCase(provider)
 
         result = await use_case.execute(
             days=30,
@@ -225,42 +141,19 @@ class TestBuildMarketBriefUseCase:
         assert "browser-use/browser-use" in result.headline
         assert result.breakout_repos[0].repo.repo_full_name == "browser-use/browser-use"
         assert result.category_movers[0].category == "Agent"
-
-    async def test_execute_llm_disabled_uses_template_mode(self) -> None:
-        """When llm_enabled=False, use case must skip generation and fall back to template."""
-        provider = FakeContextProvider(_context())
-        generation_service = FakeGenerationService(
+        assert provider.calls == [
             {
-                "headline": "Should not be called",
-                "summary": "Should not be called",
-                "key_takeaways": [],
-                "watchouts": [],
+                "days": 30,
+                "breakout_limit": 5,
+                "category_limit": 4,
+                "topic_limit": 6,
             }
-        )
-        use_case = BuildMarketBriefUseCase(
-            provider,
-            generation_service=generation_service,
-            llm_enabled=False,
-        )
-
-        result = await use_case.execute(
-            days=7,
-            breakout_limit=3,
-            category_limit=2,
-            topic_limit=3,
-        )
-
-        assert result.retrieval_mode == "template"
-        assert len(generation_service.calls) == 0
+        ]
 
     async def test_execute_passes_correct_parameters_to_context_provider(self) -> None:
         """Use case must forward all execution arguments to the context provider."""
         provider = FakeContextProvider(_context())
-        use_case = BuildMarketBriefUseCase(
-            provider,
-            generation_service=FailingGenerationService(),
-            llm_enabled=False,
-        )
+        use_case = BuildMarketBriefUseCase(provider)
 
         await use_case.execute(
             days=14,

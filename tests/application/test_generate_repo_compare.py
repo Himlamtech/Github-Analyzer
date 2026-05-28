@@ -14,7 +14,6 @@ from src.application.dtos.ai_repo_brief_dto import (
 from src.application.dtos.repo_metadata_dto import RepoMetadataDTO
 from src.application.use_cases.generate_repo_compare import GenerateRepoCompareUseCase
 from src.domain.exceptions import (
-    GenerationServiceError,
     RepoInsightNotFoundError,
     ValidationError,
 )
@@ -39,43 +38,6 @@ class FakeContextProvider:
         if repo_name not in self._contexts:
             raise RepoInsightNotFoundError(f"Repository not found: {repo_name}")
         return self._contexts[repo_name]
-
-
-class FakeGenerationService:
-    """Structured generation boundary returning a fixed payload."""
-
-    def __init__(self, payload: dict[str, object]) -> None:
-        self._payload = payload
-        self.calls: list[dict[str, object]] = []
-
-    async def generate_json(
-        self,
-        *,
-        prompt: str,
-        system_prompt: str,
-        schema: dict[str, object],
-    ) -> dict[str, object]:
-        self.calls.append(
-            {
-                "prompt": prompt,
-                "system_prompt": system_prompt,
-                "schema": schema,
-            }
-        )
-        return dict(self._payload)
-
-
-class FailingGenerationService:
-    """Generation boundary that simulates a runtime failure."""
-
-    async def generate_json(
-        self,
-        *,
-        prompt: str,
-        system_prompt: str,
-        schema: dict[str, object],
-    ) -> dict[str, object]:
-        raise GenerationServiceError("model unavailable")
 
 
 def _context(
@@ -143,7 +105,7 @@ def _context(
 
 
 class TestGenerateRepoCompareUseCase:
-    async def test_execute_returns_model_compare_when_generation_succeeds(self) -> None:
+    async def test_execute_returns_template_compare(self) -> None:
         provider = FakeContextProvider(
             {
                 "browser-use/browser-use": _context(
@@ -166,63 +128,7 @@ class TestGenerateRepoCompareUseCase:
                 ),
             }
         )
-        generation_service = FakeGenerationService(
-            {
-                "headline": "browser-use/browser-use is stronger on current momentum.",
-                "summary": (
-                    "browser-use has the sharper near-term growth signal, while "
-                    "langchain leads on installed base."
-                ),
-                "overall_winner": "base",
-                "key_differences": ["browser-use leads on recent stars."],
-                "when_to_choose_base": ["Choose it for fast-moving browser agents."],
-                "when_to_choose_compare": ["Choose it for a broader framework ecosystem."],
-            }
-        )
-        use_case = GenerateRepoCompareUseCase(
-            provider,
-            generation_service=generation_service,
-            llm_enabled=True,
-        )
-
-        result = await use_case.execute(
-            base_repo_name="browser-use/browser-use",
-            compare_repo_name="langchain-ai/langchain",
-            days=30,
-        )
-
-        assert result.retrieval_mode == "model"
-        assert result.overall_winner == "base"
-        assert generation_service.calls
-
-    async def test_execute_falls_back_to_template_when_generation_fails(self) -> None:
-        provider = FakeContextProvider(
-            {
-                "browser-use/browser-use": _context(
-                    "browser-use/browser-use",
-                    category="Agent",
-                    stars=52_000,
-                    window_stars=1_900,
-                    events=3_600,
-                    actors=540,
-                    forks=2_000,
-                ),
-                "langchain-ai/langchain": _context(
-                    "langchain-ai/langchain",
-                    category="Agent",
-                    stars=104_000,
-                    window_stars=800,
-                    events=2_100,
-                    actors=320,
-                    forks=12_000,
-                ),
-            }
-        )
-        use_case = GenerateRepoCompareUseCase(
-            provider,
-            generation_service=FailingGenerationService(),
-            llm_enabled=True,
-        )
+        use_case = GenerateRepoCompareUseCase(provider)
 
         result = await use_case.execute(
             base_repo_name="browser-use/browser-use",
@@ -236,11 +142,7 @@ class TestGenerateRepoCompareUseCase:
 
     async def test_execute_rejects_same_repository(self) -> None:
         provider = FakeContextProvider({})
-        use_case = GenerateRepoCompareUseCase(
-            provider,
-            generation_service=None,
-            llm_enabled=False,
-        )
+        use_case = GenerateRepoCompareUseCase(provider)
 
         with pytest.raises(ValidationError, match="two distinct repositories"):
             await use_case.execute(

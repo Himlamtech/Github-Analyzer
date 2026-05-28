@@ -71,8 +71,8 @@ export function AIRepoBriefCard({ repoName, days }: Props) {
             layer recovers.
           </div>
         ) : (
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
-              <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
+            <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className="rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white"
@@ -83,7 +83,7 @@ export function AIRepoBriefCard({ repoName, days }: Props) {
                   {data.repo.category}
                 </span>
                 <span className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground">
-                  {data.retrieval_mode === "model" ? "model brief" : "template brief"}
+                  template brief
                 </span>
                 <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] text-emerald-200">
                   {data.trend_verdict}

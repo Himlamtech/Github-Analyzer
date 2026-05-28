@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any, Literal, Protocol
+from typing import Literal, Protocol
 
 import structlog
 
@@ -13,49 +13,8 @@ from src.application.dtos.ai_repo_brief_dto import (
     RepoBriefResponseDTO,
     RepoBriefTimeseriesPointDTO,
 )
-from src.domain.exceptions import GenerationServiceError
 
 logger = structlog.get_logger(__name__)
-
-_SYSTEM_PROMPT = """
-You are a grounded GitHub repository analyst.
-Write crisp, evidence-backed repo intelligence.
-Use only the supplied metrics and metadata.
-Do not invent facts, dates, or benchmarks.
-"""
-
-_BRIEF_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "properties": {
-        "headline": {"type": "string"},
-        "summary": {"type": "string"},
-        "why_trending": {"type": "string"},
-        "trend_verdict": {
-            "type": "string",
-            "enum": ["accelerating", "steady", "emerging", "quiet"],
-        },
-        "key_signals": {
-            "type": "array",
-            "items": {"type": "string"},
-            "minItems": 2,
-            "maxItems": 4,
-        },
-        "watchouts": {
-            "type": "array",
-            "items": {"type": "string"},
-            "minItems": 1,
-            "maxItems": 3,
-        },
-    },
-    "required": [
-        "headline",
-        "summary",
-        "why_trending",
-        "trend_verdict",
-        "key_signals",
-        "watchouts",
-    ],
-}
 
 
 class RepoBriefContextProviderProtocol(Protocol):
@@ -69,31 +28,14 @@ class RepoBriefContextProviderProtocol(Protocol):
     ) -> RepoBriefContextDTO: ...
 
 
-class StructuredGenerationServiceProtocol(Protocol):
-    """LLM-backed JSON generation boundary."""
-
-    async def generate_json(
-        self,
-        *,
-        prompt: str,
-        system_prompt: str,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]: ...
-
-
 class GenerateRepoBriefUseCase:
     """Generate an evidence-backed brief explaining why a repo matters now."""
 
     def __init__(
         self,
         context_provider: RepoBriefContextProviderProtocol,
-        *,
-        generation_service: StructuredGenerationServiceProtocol | None = None,
-        llm_enabled: bool = True,
     ) -> None:
         self._context_provider = context_provider
-        self._generation_service = generation_service
-        self._llm_enabled = llm_enabled
 
     async def execute(
         self,
@@ -106,113 +48,7 @@ class GenerateRepoBriefUseCase:
             repo_name=repo_name,
             days=days,
         )
-        generated = await self._maybe_generate_model_brief(context)
-        if generated is None:
-            return _build_template_brief(context)
-        return _build_model_brief(context, generated)
-
-    async def _maybe_generate_model_brief(
-        self,
-        context: RepoBriefContextDTO,
-    ) -> dict[str, Any] | None:
-        if not self._llm_enabled or self._generation_service is None:
-            return None
-        prompt = _build_prompt(context)
-        try:
-            generated = await self._generation_service.generate_json(
-                prompt=prompt,
-                system_prompt=_SYSTEM_PROMPT.strip(),
-                schema=_BRIEF_SCHEMA,
-            )
-        except GenerationServiceError as exc:
-            logger.warning(
-                "ai_repo_brief.generation_unavailable",
-                repo=context.repo.repo_full_name,
-                error=str(exc),
-            )
-            return None
-        if not _generated_brief_is_valid(generated):
-            logger.warning(
-                "ai_repo_brief.invalid_generation_payload",
-                repo=context.repo.repo_full_name,
-            )
-            return None
-        return generated
-
-
-def _build_prompt(context: RepoBriefContextDTO) -> str:
-    dominant_events = (
-        ", ".join(f"{item.event_type}:{item.event_count}" for item in context.activity_breakdown)
-        or "none"
-    )
-    latest_event = context.latest_event_at.isoformat() if context.latest_event_at else "unknown"
-    recent_star_rate, prior_star_rate = _half_window_star_rates(context.timeseries)
-    return f"""
-Repository: {context.repo.repo_full_name}
-Category: {context.repo.category}
-Primary language: {context.repo.primary_language or "unknown"}
-Description: {context.repo.description or "n/a"}
-Topics: {", ".join(context.repo.topics) or "n/a"}
-Total stars: {context.repo.stargazers_count}
-Forks: {context.repo.forks_count}
-Open issues: {context.repo.open_issues_count}
-Window days: {context.window_days}
-Stars in window: {context.star_count_in_window}
-Total events in window: {context.total_events_in_window}
-Unique actors in window: {context.unique_actors_in_window}
-Latest event at: {latest_event}
-Dominant events: {dominant_events}
-Recent half star rate: {recent_star_rate:.2f}
-Prior half star rate: {prior_star_rate:.2f}
-
-Write a concise repo brief for a product dashboard.
-Requirements:
-- sound analytical, not promotional
-- mention concrete metrics
-- explain whether the repo is accelerating, steady, emerging, or quiet
-- keep each sentence compact
-""".strip()
-
-
-def _generated_brief_is_valid(payload: dict[str, Any]) -> bool:
-    headline = payload.get("headline")
-    summary = payload.get("summary")
-    why_trending = payload.get("why_trending")
-    trend_verdict = payload.get("trend_verdict")
-    key_signals = payload.get("key_signals")
-    watchouts = payload.get("watchouts")
-    return (
-        isinstance(headline, str)
-        and isinstance(summary, str)
-        and isinstance(why_trending, str)
-        and trend_verdict in {"accelerating", "steady", "emerging", "quiet"}
-        and isinstance(key_signals, list)
-        and all(isinstance(item, str) for item in key_signals)
-        and isinstance(watchouts, list)
-        and all(isinstance(item, str) for item in watchouts)
-    )
-
-
-def _build_model_brief(
-    context: RepoBriefContextDTO,
-    payload: dict[str, Any],
-) -> RepoBriefResponseDTO:
-    return RepoBriefResponseDTO(
-        repo=context.repo,
-        window_days=context.window_days,
-        retrieval_mode="model",
-        trend_verdict=payload["trend_verdict"],
-        headline=str(payload["headline"]).strip(),
-        summary=str(payload["summary"]).strip(),
-        why_trending=str(payload["why_trending"]).strip(),
-        star_count_in_window=context.star_count_in_window,
-        total_events_in_window=context.total_events_in_window,
-        unique_actors_in_window=context.unique_actors_in_window,
-        latest_event_at=context.latest_event_at,
-        activity_breakdown=context.activity_breakdown,
-        key_signals=[str(item).strip() for item in payload["key_signals"]][:4],
-        watchouts=[str(item).strip() for item in payload["watchouts"]][:3],
-    )
+        return _build_template_brief(context)
 
 
 def _build_template_brief(context: RepoBriefContextDTO) -> RepoBriefResponseDTO:

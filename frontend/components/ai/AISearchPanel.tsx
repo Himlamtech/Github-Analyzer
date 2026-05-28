@@ -60,7 +60,7 @@ export function AISearchPanel({ category, days, onSelectRepo }: Props) {
             <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
             {data ? (
               <span>
-                {data.retrieval_mode === "hybrid" ? "hybrid" : "lexical"} mode ·{" "}
+                {data.retrieval_mode} mode ·{" "}
                 {data.total_candidates} candidates scanned
               </span>
             ) : (
@@ -253,11 +253,6 @@ export function AISearchPanel({ category, days, onSelectRepo }: Props) {
                     </div>
                     <div className="text-muted-foreground">
                       lexical {result.lexical_score.toFixed(2)}
-                      {result.semantic_score !== null && (
-                        <span className="ml-2">
-                          semantic {result.semantic_score.toFixed(2)}
-                        </span>
-                      )}
                     </div>
                   </div>
                 </button>

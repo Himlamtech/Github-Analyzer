@@ -1,14 +1,9 @@
 flowchart LR
     Q["User query<br/>'LLM fine-tuning framework'"]
-    LEX["Lexical Scoring<br/>ClickHouse FTS<br/>full-text trên<br/>description + topics"]
-    CAND["Candidate set<br/>top-K lexical"]
-    EMB{"Ollama<br/>available?"}
-    SEM["Semantic Reranking<br/>bge-m3 embed query<br/>cosine similarity<br/>với repo embeddings"]
+    LEX["Lexical Scoring<br/>ClickHouse candidates<br/>full-text trên<br/>description + topics"]
+    RANK["Lexical Ranking<br/>term matching + popularity"]
     RETURN["Kết quả trả về<br/>ranked list"]
 
     Q --> LEX
-    LEX --> CAND
-    CAND --> EMB
-    EMB -->|"Có"| SEM
-    EMB -->|"Không"| RETURN
-    SEM --> RETURN
+    LEX --> RANK
+    RANK --> RETURN

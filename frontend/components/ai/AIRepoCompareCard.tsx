@@ -172,7 +172,7 @@ export function AIRepoCompareCard({ baseRepoName, days }: Props) {
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground">
-                      {data.retrieval_mode === "model" ? "model compare" : "template compare"}
+                      template compare
                     </span>
                     <span className="rounded-full bg-sky-500/10 px-2.5 py-1 text-[11px] text-sky-200">
                       winner: {data.overall_winner}

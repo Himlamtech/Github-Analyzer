@@ -97,22 +97,6 @@ class Settings(BaseSettings):
     )
 
     # ── AI Search ─────────────────────────────────────────────────────────────
-    ollama_base_url: AnyHttpUrl = Field(
-        default="http://localhost:11434",  # type: ignore[assignment]
-        description="Base URL for the Ollama HTTP API.",
-    )
-    ollama_embedding_model: str = Field(
-        default="bge-m3",
-        description="Embedding model name used for semantic search reranking.",
-    )
-    ollama_generation_model: str = Field(
-        default="llama3.2:3b",
-        description="Text generation model used for grounded AI repo briefs.",
-    )
-    ai_search_semantic_enabled: bool = Field(
-        default=True,
-        description="Enable semantic reranking via Ollama embeddings when available.",
-    )
     ai_search_candidate_limit: int = Field(
         default=40,
         ge=10,
@@ -124,26 +108,6 @@ class Settings(BaseSettings):
         ge=1,
         le=20,
         description="Default number of AI search results returned by the API.",
-    )
-    ai_search_embedding_timeout_seconds: float = Field(
-        default=20.0,
-        ge=1.0,
-        le=120.0,
-        description="HTTP timeout for Ollama embedding requests in seconds.",
-    )
-    ai_repo_brief_llm_enabled: bool = Field(
-        default=True,
-        description="Enable Ollama-backed generation for repo briefs before template fallback.",
-    )
-    ai_market_brief_llm_enabled: bool = Field(
-        default=True,
-        description="Enable Ollama-backed generation for market briefs before template fallback.",
-    )
-    ai_repo_brief_timeout_seconds: float = Field(
-        default=30.0,
-        ge=1.0,
-        le=120.0,
-        description="HTTP timeout for Ollama repo brief generation requests in seconds.",
     )
 
     # ── Observability ─────────────────────────────────────────────────────────

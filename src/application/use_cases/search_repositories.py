@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import math
 import re
-from typing import TYPE_CHECKING, Protocol
+from typing import Protocol
 
 import structlog
 
@@ -15,14 +15,11 @@ from src.application.dtos.ai_search_dto import (
     RepoSearchResponseDTO,
     RepoSearchResultDTO,
 )
-from src.domain.exceptions import EmbeddingServiceError, ValidationError
+from src.domain.exceptions import ValidationError
 
 logger = structlog.get_logger(__name__)
 
 _TOKEN_PATTERN = re.compile(r"[a-z0-9][a-z0-9+.#/-]*")
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
 
 
 class RepoSearchCandidateProviderProtocol(Protocol):
@@ -39,12 +36,6 @@ class RepoSearchCandidateProviderProtocol(Protocol):
     ) -> list[RepoSearchCandidateDTO]: ...
 
 
-class EmbeddingServiceProtocol(Protocol):
-    """Semantic embedding service used for reranking."""
-
-    async def embed_texts(self, texts: Sequence[str]) -> list[list[float]]: ...
-
-
 @dataclass(frozen=True)
 class _LexicalBreakdown:
     score: float
@@ -53,19 +44,15 @@ class _LexicalBreakdown:
 
 
 class SearchRepositoriesUseCase:
-    """Search repositories with lexical ranking and optional semantic reranking."""
+    """Search repositories with lexical ranking."""
 
     def __init__(
         self,
         candidate_provider: RepoSearchCandidateProviderProtocol,
         *,
-        embedding_service: EmbeddingServiceProtocol | None = None,
-        semantic_enabled: bool = True,
         candidate_limit: int = 40,
     ) -> None:
         self._candidate_provider = candidate_provider
-        self._embedding_service = embedding_service
-        self._semantic_enabled = semantic_enabled
         self._candidate_limit = candidate_limit
 
     async def execute(
@@ -108,57 +95,22 @@ class SearchRepositoriesUseCase:
             )
 
         query_terms = _tokenize(normalized_query)
-        semantic_scores = await self._embed_candidates(normalized_query, candidates)
-        retrieval_mode = "hybrid" if semantic_scores is not None else "lexical"
         results = self._build_results(
             candidates=candidates,
             query=normalized_query,
             query_terms=query_terms,
-            semantic_scores=semantic_scores,
             days=filters.days,
             limit=limit,
         )
         return RepoSearchResponseDTO(
             query=query,
             normalized_query=normalized_query,
-            retrieval_mode=retrieval_mode,
+            retrieval_mode="lexical",
             total_candidates=len(candidates),
             returned_results=len(results),
             filters=filters,
             results=results,
         )
-
-    async def _embed_candidates(
-        self,
-        query: str,
-        candidates: list[RepoSearchCandidateDTO],
-    ) -> dict[str, float] | None:
-        if not self._semantic_enabled or self._embedding_service is None:
-            return None
-
-        texts = [query, *[candidate.search_document for candidate in candidates]]
-        try:
-            vectors = await self._embedding_service.embed_texts(texts)
-        except EmbeddingServiceError as exc:
-            logger.warning("ai_search.semantic_unavailable", error=str(exc))
-            return None
-
-        if len(vectors) != len(texts):
-            logger.warning(
-                "ai_search.semantic_vector_mismatch",
-                expected=len(texts),
-                received=len(vectors),
-            )
-            return None
-
-        query_vector = vectors[0]
-        semantic_scores: dict[str, float] = {}
-        for candidate, vector in zip(candidates, vectors[1:], strict=True):
-            semantic_scores[candidate.repo.repo_full_name] = round(
-                _normalize_cosine_score(_cosine_similarity(query_vector, vector)),
-                4,
-            )
-        return semantic_scores
 
     def _build_results(
         self,
@@ -166,7 +118,6 @@ class SearchRepositoriesUseCase:
         candidates: list[RepoSearchCandidateDTO],
         query: str,
         query_terms: list[str],
-        semantic_scores: dict[str, float] | None,
         days: int,
         limit: int,
     ) -> list[RepoSearchResultDTO]:
@@ -174,15 +125,11 @@ class SearchRepositoriesUseCase:
         for candidate in candidates:
             lexical = _score_lexically(candidate, query, query_terms)
             popularity = _popularity_score(candidate)
-            semantic_score = None
-            if semantic_scores is not None:
-                semantic_score = semantic_scores.get(candidate.repo.repo_full_name)
-            if not _should_include_candidate(lexical.score, semantic_score):
+            if lexical.score <= 0.0:
                 continue
 
             reasons = _enrich_reasons(
                 lexical.why_matched,
-                semantic_score,
                 candidate.star_count_in_window,
                 days,
                 candidate.repo.stargazers_count,
@@ -191,9 +138,8 @@ class SearchRepositoriesUseCase:
                 RepoSearchResultDTO(
                     repo=candidate.repo,
                     star_count_in_window=candidate.star_count_in_window,
-                    score=_overall_score(lexical.score, popularity, semantic_score),
+                    score=_overall_score(lexical.score, popularity),
                     lexical_score=lexical.score,
-                    semantic_score=semantic_score,
                     popularity_score=popularity,
                     matched_terms=lexical.matched_terms,
                     why_matched=reasons,
@@ -204,7 +150,6 @@ class SearchRepositoriesUseCase:
             key=lambda result: (
                 result.score,
                 result.lexical_score,
-                result.semantic_score or 0.0,
                 result.star_count_in_window,
                 result.repo.stargazers_count,
             ),
@@ -317,52 +262,19 @@ def _popularity_score(candidate: RepoSearchCandidateDTO) -> float:
 def _overall_score(
     lexical_score: float,
     popularity_score: float,
-    semantic_score: float | None,
 ) -> float:
-    if semantic_score is None:
-        return round((lexical_score * 0.75) + (popularity_score * 0.25), 4)
-    return round(
-        (lexical_score * 0.4) + (semantic_score * 0.45) + (popularity_score * 0.15),
-        4,
-    )
-
-
-def _should_include_candidate(
-    lexical_score: float,
-    semantic_score: float | None,
-) -> bool:
-    if semantic_score is None:
-        return lexical_score > 0.0
-    return lexical_score > 0.0 or semantic_score >= 0.58
+    return round((lexical_score * 0.75) + (popularity_score * 0.25), 4)
 
 
 def _enrich_reasons(
     reasons: list[str],
-    semantic_score: float | None,
     star_count_in_window: int,
     days: int,
     stargazers_count: int,
 ) -> list[str]:
     enriched = list(reasons)
-    if semantic_score is not None and semantic_score >= 0.68:
-        enriched.append("Semantic reranker found a strong conceptual match.")
     if star_count_in_window > 0:
         enriched.append(f"Recent momentum: +{star_count_in_window:,} stars in {days}d.")
     elif stargazers_count >= 20_000:
         enriched.append(f"Established project with {stargazers_count:,} total stars.")
     return enriched[:4]
-
-
-def _cosine_similarity(left: Sequence[float], right: Sequence[float]) -> float:
-    if len(left) != len(right) or not left:
-        return 0.0
-    numerator = sum(a * b for a, b in zip(left, right, strict=True))
-    left_norm = math.sqrt(sum(value * value for value in left))
-    right_norm = math.sqrt(sum(value * value for value in right))
-    if left_norm == 0.0 or right_norm == 0.0:
-        return 0.0
-    return numerator / (left_norm * right_norm)
-
-
-def _normalize_cosine_score(score: float) -> float:
-    return max(0.0, min((score + 1.0) / 2.0, 1.0))

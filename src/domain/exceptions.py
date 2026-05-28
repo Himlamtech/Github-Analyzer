@@ -157,11 +157,3 @@ class AIInsightError(StorageError):
 
 class RepoInsightNotFoundError(AIInsightError):
     """Requested repository insight context does not exist."""
-
-
-class EmbeddingServiceError(DomainException):
-    """Semantic embedding request failed."""
-
-
-class GenerationServiceError(DomainException):
-    """Structured generation request failed."""

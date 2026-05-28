@@ -51,7 +51,7 @@ class RepoBriefResponseDTO(BaseModel):
 
     repo: RepoMetadataDTO
     window_days: int = Field(..., ge=1)
-    retrieval_mode: Literal["template", "model"]
+    retrieval_mode: Literal["template"]
     trend_verdict: Literal["accelerating", "steady", "emerging", "quiet"]
     headline: str
     summary: str

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Protocol
 
 import structlog
 
@@ -13,36 +13,8 @@ from src.application.dtos.ai_market_brief_dto import (
     MarketCategoryMoverDTO,
     MarketTopicShiftDTO,
 )
-from src.domain.exceptions import GenerationServiceError
 
 logger = structlog.get_logger(__name__)
-
-_SYSTEM_PROMPT = """
-You are a grounded GitHub AI market analyst.
-Write short, evidence-backed market briefings from structured metrics only.
-Do not invent repos, metrics, trends, or causes not present in the prompt.
-"""
-
-_MARKET_BRIEF_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "properties": {
-        "headline": {"type": "string"},
-        "summary": {"type": "string"},
-        "key_takeaways": {
-            "type": "array",
-            "items": {"type": "string"},
-            "minItems": 3,
-            "maxItems": 5,
-        },
-        "watchouts": {
-            "type": "array",
-            "items": {"type": "string"},
-            "minItems": 1,
-            "maxItems": 3,
-        },
-    },
-    "required": ["headline", "summary", "key_takeaways", "watchouts"],
-}
 
 
 class MarketBriefContextProviderProtocol(Protocol):
@@ -58,31 +30,14 @@ class MarketBriefContextProviderProtocol(Protocol):
     ) -> MarketBriefContextDTO: ...
 
 
-class StructuredGenerationServiceProtocol(Protocol):
-    """LLM-backed JSON generation boundary."""
-
-    async def generate_json(
-        self,
-        *,
-        prompt: str,
-        system_prompt: str,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]: ...
-
-
 class BuildMarketBriefUseCase:
     """Generate a grounded AI market brief for the current time window."""
 
     def __init__(
         self,
         context_provider: MarketBriefContextProviderProtocol,
-        *,
-        generation_service: StructuredGenerationServiceProtocol | None = None,
-        llm_enabled: bool = True,
     ) -> None:
         self._context_provider = context_provider
-        self._generation_service = generation_service
-        self._llm_enabled = llm_enabled
 
     async def execute(
         self,
@@ -99,116 +54,7 @@ class BuildMarketBriefUseCase:
             category_limit=category_limit,
             topic_limit=topic_limit,
         )
-        generated = await self._maybe_generate_model_brief(context)
-        if generated is None:
-            return _build_template_brief(context)
-        return _build_model_brief(context, generated)
-
-    async def _maybe_generate_model_brief(
-        self,
-        context: MarketBriefContextDTO,
-    ) -> dict[str, Any] | None:
-        if not self._llm_enabled or self._generation_service is None:
-            return None
-        prompt = _build_prompt(context)
-        try:
-            generated = await self._generation_service.generate_json(
-                prompt=prompt,
-                system_prompt=_SYSTEM_PROMPT.strip(),
-                schema=_MARKET_BRIEF_SCHEMA,
-            )
-        except GenerationServiceError as exc:
-            logger.warning("ai_market_brief.generation_unavailable", error=str(exc))
-            return None
-        if not _generated_market_brief_is_valid(generated):
-            logger.warning("ai_market_brief.invalid_generation_payload")
-            return None
-        return generated
-
-
-def _build_prompt(context: MarketBriefContextDTO) -> str:
-    breakout_lines = (
-        "\n".join(
-            (
-                f"- {item.repo.repo_full_name}: +{item.star_count_in_window} stars, "
-                f"{item.total_events_in_window} events, {item.unique_actors_in_window} actors, "
-                f"momentum={item.momentum_score:.4f}"
-            )
-            for item in context.breakout_repos
-        )
-        or "- none"
-    )
-    category_lines = (
-        "\n".join(
-            (
-                f"- {item.category}: {item.total_stars_in_window} stars, "
-                f"{item.total_events_in_window} events, {item.active_repo_count} active repos, "
-                f"leader={item.leader_repo_name}"
-            )
-            for item in context.category_movers
-        )
-        or "- none"
-    )
-    topic_lines = (
-        "\n".join(
-            f"- {item.topic}: {item.star_count_in_window} stars across {item.repo_count} repos"
-            for item in context.topic_shifts
-        )
-        or "- none"
-    )
-    return f"""
-Window days: {context.window_days}
-Generated at: {context.generated_at.isoformat()}
-
-Breakout repos:
-{breakout_lines}
-
-Category movers:
-{category_lines}
-
-Topic shifts:
-{topic_lines}
-
-Write a tight product-market brief for a dashboard.
-Requirements:
-- sound analytical, not promotional
-- cite concrete repos or categories when relevant
-- focus on where attention is concentrating
-- keep each bullet compact
-""".strip()
-
-
-def _generated_market_brief_is_valid(payload: dict[str, Any]) -> bool:
-    headline = payload.get("headline")
-    summary = payload.get("summary")
-    key_takeaways = payload.get("key_takeaways")
-    watchouts = payload.get("watchouts")
-    return (
-        isinstance(headline, str)
-        and isinstance(summary, str)
-        and isinstance(key_takeaways, list)
-        and all(isinstance(item, str) for item in key_takeaways)
-        and isinstance(watchouts, list)
-        and all(isinstance(item, str) for item in watchouts)
-    )
-
-
-def _build_model_brief(
-    context: MarketBriefContextDTO,
-    payload: dict[str, Any],
-) -> MarketBriefResponseDTO:
-    return MarketBriefResponseDTO(
-        window_days=context.window_days,
-        generated_at=context.generated_at,
-        retrieval_mode="model",
-        headline=str(payload["headline"]).strip(),
-        summary=str(payload["summary"]).strip(),
-        key_takeaways=[str(item).strip() for item in payload["key_takeaways"]][:5],
-        watchouts=[str(item).strip() for item in payload["watchouts"]][:3],
-        breakout_repos=context.breakout_repos,
-        category_movers=context.category_movers,
-        topic_shifts=context.topic_shifts,
-    )
+        return _build_template_brief(context)
 
 
 def _build_template_brief(context: MarketBriefContextDTO) -> MarketBriefResponseDTO:

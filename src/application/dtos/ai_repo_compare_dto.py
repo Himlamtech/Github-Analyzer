@@ -29,7 +29,7 @@ class RepoCompareResponseDTO(BaseModel):
     base_repo: RepoMetadataDTO
     compare_repo: RepoMetadataDTO
     window_days: int = Field(..., ge=1)
-    retrieval_mode: Literal["template", "model"]
+    retrieval_mode: Literal["template"]
     overall_winner: Literal["base", "compare", "tie"]
     headline: str
     summary: str
