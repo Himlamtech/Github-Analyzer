@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Protocol, cast
 from fastapi.testclient import TestClient
 import pytest
 
-from src.infrastructure.config import get_settings
+from src.infrastructure.config import Settings, get_settings
 from src.presentation.api import routes as routes_module
 from src.presentation.api.routes import _get_clickhouse_repo, app
 
@@ -93,7 +93,11 @@ class FakeRootSpan:
 
 @pytest.fixture
 def client(tmp_path: Path) -> Iterator[TestClient]:
-    settings = get_settings().model_copy(update={"parquet_base_path": str(tmp_path / "raw")})
+    settings = Settings(
+        github_api_tokens="test-token",
+        clickhouse_password="test-password",
+        parquet_base_path=str(tmp_path / "raw"),
+    )
 
     app.dependency_overrides[get_settings] = lambda: settings
     try:
@@ -141,7 +145,11 @@ def test_pipeline_status_healthy_pipeline_keeps_trace_ok(
 ) -> None:
     parquet_path = tmp_path / "raw"
     parquet_path.mkdir(parents=True, exist_ok=True)
-    settings = get_settings().model_copy(update={"parquet_base_path": str(parquet_path)})
+    settings = Settings(
+        github_api_tokens="test-token",
+        clickhouse_password="test-password",
+        parquet_base_path=str(parquet_path),
+    )
     fake_tracer = FakeTracer()
     root_span = FakeRootSpan()
     trace_module = cast("object", routes_module.__dict__["trace"])

@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for the GitHub AI Trend Analyzer test suite."""
+"""Shared pytest fixtures for the GitHub analyzer test suite."""
 
 from __future__ import annotations
 

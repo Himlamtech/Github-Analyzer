@@ -1,6 +1,6 @@
 """Repository category resolver.
 
-AI-specific classification has been removed from this application. The service
+Repository classification has been reduced to a neutral fallback. The service
 is kept as a compatibility seam for metadata sync and dashboard code paths, and
 it deterministically returns the neutral fallback category for every repository.
 """

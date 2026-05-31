@@ -1,6 +1,6 @@
-# GitHub AI Trend Analyzer
+# GitHub Analyzer
 
-Real-time pipeline that tracks AI/ML activity on GitHub by ingesting events,
+Real-time pipeline that tracks GitHub repository activity by ingesting events,
 enriching repository metadata, and exposing a live analytics dashboard.
 
 ## Architecture
@@ -9,7 +9,7 @@ enriching repository metadata, and exposing a live analytics dashboard.
 GitHub Events API
        │
        ▼
-PollGithubEventsUseCase ── AiEventFilter ──▶ Kafka (github_raw_events, 16 partitions)
+PollGithubEventsUseCase ── RepositoryEventFilter ──▶ Kafka (github_raw_events, 16 partitions)
                                                       │
                                         ┌─────────────┘
                                         ▼
@@ -23,7 +23,7 @@ PollGithubEventsUseCase ── AiEventFilter ──▶ Kafka (github_raw_events,
                         │
               ┌─────────┴──────────┐
               ▼                    ▼
-          FastAPI            AI Search (lexical)
+          FastAPI            Dashboard APIs
          (port 8000)
               │
               ▼
@@ -158,7 +158,7 @@ src/
 │       └── sync_repo_metadata.py        # data/repos/*.json → ClickHouse
 ├── infrastructure/
 │   ├── config.py                 # pydantic-settings Settings singleton
-│   ├── github/                   # AsyncGithubClient, AiEventFilter, EventMapper
+│   ├── github/                   # AsyncGithubClient, RepositoryEventFilter, EventMapper
 │   ├── kafka/                    # aiokafka producer/consumer/admin
 │   ├── spark/                    # SparkSession factory, StreamingJob, Schemas
 │   ├── storage/                  # ClickHouseRepository, ParquetRepository,
@@ -182,7 +182,7 @@ make clean       # docker-compose down -v + remove data/
 ### Key conventions
 
 - `from __future__ import annotations` at top of every file.
-- Python 3.11, line length 99 (`ruff`).
+- Python 3.14, line length 99 (`ruff`).
 - Use `structlog` exclusively — never `logging` directly.
 - All cross-layer communication via **interfaces (ABCs/Protocols)** and **DTOs**.
 - Mock only at infrastructure boundary in tests. Never mock domain internals.
@@ -207,18 +207,7 @@ make clean       # docker-compose down -v + remove data/
 | `GET` | `/dashboard/topic-rotation` | Topics accelerating fastest versus the prior matching window |
 | `GET` | `/dashboard/language-breakdown` | Event distribution by primary language |
 | `GET` | `/dashboard/topic-breakdown` | Event distribution by repo topic |
-| `GET` | `/dashboard/category-summary` | AI/ML category breakdown |
 | `GET` | `/dashboard/event-volume` | Hourly event volume time series |
-
-### AI / Search
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/ai/search` | Lexical repository discovery |
-| `GET` | `/ai/repo-brief` | Grounded brief and why-trending narrative for one repo |
-| `GET` | `/ai/repo-compare` | Structured comparison between two repositories |
-| `GET` | `/ai/related-repos` | Graph-lite related repository recommendations |
-| `GET` | `/ai/market-brief` | Weekly market brief over breakout repos and topic shifts |
 
 ## Scheduler
 
@@ -247,17 +236,11 @@ State files written to `scheduler/state/` (health, freshness, token status, refr
 
 ---
 
-## AI Relevance Filter
+## Event Filter
 
-`AiEventFilter` (`src/infrastructure/github/event_filter.py`) decides which events are published to Kafka. A repo passes if:
-
-- Any of its **topics** match `_AI_TOPICS` (e.g. `machine-learning`, `llm`, `deep-learning`)
-- **OR** its description contains an `_AI_KEYWORDS` keyword (e.g. `transformer`, `neural network`)
-- **OR** its name matches an `_AI_REPO_NAME_PATTERNS` regex
-
-**AND NOT** (bot actor detected **OR** spam signal present).
-
-To add a new AI framework, update the relevant set/list in `event_filter.py`.
+`RepositoryEventFilter` (`src/infrastructure/github/event_filter.py`) decides which
+events are published to Kafka. An event passes when it contains a valid actor
+login, repository id, and repository name.
 
 ## Token Rotation
 

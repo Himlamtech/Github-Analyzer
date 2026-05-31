@@ -119,7 +119,7 @@ clean: ## Stop Docker stack and remove all local data
 ## ── Help ────────────────────────────────────────────────────────────────────
 
 help: ## Show this help message
-	@echo "GitHub AI Trend Analyzer — available targets:"
+	@echo "GitHub Analyzer — available targets:"
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 

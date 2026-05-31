@@ -290,7 +290,7 @@ class TestGetTopStarredRepos:
         assert "FROM repo_metadata AS rm" in query_text
         assert "github_data" not in query_text
         assert result[0]["repo_full_name"] == "openai/gpt-5"
-        assert result[0]["category"] == "LLM"
+        assert result[0]["category"] == "Other"
 
 
 # ── get_trending ──────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 """Repository category value object.
 
-The application no longer performs AI-specific topic classification. Repository
+The application no longer performs topic-specific classification. Repository
 metadata is retained for analytics, and all repositories are assigned the
 single neutral fallback category.
 """
