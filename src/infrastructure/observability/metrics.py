@@ -1,4 +1,4 @@
-"""Prometheus metrics definitions for the GitHub AI Trend Analyzer pipeline.
+"""Prometheus metrics definitions for the GitHub analyzer pipeline.
 
 All metrics are registered as module-level singletons so that any component
 that imports this module can record observations without dependency injection.

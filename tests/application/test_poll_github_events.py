@@ -95,7 +95,7 @@ def mock_github_client(mock_raw_event: dict[str, object]) -> MagicMock:
 @pytest.fixture
 def mock_filter() -> MagicMock:
     filt = MagicMock()
-    filt.is_ai_relevant.return_value = True
+    filt.should_ingest.return_value = True
     return filt
 
 
@@ -136,12 +136,12 @@ def use_case(
 class TestPollGithubEventsUseCaseHappyPath:
     """Tests for normal execution flow."""
 
-    async def test_execute_publishes_ai_relevant_event(
+    async def test_execute_publishes_ingestible_event(
         self,
         use_case: PollGithubEventsUseCase,
         mock_producer: AsyncMock,
     ) -> None:
-        """Happy path: AI-relevant event is published to Kafka exactly once."""
+        """Happy path: a valid event is published to Kafka exactly once."""
         await use_case.execute()
         mock_producer.publish.assert_called_once()
 
@@ -167,7 +167,7 @@ class TestPollGithubEventsUseCaseFiltering:
         mock_producer: AsyncMock,
     ) -> None:
         """Events rejected by the filter must not reach Kafka."""
-        mock_filter.is_ai_relevant.return_value = False
+        mock_filter.should_ingest.return_value = False
         uc = PollGithubEventsUseCase(
             github_client=mock_github_client,
             event_filter=mock_filter,
@@ -338,7 +338,7 @@ async def test_main_wires_dependencies_and_executes_use_case() -> None:
     github_client_module.GitHubClient = FakeGitHubClient  # type: ignore[attr-defined]
 
     filter_module = ModuleType("src.infrastructure.github.event_filter")
-    filter_module.PopularRepoFilter = type("PopularRepoFilter", (), {})  # type: ignore[attr-defined]
+    filter_module.RepositoryEventFilter = type("RepositoryEventFilter", (), {})  # type: ignore[attr-defined]
 
     mapper_module = ModuleType("src.infrastructure.github.event_mapper")
     mapper_module.GitHubEventMapper = type("GitHubEventMapper", (), {})  # type: ignore[attr-defined]

@@ -1,4 +1,4 @@
-"""Domain exception hierarchy for the GitHub AI Trend Analyzer.
+"""Domain exception hierarchy for the GitHub analyzer.
 
 All application-level exceptions derive from DomainException so that
 infrastructure and presentation layers can catch a single base type while
@@ -25,9 +25,6 @@ class DomainException(Exception):  # noqa: N818
         return f"{self.__class__.__name__}(message={self.message!r}, code={self.code!r})"
 
 
-# ── Validation ────────────────────────────────────────────────────────────────
-
-
 class ValidationError(DomainException):
     """Raised when a domain invariant or value-object constraint is violated."""
 
@@ -38,9 +35,6 @@ class InvalidEventTypeError(ValidationError):
 
 class InvalidRepositoryIdError(ValidationError):
     """Raised when a repository identifier fails format validation."""
-
-
-# ── GitHub API ────────────────────────────────────────────────────────────────
 
 
 class GitHubAPIError(DomainException):
@@ -76,9 +70,6 @@ class GitHubNotFoundError(GitHubAPIError):
         super().__init__(f"GitHub resource not found: {resource}", status_code=404)
 
 
-# ── Kafka ─────────────────────────────────────────────────────────────────────
-
-
 class KafkaError(DomainException):
     """Base for all Kafka integration errors."""
 
@@ -93,9 +84,6 @@ class ConsumerException(KafkaError):  # noqa: N818
 
 class TopicAdminException(KafkaError):  # noqa: N818
     """Failed to create or verify a Kafka topic."""
-
-
-# ── Storage ───────────────────────────────────────────────────────────────────
 
 
 class StorageError(DomainException):
@@ -122,14 +110,8 @@ class DuckDBQueryError(StorageError):
     """Failed to execute a DuckDB analytical query."""
 
 
-# ── Spark ─────────────────────────────────────────────────────────────────────
-
-
 class SparkJobError(DomainException):
     """Spark structured streaming or batch job failed."""
-
-
-# ── Metadata Sync ──────────────────────────────────────────────────────────────
 
 
 class RepoMetadataSyncError(StorageError):
@@ -142,18 +124,3 @@ class RepoMetadataParseError(ValidationError):
 
 class DashboardQueryError(StorageError):
     """A dashboard analytical query against ClickHouse failed."""
-
-
-# ── AI Search ────────────────────────────────────────────────────────────────
-
-
-class AISearchError(StorageError):
-    """AI-powered repository search failed."""
-
-
-class AIInsightError(StorageError):
-    """AI-generated repository insight workflow failed."""
-
-
-class RepoInsightNotFoundError(AIInsightError):
-    """Requested repository insight context does not exist."""

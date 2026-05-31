@@ -1,6 +1,6 @@
 """EventType value object — enumeration of supported GitHub event types.
 
-Only the five event types relevant to AI trend analysis are modeled.
+Only the five event types tracked by this application are modeled.
 Unknown types received from the API raise InvalidEventTypeError so that
 unrecognised data never silently flows downstream.
 """

@@ -106,7 +106,7 @@ class RepoTimeseriesPointDTO(BaseModel):
 
 
 class CategorySummaryDTO(BaseModel):
-    """Aggregate statistics for a single AI category.
+    """Aggregate statistics for a single repository category.
 
     Returned by ``GET /dashboard/category-summary``.
     """

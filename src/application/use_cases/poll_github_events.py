@@ -50,7 +50,7 @@ class GitHubClientProtocol(Protocol):
 class EventFilterProtocol(Protocol):
     """Minimal interface required from the event filter."""
 
-    def is_ai_relevant(self, event: dict[str, object]) -> bool: ...
+    def should_ingest(self, event: dict[str, object]) -> bool: ...
 
 
 class EventMapperProtocol(Protocol):
@@ -159,7 +159,7 @@ class PollGithubEventsUseCase:
         publish_error_count = 0
 
         for raw in raw_events:
-            if not self._filter.is_ai_relevant(raw):
+            if not self._filter.should_ingest(raw):
                 EVENTS_FILTERED_TOTAL.inc()
                 filtered_count += 1
                 continue
@@ -210,7 +210,7 @@ async def _main() -> None:
     """Composition root for standalone execution via ``make stream``."""
     from src.infrastructure.config import get_settings
     from src.infrastructure.github.client import GitHubClient
-    from src.infrastructure.github.event_filter import PopularRepoFilter
+    from src.infrastructure.github.event_filter import RepositoryEventFilter
     from src.infrastructure.github.event_mapper import GitHubEventMapper
     from src.infrastructure.kafka.producer import KafkaEventProducer
     from src.infrastructure.kafka.topic_admin import KafkaTopicAdmin
@@ -233,7 +233,7 @@ async def _main() -> None:
         tokens=settings.github_tokens_list,
         base_url=str(settings.github_api_base_url),
     )
-    event_filter = PopularRepoFilter()
+    event_filter = RepositoryEventFilter()
     event_mapper = GitHubEventMapper()
     kafka_producer = KafkaEventProducer(
         bootstrap_servers=settings.kafka_bootstrap_servers,

@@ -1,10 +1,10 @@
 """SyncRepoMetadataUseCase — synchronise data/repos/*.json to ClickHouse.
 
-Reads 45-field JSON files produced by ``repo_fetcher.py``, classifies each
-repository into a category, upserts the latest state into ClickHouse, and
+Reads 45-field JSON files produced by ``repo_fetcher.py``, assigns each
+repository a neutral category, upserts the latest state into ClickHouse, and
 appends a history snapshot row for auditability.
 
-Skips ``top5_ai_repos_summary.json`` (summary file, not a repo record).
+Skips ``top5_repos_summary.json`` (summary file, not a repo record).
 Logs and continues on parse errors — a single bad file does not abort the run.
 
 Usage as a script::
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 logger = structlog.get_logger(__name__)
 
 # Files to skip — not individual repo records
-_SKIP_FILENAMES: frozenset[str] = frozenset({"top5_ai_repos_summary.json"})
+_SKIP_FILENAMES: frozenset[str] = frozenset({"top5_repos_summary.json"})
 
 # Batch size for ClickHouse upserts
 _UPSERT_BATCH_SIZE: int = 100
@@ -45,13 +45,13 @@ class SyncRepoMetadataUseCase:
     This use case:
     1. Globs all ``*.json`` files in ``repo_dir``.
     2. Parses each file into a ``RepoMetadata`` value object.
-    3. Classifies the repository using ``CategoryClassifier``.
+    3. Assigns the neutral category using ``CategoryClassifier``.
     4. Calls ``repo_repo.upsert_batch()`` in batches.
 
     Args:
         repo_dir:   Path to the directory containing ``*.json`` repo files.
         repo_repo:  Repository port for ClickHouse persistence.
-        classifier: Domain service for category classification.
+        classifier: Domain service for category resolution.
     """
 
     def __init__(

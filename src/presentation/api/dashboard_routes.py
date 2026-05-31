@@ -19,7 +19,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 import structlog
 
 from src.application.dtos.repo_metadata_dto import (
-    CategorySummaryDTO,
     LanguageBreakdownDTO,
     RepoMetadataDTO,
     RepoTimeseriesPointDTO,
@@ -141,12 +140,12 @@ async def get_top_repos(
     svc: Annotated[object, Depends(_get_dashboard_service)],
     category: Annotated[
         str | None,
-        Query(description="Category filter: LLM, Agent, Diffusion, Multimodal, DataEng, Other"),
+        Query(description="Optional repository category filter."),
     ] = None,
     days: Annotated[int, Query(ge=1, le=90)] = 7,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> list[TopRepoDTO]:
-    """Top AI repos by star activity in the look-back window.
+    """Top repos by star activity in the look-back window.
 
     Args:
         category: Optional category filter. Returns all categories if omitted.
@@ -176,12 +175,12 @@ async def get_top_starred_repos(
     svc: Annotated[object, Depends(_get_dashboard_service)],
     category: Annotated[
         str | None,
-        Query(description="Category filter: LLM, Agent, Diffusion, Multimodal, DataEng, Other"),
+        Query(description="Optional repository category filter."),
     ] = None,
     days: Annotated[int, Query(ge=1, le=365)] = 7,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> list[TopRepoDTO]:
-    """Top AI repos by all-time current total star count."""
+    """Top repos by all-time current total star count."""
     service = cast("ClickHouseDashboardService", svc)
 
     try:
@@ -383,28 +382,3 @@ async def get_repo_timeseries(
         for row in rows
     ]
 
-
-@router.get("/category-summary", response_model=list[CategorySummaryDTO])
-async def get_category_summary(
-    svc: Annotated[object, Depends(_get_dashboard_service)],
-) -> list[CategorySummaryDTO]:
-    """Per-category aggregate stats: repo count, total stars, top repo, weekly delta."""
-    service = cast("ClickHouseDashboardService", svc)
-
-    try:
-        rows = await service.get_category_summary()
-    except DashboardQueryError as exc:
-        logger.error("dashboard.category_summary_failed", error=str(exc))
-        raise HTTPException(status_code=503, detail="Dashboard query failed") from exc
-
-    return [
-        CategorySummaryDTO(
-            category=str(row.get("category") or ""),
-            repo_count=int(row.get("repo_count") or 0),
-            total_stars=int(row.get("total_stars") or 0),
-            top_repo_name=str(row.get("top_repo_name") or ""),
-            top_repo_stars=int(row.get("top_repo_stars") or 0),
-            weekly_star_delta=int(row.get("weekly_star_delta") or 0),
-        )
-        for row in rows
-    ]

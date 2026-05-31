@@ -80,7 +80,7 @@ class RepoMetadata:
         visibility:        ``"public"``, ``"private"``, or ``"internal"``.
         default_branch:    Default branch name.
         description:       Repository description (self-reported).
-        category:          Computed AI category from topics[].
+        category:          Computed repository category for analytics.
         is_fork:           ``True`` if this repo is a fork.
         is_archived:       ``True`` if this repo is archived (read-only).
         is_disabled:       ``True`` if disabled by GitHub.

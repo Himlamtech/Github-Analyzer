@@ -54,9 +54,9 @@ tracer = get_tracer(__name__)
 _PIPELINE_STALE_THRESHOLD_SECONDS = 300.0
 
 app = FastAPI(
-    title="GitHub AI Trend Analyzer API",
+    title="GitHub Analyzer API",
     version="0.2.0",
-    description="Real-time ingestion status, dashboard analytics, and AI repository search.",
+    description="Real-time ingestion status and dashboard analytics for GitHub events.",
 )
 
 # Allow the Next.js dashboard frontend to call the API
@@ -75,12 +75,6 @@ app.add_middleware(
 from src.presentation.api.dashboard_routes import router as _dashboard_router  # noqa: E402
 
 app.include_router(_dashboard_router)
-
-# AI router (prefix: /ai)
-from src.presentation.api.ai_routes import router as _ai_router  # noqa: E402
-
-app.include_router(_ai_router)
-
 
 # ── Dependency factories ──────────────────────────────────────────────────────
 
@@ -420,7 +414,7 @@ async def get_top_repos(
     days: Annotated[int, Query(ge=1, le=90)] = 7,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> list[RepoStarCountDTO]:
-    """Return the top AI repositories by star count over the last N days.
+    """Return the top repositories by star count over the last N days.
 
     Queries the Parquet archive via DuckDB — no ClickHouse dependency.
 

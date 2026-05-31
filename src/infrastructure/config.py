@@ -28,8 +28,6 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # ── GitHub API ────────────────────────────────────────────────────────────
-    # Stored as a raw string in .env (comma-separated); split_tokens() parses it.
     github_api_tokens: str = Field(..., description="Comma-separated bearer tokens.")
     github_api_base_url: AnyHttpUrl = Field(
         default="https://api.github.com",  # type: ignore[assignment]
@@ -38,16 +36,15 @@ class Settings(BaseSettings):
     poll_interval_seconds: float = Field(
         default=0.5,
         ge=0.5,
-        description="Seconds between GitHub API poll iterations (0.5 = max rate for 2 tokens).",
+        description="Seconds between GitHub API poll iterations.",
     )
 
     @property
     def github_tokens_list(self) -> list[str]:
         """Return the comma-separated token string as a list."""
         raw = self.github_api_tokens.strip().strip('"').strip("'")
-        return [t.strip() for t in raw.split(",") if t.strip()]
+        return [token.strip() for token in raw.split(",") if token.strip()]
 
-    # ── Kafka ─────────────────────────────────────────────────────────────────
     kafka_bootstrap_servers: str = Field(
         default="localhost:9092",
         description="Comma-separated Kafka bootstrap server addresses.",
@@ -55,23 +52,19 @@ class Settings(BaseSettings):
     kafka_topic: str = Field(default="github_raw_events")
     kafka_retention_hours: int = Field(default=168, ge=1)
 
-    # ── ClickHouse ────────────────────────────────────────────────────────────
     clickhouse_host: str = Field(default="localhost")
     clickhouse_port: int = Field(default=9000, ge=1, le=65535)
     clickhouse_user: str = Field(default="analyst")
     clickhouse_password: str = Field(..., description="ClickHouse password.")
     clickhouse_database: str = Field(default="github_analyzer")
 
-    # ── Storage ───────────────────────────────────────────────────────────────
     parquet_base_path: str = Field(default="./data/raw")
     checkpoint_base_path: str = Field(default="./data/checkpoints")
 
-    # ── Spark ─────────────────────────────────────────────────────────────────
     spark_master: str = Field(default="local[16]")
     spark_driver_memory: str = Field(default="8g")
     spark_executor_memory: str = Field(default="12g")
 
-    # ── Repo Metadata ─────────────────────────────────────────────────────────
     repo_metadata_path: str = Field(
         default="./data/repos",
         description="Directory containing *.json repo metadata files from GitHub API.",
@@ -96,21 +89,6 @@ class Settings(BaseSettings):
         description="Earliest repository creation date to include in discovery shards.",
     )
 
-    # ── AI Search ─────────────────────────────────────────────────────────────
-    ai_search_candidate_limit: int = Field(
-        default=40,
-        ge=10,
-        le=200,
-        description="Maximum number of candidate repositories loaded before reranking.",
-    )
-    ai_search_default_limit: int = Field(
-        default=8,
-        ge=1,
-        le=20,
-        description="Default number of AI search results returned by the API.",
-    )
-
-    # ── Observability ─────────────────────────────────────────────────────────
     metrics_port: int = Field(default=9091, ge=1024, le=65535)
     tracing_enabled: bool = Field(
         default=True,
@@ -135,9 +113,5 @@ class Settings(BaseSettings):
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    """Return the cached singleton Settings instance.
-
-    Using ``lru_cache`` ensures the ``.env`` file is parsed only once
-    during the process lifetime.
-    """
+    """Return the cached singleton Settings instance."""
     return Settings()
