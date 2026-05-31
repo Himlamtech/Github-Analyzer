@@ -9,8 +9,8 @@ from pathlib import Path
 from clickhouse_driver import Client
 from clickhouse_driver.errors import Error as ClickHouseError
 from clickhouse_driver.errors import NetworkError as ClickHouseNetworkError
-import pyarrow as pa  # type: ignore[import-untyped]
-import pyarrow.parquet as pq  # type: ignore[import-untyped]
+import pyarrow as pa
+import pyarrow.parquet as pq
 import structlog
 
 from src.domain.exceptions import (
@@ -219,8 +219,10 @@ class ClickHouseBackfillService:
         batch_count = 0
         try:
             for parquet_file in parquet_files:
-                parquet_reader = pq.ParquetFile(str(parquet_file))
-                for batch in parquet_reader.iter_batches(batch_size=self._batch_size):
+                parquet_reader = pq.ParquetFile(str(parquet_file))  # type: ignore[no-untyped-call]
+                for batch in parquet_reader.iter_batches(  # type: ignore[no-untyped-call]
+                    batch_size=self._batch_size
+                ):
                     normalized_rows = [
                         self._normalize_record(record) for record in batch.to_pylist()
                     ]

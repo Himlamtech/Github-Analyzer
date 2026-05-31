@@ -1111,7 +1111,7 @@ class ClickHouseDashboardService:
             return False
         try:
             return int(rows[0][0]) == 1
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             # Test doubles may stub .execute() with business rows for all queries.
             return True
 
@@ -1123,7 +1123,7 @@ class ClickHouseDashboardService:
             return False
         try:
             return int(rows[0][0]) == 1
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return True
 
     def _has_categorized_repo_metadata(self) -> bool:
@@ -1146,7 +1146,7 @@ FINAL
             return False
         try:
             self._has_categorized_metadata_cache = int(rows[0][0]) > 0
-        except (IndexError, TypeError, ValueError):
+        except IndexError, TypeError, ValueError:
             self._has_categorized_metadata_cache = True
         return self._has_categorized_metadata_cache
 

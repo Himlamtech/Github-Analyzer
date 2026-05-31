@@ -11,8 +11,8 @@ import asyncio
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
-import pyarrow as pa  # type: ignore[import-untyped]
-import pyarrow.parquet as pq  # type: ignore[import-untyped]
+import pyarrow as pa
+import pyarrow.parquet as pq
 import structlog
 
 from src.domain.exceptions import ParquetWriteError
@@ -116,7 +116,7 @@ class ParquetEventRepository(RawEventRepositoryABC):
 
         try:
             table = pa.Table.from_pylist(records, schema=_PARQUET_SCHEMA)
-            pq.write_table(table, str(file_path), compression="snappy")
+            pq.write_table(table, str(file_path), compression="snappy")  # type: ignore[no-untyped-call]
             logger.debug(
                 "parquet_repository.batch_written",
                 path=str(file_path),
@@ -175,7 +175,10 @@ class ParquetEventRepository(RawEventRepositoryABC):
         try:
             # Read each physical file directly to avoid PyArrow inferring Hive
             # partitions from parent paths like ``event_type=WatchEvent``.
-            tables = [pq.ParquetFile(str(file_path)).read() for file_path in files]
+            tables = [
+                pq.ParquetFile(str(file_path)).read()  # type: ignore[no-untyped-call]
+                for file_path in files
+            ]
             combined = pa.concat_tables(tables)
             return cast("list[dict[str, object]]", combined.to_pylist())
         except (pa.ArrowInvalid, OSError) as exc:
