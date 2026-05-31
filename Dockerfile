@@ -1,6 +1,8 @@
-FROM python:3.11-slim-bookworm
+FROM python:3.14-slim-bookworm
 
-# Install Java for PySpark
+COPY --from=ghcr.io/astral-sh/uv:0.7.13 /uv /uvx /bin/
+
+# Install Java for PySpark.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     openjdk-17-jre-headless \
     wget \
@@ -8,20 +10,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV UV_LINK_MODE=copy
 
 WORKDIR /app
 
-# Copy dependency spec first for layer caching
-COPY pyproject.toml ./
-RUN pip install --no-cache-dir -e ".[dev]" || pip install --no-cache-dir \
-    httpx[http2] tenacity aiokafka orjson pyspark==3.5.1 clickhouse-driver duckdb \
-    fastapi uvicorn[standard] pydantic pydantic-settings prometheus-client \
-    opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-http \
-    opentelemetry-instrumentation-fastapi opentelemetry-instrumentation-httpx \
-    structlog anyio
-
-COPY src/ ./src/
+# Install dependencies once; source code is bind-mounted at runtime.
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --extra dev --no-install-project
 
 EXPOSE 8000 9091
 
-CMD ["uvicorn", "src.presentation.api.routes:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "src.presentation.api.routes:app", "--host", "0.0.0.0", "--port", "8000"]

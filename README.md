@@ -69,6 +69,16 @@ make setup
 
 Starts Zookeeper, Kafka (16 partitions), ClickHouse, Prometheus, Grafana, and the FastAPI + Next.js containers. Waits for health checks and initialises ClickHouse tables via `clickhouse/init.sql`.
 
+Backend and frontend now both use bind mounts on the server. `./src` is mounted into the Python containers and `./frontend` is mounted into the Next.js container, so code changes are reflected inside Docker immediately.
+
+Current reload behavior:
+
+- Backend API (`api`): `uvicorn --reload`, so edits under `src/` usually do not need a restart.
+- Frontend (`frontend`): `next dev`, so edits under `frontend/` hot-reload without rebuilding the image.
+- Poller and processor: mounted source is visible immediately, but you still need `docker compose restart poller processor` to pick up changed Python code.
+
+Rebuild or recreate the relevant service when you change dependency or runtime config files such as `pyproject.toml`, `uv.lock`, `frontend/package.json`, `frontend/package-lock.json`, `Dockerfile`, `frontend/Dockerfile`, `docker-compose.yml`, or `.env`.
+
 If a host port is already occupied by another local stack, override it before `docker compose up`, for example:
 
 ```bash
@@ -87,6 +97,15 @@ CLICKHOUSE_NATIVE_PORT
 PROMETHEUS_PORT
 GRAFANA_PORT
 ```
+
+To expose ClickHouse safely behind a reverse proxy or Cloudflare Tunnel, keep
+`CLICKHOUSE_PUBLIC_BIND_IP=127.0.0.1` so Docker does not publish the database
+directly on every host interface. Then proxy only the HTTP interface (`8123`)
+through Nginx, for example with a dedicated virtual host such as
+`clickhouse.chipthoc.com -> http://127.0.0.1:8123`.
+
+Note: Cloudflare Tunnel works cleanly with the ClickHouse HTTP interface. The
+native TCP protocol (`9000`) is not covered by a normal HTTP reverse proxy.
 
 If you already have a local Parquet archive under `data/raw`, bootstrap ClickHouse before opening the dashboard:
 

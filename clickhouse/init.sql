@@ -240,3 +240,8 @@ ENGINE = ReplacingMergeTree(computed_at)
 PARTITION BY toYYYYMM(computed_at)
 ORDER BY (repo_name, event_type)
 SETTINGS index_granularity = 8192;
+
+-- ── Access: read-only viewer user ───────────────────────────────────────────
+-- Intended for external access without any write or DDL privileges.
+CREATE USER IF NOT EXISTS viewer IDENTIFIED WITH plaintext_password BY 'viewer';
+GRANT SHOW, SELECT ON github_analyzer.* TO viewer;

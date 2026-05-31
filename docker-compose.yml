@@ -7,6 +7,10 @@ networks:
 volumes:
   kafka_data:
     name: github-kafka-data
+  frontend_node_modules:
+    name: github-frontend-node-modules
+  frontend_next_cache:
+    name: github-frontend-next-cache
   clickhouse_data:
     external: true
     name: github-clickhouse-data
@@ -82,8 +86,8 @@ services:
     networks:
       - github-networks
     ports:
-      - "${CLICKHOUSE_PUBLIC_BIND_IP:-0.0.0.0}:${CLICKHOUSE_HTTP_PORT:-8123}:8123"
-      - "${CLICKHOUSE_PUBLIC_BIND_IP:-0.0.0.0}:${CLICKHOUSE_NATIVE_PORT:-9000}:9000"
+      - "${CLICKHOUSE_PUBLIC_BIND_IP:-127.0.0.1}:${CLICKHOUSE_HTTP_PORT:-8123}:8123"
+      - "${CLICKHOUSE_PUBLIC_BIND_IP:-127.0.0.1}:${CLICKHOUSE_NATIVE_PORT:-9000}:9000"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -172,11 +176,17 @@ services:
       dockerfile: Dockerfile
       args:
         API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:8000}
+    command:
+      ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3000"]
     hostname: frontend
     networks:
       - github-networks
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+      - frontend_next_cache:/app/.next
     environment:
       API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:8000}
     depends_on:
@@ -196,12 +206,27 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    command:
+      [
+        "uv",
+        "run",
+        "uvicorn",
+        "src.presentation.api.routes:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+        "--reload-dir",
+        "/app/src",
+      ]
     hostname: api
     networks:
       - github-networks
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
+      - ./src:/app/src
       - ./data:/app/data:ro
     environment:
       GITHUB_API_TOKENS: ${GITHUB_API_TOKENS}
@@ -243,9 +268,11 @@ services:
       context: .
       dockerfile: Dockerfile
     hostname: poller
-    command: ["python", "-m", "src.application.use_cases.poll_github_events"]
+    command: ["uv", "run", "python", "-m", "src.application.use_cases.poll_github_events"]
     networks:
       - github-networks
+    volumes:
+      - ./src:/app/src
     environment:
       GITHUB_API_TOKENS: ${GITHUB_API_TOKENS}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092

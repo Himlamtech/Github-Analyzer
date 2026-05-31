@@ -1,36 +1,14 @@
-# Stage 1: Install dependencies
-FROM node:20-alpine AS deps
+FROM node:20-alpine
+
 WORKDIR /app
+
+ARG API_INTERNAL_URL=http://api:8000
+ENV NODE_ENV=development
+ENV API_INTERNAL_URL=${API_INTERNAL_URL}
+
 COPY package.json package-lock.json* ./
 RUN npm ci --frozen-lockfile 2>/dev/null || npm install
 
-# Stage 2: Build
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-RUN mkdir -p /app/public
-ARG API_INTERNAL_URL=http://api:8000
-ENV API_INTERNAL_URL=${API_INTERNAL_URL}
-RUN npm run build
-
-# Stage 3: Production runtime
-FROM node:20-alpine AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-ARG API_INTERNAL_URL=http://api:8000
-ENV API_INTERNAL_URL=${API_INTERNAL_URL}
-
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
-
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-USER nextjs
 EXPOSE 3000
-ENV PORT=3000
-ENV HOSTNAME=0.0.0.0
 
-CMD ["node", "server.js"]
+CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3000"]
