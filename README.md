@@ -214,9 +214,8 @@ make clean       # docker-compose down -v + remove data/
 Automated cron jobs for pipeline maintenance. Install with:
 
 ```bash
-./scheduler/crontab_install.sh               # crons only
-./scheduler/crontab_install.sh --with-systemd # crons + systemd long-running services
-./scheduler/crontab_install.sh --uninstall    # remove all entries
+./scheduler/crontab_install.sh            # install cron jobs
+./scheduler/crontab_install.sh --uninstall # remove all entries
 ```
 
 | Script | Schedule (UTC) | Purpose |
@@ -229,8 +228,6 @@ Automated cron jobs for pipeline maintenance. Install with:
 | `06_token_validation.sh` | `0 1 * * *` | Validate GitHub API tokens via `/rate_limit`, WARN if quota < 500 |
 | `07_repo_metadata_refresh.sh` | `0 6 * * *` | Re-fetch stars/forks/topics for all repos in `data/repos/` |
 | `08_health_check.sh` | `*/5 * * * *` | 5-point health check: Docker, Kafka, ClickHouse, Parquet, FastAPI |
-
-Long-running services (`gha-poller`, `gha-spark-streaming`) are managed as systemd units in `scheduler/systemd/`.
 
 State files written to `scheduler/state/` (health, freshness, token status, refresh summary).
 

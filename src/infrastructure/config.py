@@ -90,24 +90,6 @@ class Settings(BaseSettings):
     )
 
     metrics_port: int = Field(default=9091, ge=1024, le=65535)
-    tracing_enabled: bool = Field(
-        default=True,
-        description="Enable OpenTelemetry tracing export via OTLP/HTTP.",
-    )
-    tracing_sampling_ratio: float = Field(
-        default=1.0,
-        ge=0.0,
-        le=1.0,
-        description="Trace sampling ratio for API requests.",
-    )
-    tracing_service_name: str = Field(
-        default="gha-api",
-        description="OpenTelemetry service.name exported to the tracing backend.",
-    )
-    tracing_exporter_otlp_endpoint: AnyHttpUrl = Field(
-        default="http://localhost:4318/v1/traces",  # type: ignore[assignment]
-        description="OTLP/HTTP trace ingestion endpoint.",
-    )
     log_level: str = Field(default="INFO")
 
 

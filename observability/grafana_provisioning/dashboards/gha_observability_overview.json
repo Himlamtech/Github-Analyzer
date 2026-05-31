@@ -23,7 +23,7 @@
   "annotations": {
     "list": []
   },
-  "description": "Primary observability dashboard for GHA with system, database, and tracing sections.",
+  "description": "Primary observability dashboard for GHA with system, database, and request-log sections.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -722,7 +722,7 @@
         "y": 26
       },
       "id": 3,
-      "title": "Tracing",
+      "title": "Request Logs",
       "type": "row"
     },
     {
@@ -880,10 +880,10 @@
       },
       "id": 34,
       "options": {
-        "content": "### Trace Drilldown\\n- Every API response exposes `X-Trace-Id` for correlation.\\n- FastAPI requests and outbound `httpx` calls are exported via OTLP.\\n- Use the traces to inspect slow AI search calls or GitHub API fetches.",
+        "content": "### Request Drilldown\\n- Every API response exposes `X-Request-Id` for correlation.\\n- Use the API request logs below to investigate slow routes or failing health checks.\\n- Correlate request spikes with Kafka, ClickHouse, and frontend behavior.",
         "mode": "markdown"
       },
-      "title": "Trace Workflow",
+      "title": "Request Workflow",
       "type": "text"
     }
   ],
@@ -892,7 +892,7 @@
   "tags": [
     "gha",
     "observability",
-    "tracing"
+    "request-logs"
   ],
   "templating": {
     "list": []

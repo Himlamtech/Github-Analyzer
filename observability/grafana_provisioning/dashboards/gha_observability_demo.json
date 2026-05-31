@@ -741,7 +741,7 @@
         "y": 24
       },
       "id": 4,
-      "title": "Tracing And Correlation",
+      "title": "Logs And Correlation",
       "type": "row"
     },
     {
@@ -753,10 +753,10 @@
       },
       "id": 40,
       "options": {
-        "content": "### Demo drilldown\n1. Call `GET /pipeline/status`\n2. Copy `X-Trace-Id` from the response header\n3. Verify the API request still completes\n4. Correlate that healthy request with stale freshness on the panels above\n\nThis is the seminar claim: **healthy does not mean correct**.",
+        "content": "### Demo drilldown\n1. Call `GET /pipeline/status`\n2. Inspect `X-Request-Id` in the response header\n3. Verify the API request still completes\n4. Correlate that healthy request with stale freshness on the panels above\n\nThis is the seminar claim: **healthy does not mean correct**.",
         "mode": "markdown"
       },
-      "title": "Trace Workflow",
+      "title": "Request Workflow",
       "type": "text"
     },
     {
@@ -828,7 +828,6 @@
   "tags": [
     "demo",
     "observability",
-    "tracing",
     "seminar",
     "root-cause"
   ],

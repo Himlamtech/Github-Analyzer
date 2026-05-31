@@ -45,22 +45,6 @@ async function apiFetch<T>(
   return res.json() as Promise<T>;
 }
 
-async function apiPost<T>(path: string, body: object): Promise<T> {
-  const url = buildUrl(path);
-  const res = await fetch(url.toString(), {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    throw new Error(`API ${res.status}: ${path}`);
-  }
-  return res.json() as Promise<T>;
-}
-
 export const api = {
   getTopRepos: (
     category?: string,

@@ -1157,7 +1157,7 @@
       },
       "id": 4,
       "panels": [],
-      "title": "Infrastructure & Tracing Stack",
+      "title": "Infrastructure Stack",
       "type": "row"
     },
     {
@@ -1965,7 +1965,7 @@
       },
       "id": 6,
       "panels": [],
-      "title": "Project Health, Logs & Traces",
+      "title": "Project Health And Logs",
       "type": "row"
     },
     {
@@ -2114,7 +2114,7 @@
       },
       "id": 63,
       "options": {
-        "content": "### Fast drilldown\n- Use `API Request Logs` to search by `request_id` or `trace_id`.\n- `Largest Star Delta` proves history snapshots are being appended over time, not overwritten.\n- If infra panels go blank, check `Observability Stack Health` first: it reflects Prometheus scrape reality, not expected services.",
+        "content": "### Fast drilldown\n- Use `API Request Logs` to search by `request_id`.\n- `Largest Star Delta` proves history snapshots are being appended over time, not overwritten.\n- If infra panels go blank, check `Observability Stack Health` first: it reflects Prometheus scrape reality, not expected services.",
         "mode": "markdown"
       },
       "title": "Investigation Playbook",

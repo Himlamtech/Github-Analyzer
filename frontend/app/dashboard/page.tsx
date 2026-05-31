@@ -129,7 +129,7 @@ export default function DashboardPage() {
         {selectedRepo && (
           <div className="rounded-lg border border-slate-200 bg-white/86 px-4 py-3 text-sm text-slate-600">
             Selected repo: <span className="font-medium text-slate-950">{selectedRepo}</span>.
-            Move to Intelligence to generate a brief or compare view.
+            Use the surrounding dashboard views to inspect its category posture and time series.
           </div>
         )}
       </main>

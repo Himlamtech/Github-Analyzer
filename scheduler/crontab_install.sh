@@ -2,17 +2,14 @@
 # =============================================================================
 # crontab_install.sh
 #
-# PURPOSE : Install all GitHub AI Trend Analyzer cron jobs and (optionally)
-#           systemd services for the long-running poller and Spark streaming.
+# PURPOSE : Install all GitHub AI Trend Analyzer cron jobs.
 #
 # USAGE   :
-#   ./scheduler/crontab_install.sh               # install crons only
-#   ./scheduler/crontab_install.sh --with-systemd # install crons + systemd
-#   ./scheduler/crontab_install.sh --uninstall    # remove all GHA cron jobs
+#   ./scheduler/crontab_install.sh            # install cron jobs
+#   ./scheduler/crontab_install.sh --uninstall # remove all GHA cron jobs
 #
 # EFFECTS :
 #   - Appends GHA cron block to current user's crontab (idempotent).
-#   - Optionally copies systemd unit files and enables/starts services.
 #   - Creates scheduler/logs/ and scheduler/state/ directories.
 #
 # IDEMPOTENT: YES — running multiple times does not duplicate cron entries.
@@ -24,17 +21,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SCRIPTS_DIR="${SCRIPT_DIR}/scripts"
-SYSTEMD_DIR="${SCRIPT_DIR}/systemd"
 
-WITH_SYSTEMD=0
 UNINSTALL=0
 
 for arg in "$@"; do
   case "${arg}" in
-    --with-systemd) WITH_SYSTEMD=1 ;;
     --uninstall)    UNINSTALL=1 ;;
     --help|-h)
-      echo "Usage: $0 [--with-systemd] [--uninstall]"
+      echo "Usage: $0 [--uninstall]"
       exit 0 ;;
     *)
       echo "Unknown argument: ${arg}" >&2
@@ -73,20 +67,6 @@ if [[ "${UNINSTALL}" -eq 1 ]]; then
   echo "${NEW_CRON}" | crontab -
   echo "[OK]  GHA cron entries removed."
 
-  if [[ "${WITH_SYSTEMD}" -eq 1 ]]; then
-    echo "[INFO] Disabling and removing systemd services..."
-    for svc in gha-poller gha-spark-streaming; do
-      if systemctl is-active --quiet "${svc}.service" 2>/dev/null; then
-        sudo systemctl stop "${svc}.service"
-      fi
-      if systemctl is-enabled --quiet "${svc}.service" 2>/dev/null; then
-        sudo systemctl disable "${svc}.service"
-      fi
-      sudo rm -f "/etc/systemd/system/${svc}.service"
-    done
-    sudo systemctl daemon-reload
-    echo "[OK]  Systemd services removed."
-  fi
   exit 0
 fi
 
@@ -148,41 +128,6 @@ echo "[OK]  Cron jobs installed. Current GHA crontab entries:"
 echo "──────────────────────────────────────────────────────"
 crontab -l | awk "/${CRON_BEGIN//\//\\/}/{found=1} found{print} /${CRON_END//\//\\/}/{found=0}"
 echo "──────────────────────────────────────────────────────"
-
-# ── Systemd services (optional) ───────────────────────────────────────────────
-if [[ "${WITH_SYSTEMD}" -eq 1 ]]; then
-  echo ""
-  echo "[INFO] Installing systemd services..."
-
-  if [[ ! -d "${SYSTEMD_DIR}" ]]; then
-    echo "[ERROR] systemd directory not found: ${SYSTEMD_DIR}" >&2
-    exit 1
-  fi
-
-  # Substitute PROJECT_ROOT placeholder and current user in service files
-  CURRENT_USER=$(whoami)
-  for svc_template in "${SYSTEMD_DIR}"/*.service; do
-    svc_name=$(basename "${svc_template}")
-    # Replace %i (SpecifierUser) with actual username for direct install
-    # (When using systemctl enable --user this is not needed, but for system services it is)
-    sudo install -m 644 "${svc_template}" "/etc/systemd/system/${svc_name}"
-    # Patch User= line to current user
-    sudo sed -i "s|User=%i|User=${CURRENT_USER}|g" "/etc/systemd/system/${svc_name}"
-    echo "[INFO] Installed /etc/systemd/system/${svc_name}"
-  done
-
-  sudo systemctl daemon-reload
-
-  echo ""
-  echo "[INFO] Systemd services installed. To start the pipeline:"
-  echo "  sudo systemctl enable --now gha-spark-streaming.service"
-  echo "  sudo systemctl enable --now gha-poller.service"
-  echo ""
-  echo "  sudo systemctl status gha-poller.service"
-  echo "  sudo systemctl status gha-spark-streaming.service"
-  echo "  journalctl -u gha-poller -f"
-  echo "  journalctl -u gha-spark-streaming -f"
-fi
 
 echo ""
 echo "[OK]  GitHub AI Trend Analyzer scheduler installation complete."
