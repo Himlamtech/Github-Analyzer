@@ -56,10 +56,10 @@ def _repo_json(
         "updated_at": _NOW_STR,
         "pushed_at": _NOW_STR,
         "language": "Python",
-        "topics": topics if topics is not None else ["llm", "transformer"],
+        "topics": topics if topics is not None else ["analytics", "python"],
         "visibility": "public",
         "default_branch": "main",
-        "description": "Next generation language model",
+        "description": "Repository analytics service",
         "fork": False,
         "archived": False,
         "disabled": False,
@@ -163,12 +163,12 @@ class TestSyncRepoMetadataUseCaseHappyPath:
         assert len(batch) == 1
         assert batch[0].repo_full_name == "anthropic/claude"
 
-    async def test_execute_classifies_llm_topics_correctly(
+    async def test_execute_assigns_neutral_category(
         self,
         tmp_path: Path,
         mock_repo: AsyncMock,
     ) -> None:
-        """Topics containing 'llm' should be classified as RepoCategory.LLM."""
+        """Repository metadata sync always assigns the neutral category."""
         _write_repo_file(
             tmp_path / "repo.json",
             _repo_json(full_name="openai/gpt-5", topics=["llm", "transformer"]),
@@ -178,7 +178,7 @@ class TestSyncRepoMetadataUseCaseHappyPath:
         await uc.execute()
 
         batch: list[RepoMetadata] = mock_repo.upsert_batch.call_args[0][0]
-        assert batch[0].category == RepoCategory.LLM
+        assert batch[0].category == RepoCategory.OTHER
 
     async def test_execute_syncs_multiple_repos_returns_total(
         self,
@@ -240,9 +240,9 @@ class TestSyncRepoMetadataUseCaseSkipFiles:
         tmp_path: Path,
         mock_repo: AsyncMock,
     ) -> None:
-        """``top5_ai_repos_summary.json`` must never be parsed."""
+        """``top5_repos_summary.json`` must never be parsed."""
         _write_repo_file(
-            tmp_path / "top5_ai_repos_summary.json",
+            tmp_path / "top5_repos_summary.json",
             {"not": "a repo"},
         )
         _write_repo_file(tmp_path / "real_repo.json", _repo_json())
@@ -261,7 +261,7 @@ class TestSyncRepoMetadataUseCaseSkipFiles:
     ) -> None:
         """Directory containing only the summary file → returns 0, no upsert."""
         _write_repo_file(
-            tmp_path / "top5_ai_repos_summary.json",
+            tmp_path / "top5_repos_summary.json",
             {"not": "a repo"},
         )
         uc = _make_use_case(str(tmp_path), mock_repo)

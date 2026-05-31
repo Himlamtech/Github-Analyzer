@@ -15,13 +15,13 @@ def _make_metadata(**overrides: object) -> RepoMetadata:
     now = datetime(2024, 6, 15, 12, 0, 0, tzinfo=UTC)
     defaults: dict[str, object] = {
         "repo_id": 123456,
-        "repo_full_name": "openai/gpt-5",
-        "repo_name": "gpt-5",
+        "repo_full_name": "owner/repo",
+        "repo_name": "repo",
         "node_id": "R_kgDOH1234",
         "private": False,
-        "html_url": "https://github.com/openai/gpt-5",
-        "clone_url": "https://github.com/openai/gpt-5.git",
-        "homepage": "https://openai.com",
+        "html_url": "https://github.com/owner/repo",
+        "clone_url": "https://github.com/owner/repo.git",
+        "homepage": "https://example.com",
         "stargazers_count": 50000,
         "watchers_count": 50000,
         "forks_count": 3000,
@@ -33,11 +33,11 @@ def _make_metadata(**overrides: object) -> RepoMetadata:
         "github_updated_at": now,
         "github_pushed_at": now,
         "primary_language": "Python",
-        "topics": ("llm", "transformer"),
+        "topics": ("analytics", "python"),
         "visibility": "public",
         "default_branch": "main",
-        "description": "Next generation language model",
-        "category": RepoCategory.LLM,
+        "description": "Repository analytics service",
+        "category": RepoCategory.OTHER,
         "is_fork": False,
         "is_archived": False,
         "is_disabled": False,
@@ -48,7 +48,7 @@ def _make_metadata(**overrides: object) -> RepoMetadata:
         "allow_forking": True,
         "is_template": False,
         "owner": RepoOwner(
-            login="openai",
+            login="owner",
             owner_id=14957082,
             owner_type="Organization",
             avatar_url="https://avatars.githubusercontent.com/u/14957082",
@@ -64,15 +64,13 @@ def _make_metadata(**overrides: object) -> RepoMetadata:
 
 class TestRepoMetadataEquality:
     def test_equality_by_repo_full_name(self) -> None:
-        # Arrange — two instances with the same full_name but different stars
         m1 = _make_metadata(stargazers_count=50000)
         m2 = _make_metadata(stargazers_count=60000)
-        # Act + Assert
         assert m1 == m2
 
     def test_inequality_different_full_name(self) -> None:
-        m1 = _make_metadata(repo_full_name="openai/gpt-5", repo_name="gpt-5")
-        m2 = _make_metadata(repo_full_name="anthropic/claude", repo_name="claude")
+        m1 = _make_metadata(repo_full_name="owner/repo", repo_name="repo")
+        m2 = _make_metadata(repo_full_name="other/repo", repo_name="repo")
         assert m1 != m2
 
     def test_hash_same_for_equal_objects(self) -> None:
@@ -81,38 +79,30 @@ class TestRepoMetadataEquality:
         assert hash(m1) == hash(m2)
 
     def test_hash_different_for_different_full_names(self) -> None:
-        m1 = _make_metadata(repo_full_name="openai/gpt-5")
-        m2 = _make_metadata(repo_full_name="meta/llama", repo_name="llama")
+        m1 = _make_metadata(repo_full_name="owner/repo")
+        m2 = _make_metadata(repo_full_name="other/repo", repo_name="repo")
         assert hash(m1) != hash(m2)
 
     def test_usable_as_dict_key(self) -> None:
-        m = _make_metadata()
-        d = {m: "value"}
-        assert d[m] == "value"
+        metadata = _make_metadata()
+        lookup = {metadata: "value"}
+        assert lookup[metadata] == "value"
 
 
 class TestRepoMetadataImmutability:
     def test_frozen_dataclass_raises_on_setattr(self) -> None:
-        m = _make_metadata()
+        metadata = _make_metadata()
         with pytest.raises((AttributeError, TypeError)):
-            m.stargazers_count = 99999  # type: ignore[misc]
+            metadata.stargazers_count = 99999  # type: ignore[misc]
 
     def test_topics_is_tuple(self) -> None:
-        m = _make_metadata(topics=("llm", "transformer"))
-        assert isinstance(m.topics, tuple)
+        metadata = _make_metadata(topics=("analytics", "python"))
+        assert isinstance(metadata.topics, tuple)
 
 
 class TestRepoCategoryEnum:
     def test_str_returns_value(self) -> None:
-        assert str(RepoCategory.LLM) == "LLM"
-        assert str(RepoCategory.AGENT) == "Agent"
-        assert str(RepoCategory.DATA_ENG) == "DataEng"
+        assert str(RepoCategory.OTHER) == "Other"
 
     def test_all_categories_defined(self) -> None:
-        categories = {c.value for c in RepoCategory}
-        assert "LLM" in categories
-        assert "Agent" in categories
-        assert "Diffusion" in categories
-        assert "Multimodal" in categories
-        assert "DataEng" in categories
-        assert "Other" in categories
+        assert {category.value for category in RepoCategory} == {"Other"}

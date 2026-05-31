@@ -533,7 +533,7 @@ class GitHubClient:
 
         return body
 
-    async def stream_events(self) -> AsyncGenerator[list[dict[str, object]], None]:
+    async def stream_events(self) -> AsyncGenerator[list[dict[str, object]]]:
         """Async generator that continuously yields pages of raw GitHub events.
 
         Handles 304 responses transparently (yields empty list to maintain

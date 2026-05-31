@@ -84,7 +84,7 @@ def mock_raw_event() -> dict[str, object]:
 def mock_github_client(mock_raw_event: dict[str, object]) -> MagicMock:
     """Mock GitHub client that yields one batch then raises StopAsyncIteration."""
 
-    async def _stream() -> AsyncGenerator[list[dict[str, object]], None]:
+    async def _stream() -> AsyncGenerator[list[dict[str, object]]]:
         yield [mock_raw_event]
 
     client = MagicMock()
@@ -229,7 +229,7 @@ class TestPollGithubEventsUseCaseErrorHandling:
     ) -> None:
         """Rate-limit exhaustion must sleep until reset and still stop the producer."""
 
-        async def _stream() -> AsyncGenerator[list[dict[str, object]], None]:
+        async def _stream() -> AsyncGenerator[list[dict[str, object]]]:
             raise RateLimitExceededError(reset_at_seconds=3.0)
             yield []
 
@@ -260,7 +260,7 @@ class TestPollGithubEventsUseCaseErrorHandling:
     ) -> None:
         """Unexpected GitHub API failures must not leak past execute()."""
 
-        async def _stream() -> AsyncGenerator[list[dict[str, object]], None]:
+        async def _stream() -> AsyncGenerator[list[dict[str, object]]]:
             raise GitHubAPIError("upstream down")
             yield []
 

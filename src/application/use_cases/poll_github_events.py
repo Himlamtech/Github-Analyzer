@@ -44,7 +44,7 @@ logger = structlog.get_logger(__name__)
 class GitHubClientProtocol(Protocol):
     """Minimal interface required from the GitHub client."""
 
-    def stream_events(self) -> AsyncGenerator[list[dict[str, object]], None]: ...
+    def stream_events(self) -> AsyncGenerator[list[dict[str, object]]]: ...
 
 
 class EventFilterProtocol(Protocol):

@@ -381,4 +381,3 @@ async def get_repo_timeseries(
         )
         for row in rows
     ]
-

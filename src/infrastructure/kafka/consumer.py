@@ -83,7 +83,7 @@ class KafkaEventConsumer:
             self._consumer = None
             logger.info("kafka_consumer.stopped", topic=self._topic)
 
-    async def consume(self) -> AsyncGenerator[dict[str, object], None]:
+    async def consume(self) -> AsyncGenerator[dict[str, object]]:
         """Async generator that yields one deserialised event dict per message.
 
         Yields:
