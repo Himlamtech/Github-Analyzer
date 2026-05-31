@@ -13,7 +13,6 @@ const nextConfig = {
     async rewrites() {
         const apiBase = process.env.API_INTERNAL_URL ?? "http://127.0.0.1:8000";
         return [
-            { source: "/ai/:path*", destination: `${apiBase}/ai/:path*` },
             { source: "/dashboard/:path*", destination: `${apiBase}/dashboard/:path*` },
             { source: "/health", destination: `${apiBase}/health` },
             { source: "/metrics", destination: `${apiBase}/metrics` },

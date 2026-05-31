@@ -2,15 +2,8 @@
 // All functions throw on non-2xx HTTP responses.
 
 import type {
-  AIChatRequest,
-  AIChatResponse,
-  AISearchResponse,
   CategorySummary,
   LanguageBreakdown,
-  MarketBriefResponse,
-  RelatedReposResponse,
-  RepoCompareResponse,
-  RepoBriefResponse,
   ShockMoversResponse,
   TimeseriesPoint,
   TopicRotation,
@@ -69,74 +62,6 @@ async function apiPost<T>(path: string, body: object): Promise<T> {
 }
 
 export const api = {
-  chatWithGithubData: (request: AIChatRequest): Promise<AIChatResponse> =>
-    apiPost<AIChatResponse>("/ai/chat", request),
-
-  getMarketBrief: (
-    days = 30,
-    breakoutLimit = 5,
-    categoryLimit = 4,
-    topicLimit = 6,
-  ): Promise<MarketBriefResponse> =>
-    apiFetch<MarketBriefResponse>("/ai/market-brief", {
-      days,
-      breakout_limit: breakoutLimit,
-      category_limit: categoryLimit,
-      topic_limit: topicLimit,
-    }),
-
-  getRelatedRepos: (
-    repoName: string,
-    days = 30,
-    limit = 6,
-  ): Promise<RelatedReposResponse> =>
-    apiFetch<RelatedReposResponse>("/ai/related-repos", {
-      repo_name: repoName,
-      days,
-      limit,
-    }),
-
-  getRepoCompare: (
-    baseRepoName: string,
-    compareRepoName: string,
-    days = 30,
-  ): Promise<RepoCompareResponse> =>
-    apiFetch<RepoCompareResponse>("/ai/repo-compare", {
-      base_repo_name: baseRepoName,
-      compare_repo_name: compareRepoName,
-      days,
-    }),
-
-  getRepoBrief: (repoName: string, days = 30): Promise<RepoBriefResponse> =>
-    apiFetch<RepoBriefResponse>("/ai/repo-brief", {
-      repo_name: repoName,
-      days,
-    }),
-
-  getAISearch: ({
-    query,
-    category,
-    days = 30,
-    language,
-    minStars = 10_000,
-    limit = 8,
-  }: {
-    query: string;
-    category?: string;
-    days?: number;
-    language?: string;
-    minStars?: number;
-    limit?: number;
-  }): Promise<AISearchResponse> =>
-    apiFetch<AISearchResponse>("/ai/search", {
-      query,
-      ...(category ? { category } : {}),
-      ...(language ? { language } : {}),
-      days,
-      min_stars: minStars,
-      limit,
-    }),
-
   getTopRepos: (
     category?: string,
     days = 7,

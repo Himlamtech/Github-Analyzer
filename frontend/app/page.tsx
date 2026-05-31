@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { BotMessageSquare, LayoutDashboard, Search, TrendingUp } from "lucide-react";
+import { LayoutDashboard, TrendingUp } from "lucide-react";
 
 import { CategorySummaryGrid } from "@/components/dashboard/CategorySummaryGrid";
 import { WeekInReview } from "@/components/dashboard/WeekInReview";
@@ -17,18 +17,6 @@ const QUICK_ACTIONS = [
     title: "Open market dashboard",
     description: "Leaderboard, topic rotation, category movement, and ecosystem charts.",
     icon: LayoutDashboard,
-  },
-  {
-    href: "/intelligence",
-    title: "Analyze with AI",
-    description: "Search by intent, brief repositories, compare projects, and find neighbors.",
-    icon: Search,
-  },
-  {
-    href: "/chatbot",
-    title: "Ask the GitHub data",
-    description: "Use a chat interface to query live GitHub AI trend data in plain language.",
-    icon: BotMessageSquare,
   },
 ];
 
@@ -62,9 +50,8 @@ export default function OverviewPage() {
                   Track what AI builders are starring, shipping, and comparing now.
                 </h1>
                 <p className="max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
-                  The app is now split into focused workspaces: overview for the market
-                  pulse, dashboard for analysis, intelligence for AI workflows, and
-                  chatbot for plain-language questions over GitHub trend data.
+                  The app is now focused on the live market pulse and dashboard views for
+                  GitHub repository trend analysis.
                 </p>
               </div>
 
@@ -143,7 +130,7 @@ export default function OverviewPage() {
           {selectedRepo && (
             <div className="rounded-lg border border-slate-200 bg-white/86 px-4 py-3 text-sm text-slate-600">
               Selected repo: <span className="font-medium text-slate-950">{selectedRepo}</span>.
-              Open Intelligence to generate a repo brief or comparison.
+              Use the dashboard views to inspect its momentum across the current window.
             </div>
           )}
         </section>

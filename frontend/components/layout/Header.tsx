@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, BotMessageSquare, GitBranch, LayoutDashboard, Radar, Search } from "lucide-react";
+import { Activity, GitBranch, LayoutDashboard, Radar } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/", label: "Overview", icon: Radar },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/intelligence", label: "Intelligence", icon: Search },
-  { href: "/chatbot", label: "Chatbot", icon: BotMessageSquare },
 ];
 
 function isActiveRoute(pathname: string, href: string): boolean {
@@ -77,7 +75,7 @@ export function Header() {
           </div>
         </div>
 
-        <nav className="grid w-full grid-cols-4 gap-1 rounded-xl border border-slate-200 bg-slate-50/85 p-1 lg:hidden">
+        <nav className="grid w-full grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-slate-50/85 p-1 lg:hidden">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const active = isActiveRoute(pathname, item.href);
