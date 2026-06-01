@@ -22,6 +22,9 @@ async def test_execute_returns_partial_when_sync_is_disabled_and_no_sources() ->
     settings = Settings(
         github_api_tokens="test-token",
         clickhouse_password="test-password",
+        news_intelligence_mode="curated",
+        news_intelligence_sync_enabled=False,
+        news_intelligence_sources=[],
     )
 
     result = await GetNewsImpactReadinessUseCase(settings=settings).execute()

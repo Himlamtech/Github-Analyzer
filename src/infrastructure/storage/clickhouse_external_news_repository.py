@@ -145,7 +145,7 @@ SELECT
     status,
     fetched_count,
     error_message,
-    checked_at
+    latest_checked_at AS checked_at
 FROM
 (
     SELECT
@@ -154,7 +154,7 @@ FROM
         argMax(status, checked_at) AS status,
         argMax(fetched_count, checked_at) AS fetched_count,
         argMax(error_message, checked_at) AS error_message,
-        max(checked_at) AS checked_at
+        max(checked_at) AS latest_checked_at
     FROM source_health_snapshots
     GROUP BY provider, source_url
 )

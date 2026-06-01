@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from src.application.use_cases.get_news_impact_snapshot import GetNewsImpactSnapshotUseCase
+from src.domain.exceptions import DashboardQueryError
 
 
 class FakeExternalNewsRepository:
@@ -104,3 +105,32 @@ async def test_get_detail_returns_single_event() -> None:
     assert result is not None
     assert result.event_id == "openai-preview-1"
     assert result.quality_score == 90.0
+
+
+class FailingDashboardReader:
+    async def get_top_repos(
+        self,
+        category: str | None,
+        days: int,
+        limit: int,
+    ) -> list[dict[str, object]]:
+        del category, days, limit
+        raise DashboardQueryError("repo metadata history query failed")
+
+    async def get_trending(self, days: int, limit: int) -> list[dict[str, object]]:
+        del days, limit
+        raise DashboardQueryError("trending query failed")
+
+
+async def test_execute_returns_events_when_dashboard_telemetry_is_unavailable() -> None:
+    use_case = GetNewsImpactSnapshotUseCase(
+        repository=FakeExternalNewsRepository(),
+        reader=FailingDashboardReader(),
+    )
+
+    result = await use_case.execute()
+
+    assert len(result) == 1
+    assert result[0].event_id == "openai-preview-1"
+    assert result[0].top_impacted_repos == ["browser-use/browser-use"]
+    assert any("temporarily degraded" in item for item in result[0].explanation_trace)

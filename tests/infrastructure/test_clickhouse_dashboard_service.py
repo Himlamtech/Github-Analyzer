@@ -241,6 +241,8 @@ class TestGetTrending:
         assert "FROM repo_metadata_history" in query_text
         assert "snapshot_at >= %(week_start)s" in query_text
         assert "snapshot_at < %(week_end)s" in query_text
+        assert "latest.repo_full_name AS repo_full_name" in query_text
+        assert "latest.*" not in query_text
         assert params["week_start"] == week_start
         assert params["week_end"] == week_end
 

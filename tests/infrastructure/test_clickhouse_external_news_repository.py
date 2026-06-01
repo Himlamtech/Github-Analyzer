@@ -154,4 +154,5 @@ async def test_list_latest_source_health_returns_parsed_rows() -> None:
     assert rows[0]["status"] == "ok"
     query_text = str(client.execute.call_args_list[2].args[0])
     assert "FROM\n(\n    SELECT" in query_text
-    assert "max(checked_at) AS checked_at" in query_text
+    assert "max(checked_at) AS latest_checked_at" in query_text
+    assert "latest_checked_at AS checked_at" in query_text

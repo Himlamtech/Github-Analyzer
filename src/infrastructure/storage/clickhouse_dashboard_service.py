@@ -235,7 +235,25 @@ SELECT
     star_count_in_window
 FROM (
     SELECT
-        latest.*,
+        latest.repo_id AS repo_id,
+        latest.repo_full_name AS repo_full_name,
+        latest.repo_name AS repo_name,
+        latest.html_url AS html_url,
+        latest.description AS description,
+        latest.primary_language AS primary_language,
+        latest.topics AS topics,
+        latest.category AS category,
+        latest.stargazers_count AS stargazers_count,
+        latest.watchers_count AS watchers_count,
+        latest.forks_count AS forks_count,
+        latest.open_issues_count AS open_issues_count,
+        latest.subscribers_count AS subscribers_count,
+        latest.owner_login AS owner_login,
+        latest.owner_avatar_url AS owner_avatar_url,
+        latest.license_name AS license_name,
+        latest.github_created_at AS github_created_at,
+        latest.github_pushed_at AS github_pushed_at,
+        latest.rank AS rank,
         greatest(
             latest.stargazers_count - coalesce(
                 before_week.baseline_stars,
