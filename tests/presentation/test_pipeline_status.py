@@ -85,7 +85,7 @@ def test_pipeline_status_healthy_pipeline_returns_healthy(
         "/events/hourly",
     ],
 )
-def test_removed_duckdb_public_analytics_routes_return_404(
+def test_removed_legacy_public_analytics_routes_return_404(
     client: TestClient,
     path: str,
 ) -> None:

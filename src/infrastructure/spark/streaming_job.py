@@ -124,7 +124,7 @@ class GithubStreamingJob:
         """Build the Parquet write stream.
 
         Partitions output by ``event_date`` and ``event_type`` for efficient
-        DuckDB partition pruning.
+        archive scans and backfill reads.
 
         Args:
             parsed: Typed streaming DataFrame.

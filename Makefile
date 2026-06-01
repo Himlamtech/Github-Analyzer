@@ -1,4 +1,4 @@
-.PHONY: setup bootstrap-clickhouse stream process query monitor discover-repos sync-repos frontend-dev frontend-build frontend-type-check test lint format clean help
+.PHONY: setup bootstrap-clickhouse stream process discover-repos sync-repos frontend-dev frontend-build frontend-type-check test lint format clean help
 
 PYTHON := uv run python
 PYTEST := uv run pytest
@@ -19,7 +19,7 @@ PARQUET_DIR    := ./data/raw
 setup: ## Bring up Docker stack, create Kafka topic, init ClickHouse tables
 	@mkdir -p $(DATA_DIR) $(CHECKPOINT_DIR) $(PARQUET_DIR)
 	@echo "▶ Starting Docker services..."
-	docker compose up -d zookeeper kafka clickhouse prometheus grafana api frontend
+	docker compose up -d zookeeper kafka clickhouse api frontend
 	@echo "▶ Waiting for Kafka to be healthy..."
 	@until docker compose exec -T kafka kafka-broker-api-versions --bootstrap-server localhost:9092 > /dev/null 2>&1; do \
 		echo "  Kafka not ready, retrying in 5s..."; sleep 5; done
@@ -50,16 +50,6 @@ stream: ## Start GitHub API poller → Kafka producer (runs continuously)
 process: ## Start Spark Structured Streaming job (Kafka → Parquet + ClickHouse)
 	@echo "▶ Starting Spark Structured Streaming job..."
 	$(PYTHON) -m src.application.use_cases.process_event_stream
-
-query: ## Launch DuckDB interactive shell on Parquet files
-	@echo "▶ Opening DuckDB shell on $(PARQUET_DIR)..."
-	$(PYTHON) -c "import duckdb; duckdb.connect(':memory:').execute(\"SELECT * FROM read_parquet('$(PARQUET_DIR)/**/*.parquet', hive_partitioning=true, union_by_name=true) LIMIT 10\").show()"
-	@echo "Tip: Run 'python -m src.infrastructure.storage.duckdb_query_service' for interactive mode."
-
-monitor: ## Open Grafana dashboard in browser
-	@echo "▶ Opening Grafana at http://localhost:3001 (admin / \$$GRAFANA_PASSWORD)"
-	@xdg-open http://localhost:3001 2>/dev/null || open http://localhost:3001 2>/dev/null || \
-		echo "Navigate to http://localhost:3001"
 
 ## ── Phase 2 ─────────────────────────────────────────────────────────────────
 

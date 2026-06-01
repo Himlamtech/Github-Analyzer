@@ -19,7 +19,7 @@ Scope:
 - `ecosystem_rotation_daily`
 - `GET /intelligence/breakout`
 - `GET /intelligence/rotation`
-- migration path khoi route/fallback cu cho frontend moi
+- migration path khoi dashboard routes cu cho frontend moi
 
 Assumption:
 
@@ -79,7 +79,7 @@ Runtime model:
 
 - feature builders chay theo lich, khong chay trong request path
 - API chi query curated tables
-- frontend moi khong can fallback ve dashboard raw analytics
+- frontend moi khong phu thuoc vao dashboard raw analytics
 
 ## 4. Implementation Approach
 
@@ -282,7 +282,7 @@ Can them logging va state snapshots cho:
 1. Trigger build breakout, verify co snapshot moi trong ClickHouse.
 2. Goi `/intelligence/breakout`, verify items co `breakout_score`, `durability_score`, `confidence_score`.
 3. Trigger build rotation, verify category rising/falling thay doi theo fixture.
-4. Frontend bind mock page vao endpoint moi, verify khong can them raw fallback.
+4. Frontend bind mock page vao endpoint moi, verify khong can them route compatibility cu.
 
 ### Required quality gates
 

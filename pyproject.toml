@@ -18,8 +18,6 @@ dependencies = [
     "pyspark==3.5.1",
     # ClickHouse
     "clickhouse-driver>=0.2.9",
-    # DuckDB
-    "duckdb>=1.0.0",
     # API
     "fastapi>=0.111.0",
     "uvicorn[standard]>=0.30.0",
@@ -88,7 +86,6 @@ plugins = ["pydantic.mypy"]
 module = [
     "aiokafka.*",
     "clickhouse_driver.*",
-    "duckdb.*",
     "pyspark.*",
     "structlog.*",
 ]

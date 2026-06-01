@@ -396,7 +396,7 @@ Response shape:
 |---|---|---|
 | `/dashboard/trending` | `/intelligence/breakout` | `trending` co the giu tam thoi cho backward compatibility |
 | `/dashboard/topic-rotation` | `/intelligence/rotation` | `topic` raw se duoc thay bang `category` rotation |
-| fallback to parquet in dashboard service | curated marts in ClickHouse | bo dan sau khi Phase 1 on dinh |
+| dashboard service query truc tiep github_data | curated marts in ClickHouse | bo dan khi intelligence mart san sang |
 | neutral `CategoryClassifier` | rule-based taxonomy v1 | bat buoc de page rotation co gia tri |
 
 ### Recommended rollout

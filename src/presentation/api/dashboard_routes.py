@@ -59,7 +59,6 @@ def _get_dashboard_service(
         user=settings.clickhouse_user,
         password=settings.clickhouse_password,
         database=settings.clickhouse_database,
-        parquet_base_path=settings.parquet_base_path,
     )
 
 

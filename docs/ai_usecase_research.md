@@ -44,7 +44,6 @@ flowchart LR
     E --> F[Parquet archive]
     E --> G[ClickHouse github_data]
     G --> H[FastAPI dashboard routes]
-    F --> I[DuckDB ad hoc routes]
 ```
 
 ### Implemented now
@@ -58,7 +57,7 @@ flowchart LR
   [src/presentation/api/dashboard_routes.py](/home/iec/lamnh/github/src/presentation/api/dashboard_routes.py:1).
 - Repo-first discovery da co huong di rieng trong
   [src/application/use_cases/discover_repo_catalog.py](/home/iec/lamnh/github/src/application/use_cases/discover_repo_catalog.py:1).
-- Monitoring co Prometheus metrics va pipeline status endpoint.
+- Runtime hien tai giu logging va pipeline status endpoint.
 
 ### Missing today
 
@@ -72,16 +71,12 @@ flowchart LR
 
 ### Current pain points relevant to scale
 
-- API dang co 2 nhanh query song song: ClickHouse cho dashboard va DuckDB tren Parquet
-  cho mot so endpoint trong
-  [src/presentation/api/routes.py](/home/iec/lamnh/github/src/presentation/api/routes.py:1).
-  Dieu nay tang complexity van hanh va de sinh ket qua khong dong nhat.
-- `ClickHouseDashboardService` dang om rat nhieu SQL/fallback logic trong mot file lon,
-  kho cho viec mo rong intelligence query va review performance.
+- Production serving da chot 1 nhanh `ClickHouse`, nhung analytical service va route cu van can
+  tiep tuc duoc tach nho theo use case de de review va rollout.
 - Spark writer hien dang dua nhieu logic ve file counting, repartition, va write policy
   vao infrastructure layer, nhung chua co use case giam sat `batch lateness`,
   `sink skew`, `external backfill pressure`.
-- Startup cua API dang bootstrap them repo observation, nghia la mot process
+- Startup cua API dang bootstrap them repo metadata setup, nghia la mot process
   presentation dang kick off mot side effect ha tang khi khoi dong.
 
 ## Target State
@@ -490,11 +485,8 @@ max_lookback_days = 30
 
 | Path | Action | Brief change | Why |
 |---|---|---|---|
-| `src/presentation/api/routes.py` | Modify | Giam bot endpoint analytics doc tu DuckDB, giu lai health/pipeline/event core | Dang tao 2 serving path khac nhau cho cung 1 san pham, kho kiem soat consistency |
-| `src/infrastructure/storage/duckdb_query_service.py` | Remove after migration | Bo service DuckDB neu ClickHouse da la source of truth cho serving | Tot cho ad hoc local debug, nhung khong nen la production serving path khi scale lon |
 | `src/infrastructure/storage/clickhouse_dashboard_service.py` | Split | Tach thanh nhieu query service theo use case thay vi 1 file SQL qua lon | De toi uu query, review, test, va rollout tung intelligence mart |
-| `src/presentation/api/dashboard_routes.py` | Modify | Giam fallback logic, doc tu curated marts | Tranh API layer phai ganh mapping va branch logic phuc tap |
-| API startup bootstrap trong `src/presentation/api/routes.py` | Move | Dua bootstrap side effect sang job/scheduler rieng | Presentation layer khong nen tu dong thuc hien cong viec ha tang khi startup |
+| `src/presentation/api/dashboard_routes.py` | Modify | Dua dashboard doc dan tu curated marts khi tung use case san sang | Tranh API layer phai ganh mapping va branch logic phuc tap |
 
 ### Clean aggressively if target la premium intelligence product
 
@@ -505,14 +497,13 @@ Nen chot 1 chuan production serving:
 - ClickHouse cho online analytics
 - Parquet chi de archive, backfill, recovery, offline exploration
 
-Neu giu DuckDB cho local analysis, can danh dau ro `internal-only`, khong expose nhu public API product.
+Parquet giu vai tro archive, backfill, recovery.
 
 #### 2. Xoa fallback query de che thieu data model
 
-`ClickHouseDashboardService` hien co nhieu fallback query khi khong co `repo_metadata` day du.
-Dieu nay huu ich luc bootstrap, nhung ve lau dai de tao ket qua `co ve dung` nhung thuc ra
-thieu quality guarantee. Khi da co `repo_metadata sync` on dinh, nen bo dan fallback nay va
-thay bang `quality signal` ro rang.
+`ClickHouseDashboardService` khong nen tiep tuc giu fallback query. Neu `repo_metadata`
+hoac `repo_metadata_history` chua san sang, endpoint nen fail ro rang de rollout du lieu va
+serving duoc kiem soat dung boundary.
 
 #### 3. Xoa logic intelligence khoi presentation
 
@@ -544,7 +535,7 @@ trong request path, do la dau hieu chua san sang production scale.
 | `src/application/use_cases/` | Tentative add | Them use case sync external, build gold marts, validate quality, health evaluation | Day la noi orchestration dung boundary |
 | `src/infrastructure/external/` | Tentative add | Them clients cho OpenRouter, HF, Artificial Analysis, newsroom | Tach rieng integration theo tung nguon |
 | `src/infrastructure/storage/` | Tentative modify | Tach query services va them repositories cho gold marts + health snapshots | Giam file monolith, tang kha nang scale query |
-| `src/presentation/api/` | Tentative modify | Them intelligence endpoints, giam route cu phuc vu DuckDB | Phu hop huong san pham moi |
+| `src/presentation/api/` | Tentative modify | Them intelligence endpoints, giam route cu khong con phu hop product path moi | Phu hop huong san pham moi |
 | `scheduler/` | Tentative modify | Them jobs cho sync external, build features, data quality checks | Dung scheduled execution thay vi startup side effect |
 | `tests/` | Tentative add/modify | Them tests cho quality gates, external sync, intelligence marts | Bao ve rollout va regressions |
 
@@ -554,7 +545,7 @@ trong request path, do la dau hieu chua san sang production scale.
 - Moi intelligence page co use case va data contract ro rang.
 - Moi external source co ingest contract, freshness SLA, va quarantine path.
 - Serving API chi doc tu curated marts cho use case intelligence chinh.
-- DuckDB khong con la production-facing dependency cho analytics product path.
+- Serving path analytics product chi con phu thuoc vao ClickHouse va curated tables.
 - Co monitoring cho freshness, lag, duplicate rate, schema drift, va category coverage.
 
 ## Testing And Verification Strategy
@@ -631,11 +622,11 @@ uv run pytest -v
    Validation: sample news item trace duoc den repo impact.
 
 6. Clean production path
-   Objective: remove/deprecate DuckDB public serving, giam fallback query, move startup bootstrap sang scheduler.
+   Objective: giu 1 serving path ClickHouse, bo fallback query, move startup bootstrap sang scheduler.
    Affected area: routes, storage, scheduler.
    Dependency: step 4 toi thieu.
    Output artifact: don gian hoa runtime path.
-   Validation: endpoint behavior on dinh, observability day du.
+   Validation: endpoint behavior on dinh, logging va pipeline status du de debug.
 
 ## Commit Plan
 
@@ -654,14 +645,14 @@ uv run pytest -v
 5. `feat(intelligence): add adoption lag and news impact analytics`
    Objective: mo rong sang giai thich va causal intelligence.
 
-6. `refactor(api): remove duckdb production routes and slim dashboard serving`
+6. `refactor(api): slim dashboard serving around ClickHouse-only reads`
    Objective: clean production path, giam complexity, toi uu server.
 
 ## Cleanup Recommendation Summary
 
 - Giu: Kafka, Spark, ClickHouse, Parquet, repo discovery, metrics foundation.
 - Gop lai: analytical SQL services theo tung use case thay vi 1 file lon.
-- Xoa manh tay: DuckDB production-facing routes, fallback query keo dai tinh trang thieu model,
+- Xoa manh tay: fallback query keo dai tinh trang thieu model,
   startup side effects trong presentation, va moi endpoint cu khong phuc vu intelligence product.
 
 ## Risk And Open Questions
@@ -674,7 +665,6 @@ Risk:
 
 Open question:
 
-- co giu DuckDB nhu `internal debug tool` hay xoá han khoi runtime package
 - co uu tien them official newsroom sources truoc, hay di thang vao media/news aggregation
 - cadence nao hop ly cho `breakout` va `rotation`: 15 phut, 1 gio, hay daily
 
@@ -682,7 +672,7 @@ Open question:
 
 Thu tu uu tien de toi uu gia tri va on dinh:
 
-1. Chot `ClickHouse = serving source of truth`, DuckDB = internal/archive only.
+1. Chot `ClickHouse = serving source of truth`, `Parquet = archive/recovery`.
 2. Ship `Breakout Detector` va `Ecosystem Rotation` tren curated marts.
 3. Them `Source Freshness Guard` va `External Data Quarantine` truoc khi mo rong external data.
 4. Sau do moi build `Adoption Lag` va `News-to-Code Impact`.
@@ -700,14 +690,13 @@ Muc tieu:
 Deliverables:
 
 - chot `ClickHouse` la source of truth cho serving
-- danh dau `DuckDB` la `internal-only` hoac lap ke hoach remove
 - tach bootstrap side effect khoi API startup
 - viet ro ADR nho cho `raw/silver/gold` strategy
 
 Thanh cong khi:
 
-- khong con endpoint product nao phu thuoc vao DuckDB public route
-- observability cho ingest, freshness, va query latency ro rang
+- khong con endpoint product nao phu thuoc vao fallback query
+- logging va pipeline status du ro de debug ingest, freshness, va query latency
 
 ### Phase 1. Ship the first two intelligence products
 
@@ -857,5 +846,5 @@ cho `Phase 1` gom:
 - schema cua `ecosystem_rotation_daily`
 - scoring formula version `v1`
 - API contracts cho 2 endpoint intelligence dau tien
-- migration plan khoi DuckDB production routes
+- migration plan khoi cac legacy public analytics routes
 - testing plan cho load va regressions

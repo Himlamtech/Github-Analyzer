@@ -104,7 +104,7 @@ Dependency direction must stay inward:
 - Must not import from presentation; avoid concrete infra coupling where abstractions exist.
 
 ### 4.3 Infrastructure (`src/infrastructure`)
-- External systems integration: GitHub API, Kafka, Spark, ClickHouse, vector store, config, observability.
+- External systems integration: GitHub API, Kafka, Spark, ClickHouse, storage, and config.
 - Implements domain/application contracts.
 - No business rules that belong in domain/application.
 
@@ -178,7 +178,7 @@ This project ingests GitHub events, streams and aggregates data, and serves dash
 
 - `src/domain`: entities, value objects, services, repository interfaces
 - `src/application`: use cases and DTOs
-- `src/infrastructure`: providers/adapters (GitHub, Kafka, Spark, ClickHouse, observability)
+- `src/infrastructure`: providers/adapters (GitHub, Kafka, Spark, ClickHouse, storage, config)
 - `src/presentation/api`: FastAPI routes
 - `tests`: unit/integration tests
 - `scheduler`: ops/cron/systemd scripts
@@ -189,8 +189,6 @@ This project ingests GitHub events, streams and aggregates data, and serves dash
 - Frontend: `:3000`
 - Kafka: `:9092`
 - ClickHouse: `:9000`/`:8123`
-- Prometheus: `:9093`
-- Grafana: `:3001`
 
 ---
 
