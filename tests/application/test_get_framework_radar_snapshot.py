@@ -48,5 +48,7 @@ async def test_execute_returns_framework_radar_snapshot() -> None:
     assert result.frameworks
     assert result.frameworks[0].framework_id == "langchain"
     assert result.frameworks[0].velocity_score >= 0.0
+    assert result.frameworks[0].matched_repo_count == 1
+    assert result.frameworks[0].representative_repos == ["langchain-ai/langchain"]
     assert result.winners
     assert result.warnings

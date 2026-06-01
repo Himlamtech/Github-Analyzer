@@ -47,6 +47,14 @@ class ListPersistedExternalNewsItemsUseCase:
                 linked_categories=[
                     str(item) for item in cast("list[object]", row.get("linked_categories") or [])
                 ],
+                linked_repos=[
+                    str(item)
+                    for item in cast("list[object]", row.get("linked_repo_full_names") or [])
+                ],
+                linked_frameworks=[
+                    str(item)
+                    for item in cast("list[object]", row.get("linked_framework_ids") or [])
+                ],
                 quality_score=float(cast("int | float | str", row.get("quality_score") or 0.0)),
                 is_quarantined=bool(row.get("is_quarantined") or False),
                 quarantine_reason=(
@@ -83,6 +91,12 @@ class GetPersistedExternalNewsItemUseCase:
             ],
             linked_categories=[
                 str(item) for item in cast("list[object]", row.get("linked_categories") or [])
+            ],
+            linked_repos=[
+                str(item) for item in cast("list[object]", row.get("linked_repo_full_names") or [])
+            ],
+            linked_frameworks=[
+                str(item) for item in cast("list[object]", row.get("linked_framework_ids") or [])
             ],
             quality_score=float(cast("int | float | str", row.get("quality_score") or 0.0)),
             is_quarantined=bool(row.get("is_quarantined") or False),

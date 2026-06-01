@@ -28,6 +28,8 @@ class FakeExternalNewsRepository:
                 "event_type": "launch",
                 "linked_entities": ["OpenAI", "Browser Use"],
                 "linked_categories": ["Coding Agents & Automation"],
+                "linked_repo_full_names": ["browser-use/browser-use"],
+                "linked_framework_ids": ["browser-use", "openai-agents"],
                 "quality_score": 90.0,
                 "is_quarantined": False,
                 "quarantine_reason": None,
@@ -86,6 +88,8 @@ async def test_execute_returns_computed_news_impact_snapshot() -> None:
     assert result[0].source == "persisted_external_news"
     assert result[0].impact_curve
     assert result[0].top_impacted_repos == ["browser-use/browser-use"]
+    assert result[0].linked_repos == ["browser-use/browser-use"]
+    assert result[0].linked_frameworks == ["browser-use", "openai-agents"]
     assert result[0].explanation_trace
 
 

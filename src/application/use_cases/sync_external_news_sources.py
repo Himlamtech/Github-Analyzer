@@ -15,6 +15,8 @@ from src.application.intelligence_taxonomy import (
     infer_categories,
     infer_entities,
     infer_event_type,
+    infer_linked_frameworks,
+    infer_linked_repos,
     should_quarantine,
 )
 from src.domain.entities.external_news_item import ExternalNewsItem
@@ -132,6 +134,12 @@ class SyncExternalNewsSourcesUseCase:
                     event_type=infer_event_type(item.title, item.summary),
                     linked_entities=tuple(infer_entities(provider, item.title, item.summary)),
                     linked_categories=tuple(infer_categories(item.title, item.summary)),
+                    linked_repo_full_names=tuple(
+                        infer_linked_repos(provider, item.title, item.summary)
+                    ),
+                    linked_framework_ids=tuple(
+                        infer_linked_frameworks(provider, item.title, item.summary)
+                    ),
                     quality_score=quality_score,
                     is_quarantined=quarantine_reason is not None,
                     quarantine_reason=quarantine_reason,

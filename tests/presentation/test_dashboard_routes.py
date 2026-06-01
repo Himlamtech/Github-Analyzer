@@ -175,6 +175,8 @@ class FakeExternalNewsRepository:
                 "event_type": "launch",
                 "linked_entities": ["OpenAI", "Browser Use"],
                 "linked_categories": ["Coding Agents & Automation"],
+                "linked_repo_full_names": ["browser-use/browser-use"],
+                "linked_framework_ids": ["browser-use", "openai-agents"],
                 "quality_score": 90.0,
                 "is_quarantined": False,
                 "quarantine_reason": None,
@@ -204,6 +206,8 @@ class FakeExternalNewsRepository:
                 "event_type": item.event_type,
                 "linked_entities": list(item.linked_entities),
                 "linked_categories": list(item.linked_categories),
+                "linked_repo_full_names": list(item.linked_repo_full_names),
+                "linked_framework_ids": list(item.linked_framework_ids),
                 "quality_score": item.quality_score,
                 "is_quarantined": item.is_quarantined,
                 "quarantine_reason": item.quarantine_reason,
@@ -340,7 +344,7 @@ def test_framework_radar_route_returns_snapshot(client: TestClient) -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["frameworks"]
-    assert payload["frameworks"][0]["framework_id"] == "langchain"
+    assert any(item["framework_id"] == "langchain" for item in payload["frameworks"])
     assert payload["winners"]
     assert payload["warnings"]
 
@@ -353,6 +357,8 @@ def test_news_impact_route_returns_computed_snapshot(client: TestClient) -> None
     assert payload
     assert payload[0]["event_id"] == "openai-preview-1"
     assert payload[0]["source"] == "persisted_external_news"
+    assert payload[0]["linked_repos"] == ["browser-use/browser-use"]
+    assert payload[0]["linked_frameworks"] == ["browser-use", "openai-agents"]
     assert payload[0]["impact_curve"]
     assert payload[0]["top_impacted_repos"]
 
@@ -364,6 +370,7 @@ def test_news_impact_detail_route_returns_single_event(client: TestClient) -> No
     payload = response.json()
     assert payload["event_id"] == "openai-preview-1"
     assert payload["quality_score"] > 0
+    assert payload["linked_frameworks"] == ["browser-use", "openai-agents"]
 
 
 def test_news_impact_readiness_route_returns_source_status(client: TestClient) -> None:
@@ -411,6 +418,7 @@ def test_news_impact_source_latest_route_returns_persisted_items(client: TestCli
     payload = response.json()
     assert payload[0]["source_id"] == "openai-preview-1"
     assert payload[0]["event_type"] == "launch"
+    assert payload[0]["linked_repos"] == ["browser-use/browser-use"]
 
 
 def test_news_impact_source_health_route_returns_latest_snapshots(client: TestClient) -> None:

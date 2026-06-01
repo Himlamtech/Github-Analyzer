@@ -6,7 +6,11 @@ from datetime import UTC, datetime
 from typing import Protocol, cast
 
 from src.application.dtos.intelligence_dto import RotationCategoryDTO
-from src.application.intelligence_taxonomy import infer_categories, titleize_token
+from src.application.intelligence_taxonomy import (
+    infer_categories,
+    infer_registry_matches,
+    titleize_token,
+)
 
 
 class RotationDashboardReader(Protocol):
@@ -53,6 +57,10 @@ class BuildRotationViewUseCase:
                 if topic and topic in cast("list[str]", item.get("topics") or [])
             ]
             matching_repos = [str(item.get("repo_full_name") or "") for item in topic_matches]
+            registry_matches = infer_registry_matches(
+                topic,
+                *[str(item.get("description") or "") for item in topic_matches[:5]],
+            )
             inferred_categories = infer_categories(
                 topic,
                 *[str(item.get("description") or "") for item in topic_matches[:5]],
@@ -76,6 +84,12 @@ class BuildRotationViewUseCase:
             ]
             if attention_delta != 0:
                 rotation_drivers.append(f"Window-over-window change: {attention_delta:+.0f}.")
+            if registry_matches:
+                rotation_drivers.append(
+                    "Registry evidence: "
+                    + ", ".join(match.display_name for match in registry_matches[:3])
+                    + "."
+                )
             rotation_drivers.append(
                 f"Mapped from topic token '{titleize_token(topic)}' into product taxonomy."
             )

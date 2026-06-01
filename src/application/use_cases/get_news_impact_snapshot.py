@@ -6,7 +6,8 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Protocol, cast
 
 from src.application.dtos.intelligence_dto import NewsImpactCurvePointDTO, NewsImpactEventDTO
-from src.application.intelligence_taxonomy import infer_categories
+from src.application.intelligence_taxonomy import infer_categories, infer_linked_frameworks
+from src.domain.exceptions import DashboardQueryError
 
 if TYPE_CHECKING:
     from src.domain.repositories.external_news_repository import ExternalNewsRepositoryABC
@@ -89,9 +90,7 @@ class GetNewsImpactSnapshotUseCase:
         if not rows:
             return []
 
-        top_repos = await self._reader.get_top_repos(category=None, days=30, limit=80)
-        trending = await self._reader.get_trending(days=30, limit=40)
-        repo_pool = [*top_repos, *trending]
+        repo_pool, analytics_warning = await self._load_repo_pool()
         computed_at = datetime.now(tz=UTC)
         results: list[NewsImpactEventDTO] = []
         for row in rows:
@@ -104,6 +103,18 @@ class GetNewsImpactSnapshotUseCase:
             categories = [
                 str(item) for item in cast("list[object]", row.get("linked_categories") or [])
             ] or infer_categories(headline, summary)
+            linked_repos = list(
+                dict.fromkeys(
+                    str(item)
+                    for item in cast("list[object]", row.get("linked_repo_full_names") or [])
+                )
+            )
+            linked_frameworks = list(
+                dict.fromkeys(
+                    str(item)
+                    for item in cast("list[object]", row.get("linked_framework_ids") or [])
+                )
+            ) or infer_linked_frameworks(provider, headline, summary)
             news_text = f"{headline} {summary}".lower()
             ranked_repos = sorted(
                 repo_pool,
@@ -112,9 +123,12 @@ class GetNewsImpactSnapshotUseCase:
             )
             matched_repos = list(
                 dict.fromkeys(
-                    str(repo.get("repo_full_name") or "")
-                    for repo in ranked_repos
-                    if _score_repo_match(news_text, repo, categories) > 1.0
+                    [*linked_repos]
+                    + [
+                        str(repo.get("repo_full_name") or "")
+                        for repo in ranked_repos
+                        if _score_repo_match(news_text, repo, categories) > 1.0
+                    ]
                 )
             )[:3]
             repo_momentum = sum(
@@ -147,10 +161,16 @@ class GetNewsImpactSnapshotUseCase:
                 ),
                 f"Categories inferred for this event: {', '.join(categories)}.",
             ]
+            if linked_frameworks:
+                explanation_trace.append(
+                    f"Registry-linked frameworks: {', '.join(linked_frameworks)}."
+                )
             if row.get("quality_score") is not None:
                 explanation_trace.append(
                     f"Source content quality score: {round(_as_float(row['quality_score']), 1)}."
                 )
+            if analytics_warning is not None:
+                explanation_trace.append(analytics_warning)
 
             results.append(
                 NewsImpactEventDTO(
@@ -165,6 +185,8 @@ class GetNewsImpactSnapshotUseCase:
                         for item in cast("list[object]", row.get("linked_entities") or [])
                     ],
                     linked_categories=categories,
+                    linked_repos=linked_repos,
+                    linked_frameworks=linked_frameworks,
                     quality_score=round(_as_float(row.get("quality_score")), 2),
                     source_type=source_type,
                     causality_score=causality_score,
@@ -188,6 +210,15 @@ class GetNewsImpactSnapshotUseCase:
             )
 
         return results
+
+    async def _load_repo_pool(self) -> tuple[list[dict[str, object]], str | None]:
+        try:
+            top_repos = await self._reader.get_top_repos(category=None, days=30, limit=80)
+            trending = await self._reader.get_trending(days=30, limit=40)
+        except DashboardQueryError as exc:
+            return [], f"GitHub telemetry matching is temporarily degraded: {exc.message}"
+
+        return [*top_repos, *trending], None
 
     def _build_curve(
         self,

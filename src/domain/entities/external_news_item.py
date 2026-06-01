@@ -23,6 +23,8 @@ class ExternalNewsItem:
     event_type: str = "news"
     linked_entities: tuple[str, ...] = ()
     linked_categories: tuple[str, ...] = ()
+    linked_repo_full_names: tuple[str, ...] = ()
+    linked_framework_ids: tuple[str, ...] = ()
     quality_score: float = 0.0
     is_quarantined: bool = False
     quarantine_reason: str | None = None

@@ -47,7 +47,12 @@ class GetFrameworkRadarSnapshotUseCase:
     async def execute(self) -> FrameworkRadarSnapshotDTO:
         top_repos = await self._reader.get_top_repos(category=None, days=30, limit=80)
         trending = await self._reader.get_trending(days=30, limit=80)
-        repo_pool = [*top_repos, *trending]
+        repo_pool = list(
+            {
+                str(row.get("repo_full_name") or f"repo-{index}"): row
+                for index, row in enumerate([*top_repos, *trending])
+            }.values()
+        )
 
         frameworks: list[FrameworkRadarItemDTO] = []
         for definition in framework_registry():
@@ -82,6 +87,10 @@ class GetFrameworkRadarSnapshotUseCase:
                     market_footprint=self._market_footprint(
                         total_stars=total_stars, repo_count=len(matched)
                     ),
+                    matched_repo_count=len(matched),
+                    representative_repos=[
+                        str(row.get("repo_full_name") or "") for row in matched[:3]
+                    ],
                     strategic_insight_summary=self._insight_summary(
                         framework_name=definition.framework_name,
                         total_velocity=total_velocity,

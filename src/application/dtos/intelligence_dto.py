@@ -64,6 +64,8 @@ class FrameworkRadarItemDTO(BaseModel):
     commercial_readiness_score: float = Field(..., ge=0.0, le=1.0)
     contributor_energy_score: int = Field(..., ge=0, le=100)
     market_footprint: str
+    matched_repo_count: int = Field(..., ge=0)
+    representative_repos: list[str]
     strategic_insight_summary: str
 
 
@@ -170,6 +172,8 @@ class NewsImpactEventDTO(BaseModel):
     event_type: str
     linked_entities: list[str]
     linked_categories: list[str]
+    linked_repos: list[str]
+    linked_frameworks: list[str]
     quality_score: float = Field(..., ge=0.0, le=100.0)
     source_type: str
     causality_score: float = Field(..., ge=0.0, le=100.0)
@@ -231,6 +235,8 @@ class ExternalNewsPreviewItemDTO(BaseModel):
     event_type: str = "news"
     linked_entities: list[str] = Field(default_factory=list)
     linked_categories: list[str] = Field(default_factory=list)
+    linked_repos: list[str] = Field(default_factory=list)
+    linked_frameworks: list[str] = Field(default_factory=list)
     quality_score: float = Field(default=0.0, ge=0.0, le=100.0)
     is_quarantined: bool = False
     quarantine_reason: str | None = None

@@ -123,7 +123,9 @@ async def test_execute_persists_items_and_health_for_enabled_sources() -> None:
     assert result.quarantined_item_count == 0
     assert repository.saved_items[0].provider == "OpenAI"
     assert repository.saved_items[0].event_type == "launch"
-    assert repository.saved_items[0].linked_categories == ("Coding Agents & Automation",)
+    assert repository.saved_items[0].linked_categories[0] == "Coding Agents & Automation"
+    assert repository.saved_items[0].linked_repo_full_names == ("browser-use/browser-use",)
+    assert repository.saved_items[0].linked_framework_ids == ("browser-use", "openai-agents")
     assert result.source_health[0].status == "ok"
 
 

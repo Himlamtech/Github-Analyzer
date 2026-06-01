@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS external_news_items
     event_type LowCardinality(String),
     linked_entities Array(String),
     linked_categories Array(String),
+    linked_repo_full_names Array(String),
+    linked_framework_ids Array(String),
     quality_score Float64,
     is_quarantined UInt8,
     quarantine_reason Nullable(String),
@@ -56,6 +58,8 @@ INSERT INTO external_news_items
     event_type,
     linked_entities,
     linked_categories,
+    linked_repo_full_names,
+    linked_framework_ids,
     quality_score,
     is_quarantined,
     quarantine_reason,
@@ -98,6 +102,8 @@ SELECT
     event_type,
     linked_entities,
     linked_categories,
+    linked_repo_full_names,
+    linked_framework_ids,
     quality_score,
     is_quarantined,
     quarantine_reason
@@ -120,6 +126,8 @@ SELECT
     event_type,
     linked_entities,
     linked_categories,
+    linked_repo_full_names,
+    linked_framework_ids,
     quality_score,
     is_quarantined,
     quarantine_reason
@@ -134,12 +142,22 @@ _SELECT_LATEST_SOURCE_HEALTH_QUERY = """
 SELECT
     provider,
     source_url,
-    argMax(status, checked_at) AS status,
-    argMax(fetched_count, checked_at) AS fetched_count,
-    argMax(error_message, checked_at) AS error_message,
-    max(checked_at) AS checked_at
-FROM source_health_snapshots
-GROUP BY provider, source_url
+    status,
+    fetched_count,
+    error_message,
+    checked_at
+FROM
+(
+    SELECT
+        provider,
+        source_url,
+        argMax(status, checked_at) AS status,
+        argMax(fetched_count, checked_at) AS fetched_count,
+        argMax(error_message, checked_at) AS error_message,
+        max(checked_at) AS checked_at
+    FROM source_health_snapshots
+    GROUP BY provider, source_url
+)
 ORDER BY provider ASC, source_url ASC
 """
 
@@ -198,6 +216,8 @@ class ClickHouseExternalNewsRepository(ExternalNewsRepositoryABC):
             item.event_type,
             list(item.linked_entities),
             list(item.linked_categories),
+            list(item.linked_repo_full_names),
+            list(item.linked_framework_ids),
             item.quality_score,
             int(item.is_quarantined),
             item.quarantine_reason,
@@ -279,9 +299,11 @@ class ClickHouseExternalNewsRepository(ExternalNewsRepositoryABC):
                 "event_type": row[7],
                 "linked_entities": row[8],
                 "linked_categories": row[9],
-                "quality_score": row[10],
-                "is_quarantined": bool(row[11]),
-                "quarantine_reason": row[12],
+                "linked_repo_full_names": row[10],
+                "linked_framework_ids": row[11],
+                "quality_score": row[12],
+                "is_quarantined": bool(row[13]),
+                "quarantine_reason": row[14],
             }
             for row in rows
         ]
@@ -311,9 +333,11 @@ class ClickHouseExternalNewsRepository(ExternalNewsRepositoryABC):
             "event_type": row[7],
             "linked_entities": row[8],
             "linked_categories": row[9],
-            "quality_score": row[10],
-            "is_quarantined": bool(row[11]),
-            "quarantine_reason": row[12],
+            "linked_repo_full_names": row[10],
+            "linked_framework_ids": row[11],
+            "quality_score": row[12],
+            "is_quarantined": bool(row[13]),
+            "quarantine_reason": row[14],
         }
 
     async def list_latest_source_health(self) -> list[dict[str, object]]:
