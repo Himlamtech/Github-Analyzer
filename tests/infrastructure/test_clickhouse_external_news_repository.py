@@ -31,6 +31,13 @@ async def test_upsert_items_creates_table_and_inserts_rows() -> None:
         url="https://example.com/launch",
         published_at=datetime(2026, 1, 1, 12, 0, tzinfo=UTC),
         summary="Launch summary.",
+        source_type="rss",
+        event_type="launch",
+        linked_entities=("OpenAI",),
+        linked_categories=("Coding Agents & Automation",),
+        quality_score=88.0,
+        is_quarantined=False,
+        quarantine_reason=None,
     )
 
     with patch.object(repository, "_get_client", return_value=client):
@@ -41,7 +48,76 @@ async def test_upsert_items_creates_table_and_inserts_rows() -> None:
     assert "CREATE TABLE IF NOT EXISTS external_news_items" in str(
         client.execute.call_args_list[0].args[0]
     )
-    assert "INSERT INTO external_news_items" in str(client.execute.call_args_list[2].args[0])
+    assert "linked_entities" in str(client.execute.call_args_list[2].args[0])
+    inserted_row = client.execute.call_args_list[2].args[1][0]
+    assert inserted_row[7] == "launch"
+    assert inserted_row[8] == ["OpenAI"]
+
+
+async def test_list_latest_items_returns_enriched_rows() -> None:
+    repository = _make_repository()
+    client = MagicMock()
+    client.execute.side_effect = [
+        None,
+        None,
+        [
+            (
+                "openai-1",
+                "OpenAI",
+                "Launch",
+                "https://example.com/launch",
+                datetime(2026, 1, 1, 12, 0, tzinfo=UTC),
+                "Launch summary.",
+                "rss",
+                "launch",
+                ["OpenAI"],
+                ["Coding Agents & Automation"],
+                88.0,
+                0,
+                None,
+            )
+        ],
+    ]
+
+    with patch.object(repository, "_get_client", return_value=client):
+        rows = await repository.list_latest_items(provider=None, limit=10)
+
+    assert rows[0]["source_id"] == "openai-1"
+    assert rows[0]["event_type"] == "launch"
+    assert rows[0]["linked_entities"] == ["OpenAI"]
+
+
+async def test_get_item_by_source_id_returns_parsed_row() -> None:
+    repository = _make_repository()
+    client = MagicMock()
+    client.execute.side_effect = [
+        None,
+        None,
+        [
+            (
+                "openai-1",
+                "OpenAI",
+                "Launch",
+                "https://example.com/launch",
+                datetime(2026, 1, 1, 12, 0, tzinfo=UTC),
+                "Launch summary.",
+                "rss",
+                "launch",
+                ["OpenAI"],
+                ["Coding Agents & Automation"],
+                88.0,
+                0,
+                None,
+            )
+        ],
+    ]
+
+    with patch.object(repository, "_get_client", return_value=client):
+        row = await repository.get_item_by_source_id("openai-1")
+
+    assert row is not None
+    assert row["source_id"] == "openai-1"
+    assert row["quality_score"] == 88.0
 
 
 async def test_list_latest_source_health_returns_parsed_rows() -> None:

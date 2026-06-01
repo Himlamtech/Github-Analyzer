@@ -19,3 +19,10 @@ class ExternalNewsItem:
     url: str
     published_at: datetime
     summary: str
+    source_type: str = "rss"
+    event_type: str = "news"
+    linked_entities: tuple[str, ...] = ()
+    linked_categories: tuple[str, ...] = ()
+    quality_score: float = 0.0
+    is_quarantined: bool = False
+    quarantine_reason: str | None = None

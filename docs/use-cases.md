@@ -12,9 +12,9 @@
 2. View trending repositories over the current analytical window.
 3. Inspect topic rotation to see where attention is moving.
 4. Open a repository detail overlay and load its recent time series.
-5. View curated news-impact intelligence backed by a backend contract.
+5. View computed news-impact intelligence backed by persisted official external-source items.
 6. Preview, sync, and inspect official external news sources for `NewsImpact`.
-7. View backend-served framework radar and weekly brief snapshots.
+7. View computed framework radar metrics and versioned weekly brief snapshots.
 
 ## Prioritized next use cases
 
@@ -23,9 +23,9 @@
 1. Breakout detector with real confidence and durability scoring.
 2. Ecosystem rotation by meaningful AI category, not neutral fallback labels.
 3. Adoption lag after model launch using persisted official source items.
-4. News-to-code impact tracking backed by external-source ingestion, linking, and causality scoring.
-5. Competitive radar for frameworks once scoring inputs are real.
-6. Weekly intelligence brief backed by versioned snapshots rather than static editorial payloads.
+4. Deeper news-to-code impact tracking backed by stronger entity linking and causality scoring.
+5. Competitive radar refinement using richer framework/entity marts instead of the current heuristic registry.
+6. Weekly intelligence brief backed by generated snapshots rather than only editorial payloads.
 
 ### Stability and guardrail use cases
 
@@ -56,5 +56,5 @@ New product use cases should ship in this order:
 ## Current non-goals
 
 - fully dynamic news causality engine in the frontend
-- full backend support for every curated research panel
+- fully generated intelligence for every editorial research panel
 - replacing the current editorial/research copy with generated live content

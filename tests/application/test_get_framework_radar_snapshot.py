@@ -1,4 +1,4 @@
-"""Tests for the curated framework radar snapshot use case."""
+"""Tests for the computed framework radar snapshot use case."""
 
 from __future__ import annotations
 
@@ -7,10 +7,43 @@ from src.application.use_cases.get_framework_radar_snapshot import (
 )
 
 
-def test_execute_returns_framework_radar_snapshot() -> None:
-    use_case = GetFrameworkRadarSnapshotUseCase()
+class FakeFrameworkRadarReader:
+    async def get_top_repos(
+        self,
+        category: str | None,
+        days: int,
+        limit: int,
+    ) -> list[dict[str, object]]:
+        del category, days, limit
+        return [
+            {
+                "repo_full_name": "langchain-ai/langchain",
+                "description": "Framework for LLM applications and agents.",
+                "topics": ["langchain", "agents", "llm"],
+                "stargazers_count": 110_000,
+                "open_issues_count": 120,
+                "star_count_in_window": 700,
+            }
+        ]
 
-    result = use_case.execute()
+    async def get_trending(self, days: int, limit: int) -> list[dict[str, object]]:
+        del days, limit
+        return [
+            {
+                "repo_full_name": "langchain-ai/langchain",
+                "description": "Framework for LLM applications and agents.",
+                "topics": ["langchain", "agents", "llm"],
+                "stargazers_count": 110_000,
+                "open_issues_count": 120,
+                "star_count_in_window": 700,
+            }
+        ]
+
+
+async def test_execute_returns_framework_radar_snapshot() -> None:
+    use_case = GetFrameworkRadarSnapshotUseCase(reader=FakeFrameworkRadarReader())
+
+    result = await use_case.execute()
 
     assert result.frameworks
     assert result.frameworks[0].framework_id == "langchain"

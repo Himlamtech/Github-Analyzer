@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 import pytest
@@ -30,10 +30,10 @@ class FakeDashboardService:
             "repo_full_name": "browser-use/browser-use",
             "repo_name": "browser-use",
             "html_url": "https://github.com/browser-use/browser-use",
-            "description": "Browser agents.",
+            "description": "Browser agents for operator workflows.",
             "primary_language": "Python",
             "topics": ["browser-use", "agents"],
-            "category": "Agent",
+            "category": "Coding Agents & Automation",
             "stargazers_count": 50_000,
             "watchers_count": 50_000,
             "forks_count": 2_000,
@@ -48,6 +48,31 @@ class FakeDashboardService:
             "star_count_in_window": 1_200,
         }
 
+    @staticmethod
+    def _framework_repo_item() -> dict[str, object]:
+        return {
+            "repo_id": 2,
+            "repo_full_name": "langchain-ai/langchain",
+            "repo_name": "langchain",
+            "html_url": "https://github.com/langchain-ai/langchain",
+            "description": "Framework for LLM applications and agents.",
+            "primary_language": "Python",
+            "topics": ["langchain", "agents", "llm"],
+            "category": "Developer Tooling",
+            "stargazers_count": 110_000,
+            "watchers_count": 110_000,
+            "forks_count": 16_000,
+            "open_issues_count": 120,
+            "subscribers_count": 800,
+            "owner_login": "langchain-ai",
+            "owner_avatar_url": "",
+            "license_name": "MIT",
+            "github_created_at": _NOW,
+            "github_pushed_at": _NOW,
+            "rank": 2,
+            "star_count_in_window": 700,
+        }
+
     async def get_top_starred_repos(
         self,
         *,
@@ -55,7 +80,7 @@ class FakeDashboardService:
         limit: int,
         days: int,
     ) -> list[dict[str, object]]:
-        del days
+        del days, category
         item = self._repo_item()
         item["star_count_in_window"] = 0
         return [item][:limit]
@@ -68,13 +93,15 @@ class FakeDashboardService:
         limit: int,
     ) -> list[dict[str, object]]:
         del category, days
-        return [self._repo_item()][:limit]
+        return [self._repo_item(), self._framework_repo_item()][:limit]
 
     async def get_trending(self, days: int, limit: int) -> list[dict[str, object]]:
         del days
         item = self._repo_item()
         item["growth_rank"] = 1
-        return [item][:limit]
+        framework_item = self._framework_repo_item()
+        framework_item["growth_rank"] = 2
+        return [item, framework_item][:limit]
 
     async def get_shock_movers(
         self,
@@ -84,6 +111,7 @@ class FakeDashboardService:
         percentage_limit: int,
         min_baseline_stars: int,
     ) -> dict[str, object]:
+        del absolute_limit, percentage_limit, min_baseline_stars
         item = {
             **self._repo_item(),
             "previous_star_count_in_window": 300,
@@ -98,6 +126,7 @@ class FakeDashboardService:
         }
 
     async def get_topic_rotation(self, *, days: int, limit: int) -> list[dict[str, object]]:
+        del days, limit
         return [
             {
                 "topic": "browser-use",
@@ -124,10 +153,10 @@ class FakeExternalNewsReader:
             ExternalNewsItem(
                 source_id=f"{provider.lower()}-preview-1",
                 provider=provider,
-                title=f"{provider} source preview",
+                title=f"{provider} browser agent launch",
                 url="https://example.com/preview-1",
                 published_at=_NOW,
-                summary="Official preview summary.",
+                summary="Official preview summary for browser automation agents.",
             )
         ][:limit]
 
@@ -138,10 +167,17 @@ class FakeExternalNewsRepository:
             {
                 "source_id": "openai-preview-1",
                 "provider": "OpenAI",
-                "title": "OpenAI source preview",
+                "title": "OpenAI browser agent launch",
                 "url": "https://example.com/preview-1",
                 "published_at": _NOW,
-                "summary": "Official preview summary.",
+                "summary": "Official preview summary for browser automation agents.",
+                "source_type": "rss",
+                "event_type": "launch",
+                "linked_entities": ["OpenAI", "Browser Use"],
+                "linked_categories": ["Coding Agents & Automation"],
+                "quality_score": 90.0,
+                "is_quarantined": False,
+                "quarantine_reason": None,
             }
         ]
         self.health = [
@@ -151,7 +187,7 @@ class FakeExternalNewsRepository:
                 "status": "ok",
                 "fetched_count": 1,
                 "error_message": None,
-                "checked_at": _NOW,
+                "checked_at": datetime.now(tz=UTC) - timedelta(minutes=30),
             }
         ]
 
@@ -164,6 +200,13 @@ class FakeExternalNewsRepository:
                 "url": item.url,
                 "published_at": item.published_at,
                 "summary": item.summary,
+                "source_type": item.source_type,
+                "event_type": item.event_type,
+                "linked_entities": list(item.linked_entities),
+                "linked_categories": list(item.linked_categories),
+                "quality_score": item.quality_score,
+                "is_quarantined": item.is_quarantined,
+                "quarantine_reason": item.quarantine_reason,
             }
             for item in items
         ]
@@ -195,9 +238,20 @@ class FakeExternalNewsRepository:
         *,
         provider: str | None,
         limit: int,
+        include_quarantined: bool = False,
     ) -> list[dict[str, object]]:
-        del provider
-        return self.items[:limit]
+        rows = self.items
+        if provider is not None:
+            rows = [item for item in rows if item["provider"] == provider]
+        if not include_quarantined:
+            rows = [item for item in rows if not item["is_quarantined"]]
+        return rows[:limit]
+
+    async def get_item_by_source_id(self, source_id: str) -> dict[str, object] | None:
+        for item in self.items:
+            if item["source_id"] == source_id:
+                return item
+        return None
 
     async def list_latest_source_health(self) -> list[dict[str, object]]:
         return self.health
@@ -275,7 +329,7 @@ def test_rotation_route_returns_intelligence_categories(client: TestClient) -> N
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload[0]["category"] == "Browser Use"
+    assert payload[0]["category"] == "Coding Agents & Automation"
     assert payload[0]["confidence_score"] > 0
     assert payload[0]["rotation_drivers"]
 
@@ -291,15 +345,25 @@ def test_framework_radar_route_returns_snapshot(client: TestClient) -> None:
     assert payload["warnings"]
 
 
-def test_news_impact_route_returns_curated_snapshot(client: TestClient) -> None:
+def test_news_impact_route_returns_computed_snapshot(client: TestClient) -> None:
     response = client.get("/intelligence/news-impact")
 
     assert response.status_code == 200
     payload = response.json()
     assert payload
-    assert payload[0]["event_id"] == "anthropic-computer-use-2024-10-22"
+    assert payload[0]["event_id"] == "openai-preview-1"
+    assert payload[0]["source"] == "persisted_external_news"
     assert payload[0]["impact_curve"]
     assert payload[0]["top_impacted_repos"]
+
+
+def test_news_impact_detail_route_returns_single_event(client: TestClient) -> None:
+    response = client.get("/intelligence/news-impact/openai-preview-1")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["event_id"] == "openai-preview-1"
+    assert payload["quality_score"] > 0
 
 
 def test_news_impact_readiness_route_returns_source_status(client: TestClient) -> None:
@@ -309,8 +373,12 @@ def test_news_impact_readiness_route_returns_source_status(client: TestClient) -
     payload = response.json()
     assert payload["mode"] == "hybrid"
     assert payload["status"] == "ready"
+    assert payload["freshness_status"] == "healthy"
     assert payload["configured_source_count"] == 1
     assert payload["enabled_source_count"] == 1
+    assert payload["healthy_source_count"] == 1
+    assert payload["stale_source_count"] == 0
+    assert payload["sources"][0]["freshness_status"] == "healthy"
     assert not payload["missing_requirements"]
 
 
@@ -332,6 +400,7 @@ def test_news_impact_source_sync_route_persists_items(client: TestClient) -> Non
     assert response.status_code == 200
     payload = response.json()
     assert payload["persisted_item_count"] == 1
+    assert payload["quarantined_item_count"] == 0
     assert payload["source_health"][0]["status"] == "ok"
 
 
@@ -341,6 +410,7 @@ def test_news_impact_source_latest_route_returns_persisted_items(client: TestCli
     assert response.status_code == 200
     payload = response.json()
     assert payload[0]["source_id"] == "openai-preview-1"
+    assert payload[0]["event_type"] == "launch"
 
 
 def test_news_impact_source_health_route_returns_latest_snapshots(client: TestClient) -> None:
@@ -361,6 +431,15 @@ def test_weekly_brief_route_returns_snapshot(client: TestClient) -> None:
     assert payload["pillars"]
     assert payload["summary_chart_data"]
     assert payload["regional_indicators"]
+
+
+def test_weekly_brief_archive_route_returns_history(client: TestClient) -> None:
+    response = client.get("/intelligence/weekly-brief/archive")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload[0]["brief_id"] == "weekly-signal-vol-14"
+    assert len(payload) >= 2
 
 
 def test_shock_movers_route_returns_market_lists(client: TestClient) -> None:

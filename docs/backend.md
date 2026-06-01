@@ -17,7 +17,7 @@
 
 - `ClickHouse` is the online serving source of truth.
 - `Parquet` is the archive and backfill source, not a frontend-serving path.
-- FastAPI should serve curated analytics reads rather than exposing raw-storage complexity to the frontend.
+- FastAPI should serve stable analytics and intelligence reads rather than exposing raw-storage complexity to the frontend.
 
 ## Current API surface used by the frontend
 
@@ -30,6 +30,7 @@
 - `GET /intelligence/breakout`
 - `GET /intelligence/rotation`
 - `GET /intelligence/news-impact`
+- `GET /intelligence/news-impact/{event_id}`
 - `GET /intelligence/news-impact/readiness`
 - `GET /intelligence/news-impact/sources/preview`
 - `POST /intelligence/news-impact/sources/sync`
@@ -37,12 +38,14 @@
 - `GET /intelligence/news-impact/sources/health`
 - `GET /intelligence/framework-radar`
 - `GET /intelligence/weekly-brief/latest`
+- `GET /intelligence/weekly-brief/archive`
 
 ## Current backend constraints
 
-- Dashboard category logic is currently simplified and mostly falls back to neutral classification.
-- Some intelligence views are still powered by curated snapshots rather than computed serving marts.
-- External news ingestion is now persisted, but entity linking, dedup/quarantine, and causality scoring are not complete yet.
+- Core repository category logic is still simplified in the ingestion path, but intelligence routes now map raw topics into product-facing taxonomy labels.
+- `NewsImpact` now computes serving payloads from persisted official-source items, with duplicate and low-confidence quarantine flags stored at ingestion time.
+- `FrameworkRadar` now computes framework metrics from live repository analytics inputs instead of a fixed snapshot.
+- `WeeklyBrief` now exposes versioned `latest` plus `archive` metadata, but it is still an editorial snapshot pipeline rather than a generated briefing workflow.
 - CORS now allows both `localhost:3000` and `localhost:5173` dev origins.
 
 ## Target backend direction
@@ -58,8 +61,9 @@ Examples of the next meaningful backend additions:
 - entity linking for persisted external news items
 - duplicate and low-confidence quarantine for external source content
 - causality scoring between external launch/news items and GitHub telemetry
-- framework-level computed marts for `CompetitiveRadar`
-- versioned briefing snapshots for `WeeklyBrief`
+- deeper entity-linking between external news items and repo/framework registries
+- richer framework/category marts replacing heuristic matching in the current phase
+- generated briefing snapshots on top of the current versioned weekly brief archive
 
 ## Guardrails
 
