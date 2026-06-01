@@ -105,6 +105,7 @@ services:
   frontend:
     image: gha-frontend
     container_name: github-frontend
+    user: "${UID:-1000}:${GID:-1000}"
     build:
       context: ./frontend
       dockerfile: Dockerfile

@@ -97,7 +97,7 @@ export const NewsImpact: React.FC<NewsImpactProps> = ({ events, isLoading }) => 
               <span className="text-slate-500">STATUS</span>
               <strong className="flex items-center gap-1 font-semibold uppercase text-amber-700">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                Curated snapshot
+                Hybrid live snapshot
               </strong>
             </div>
 
@@ -117,12 +117,12 @@ export const NewsImpact: React.FC<NewsImpactProps> = ({ events, isLoading }) => 
 
             <div className="space-y-2 text-[11px] leading-relaxed text-slate-600">
               <p>
-                This page now reads a backend-defined intelligence contract. The current snapshot
-                is curated until the trusted external news ingestion path is available.
+                This page now reads a backend-defined intelligence contract backed by persisted
+                official-source ingestion and server-computed lag curves.
               </p>
               <p>
-                The final production model will replace curated events with official-source event
-                ingestion, entity linking, and measured lag curves.
+                When GitHub telemetry matching is temporarily degraded, the page still serves the
+                official event stream and explains the degraded evidence path explicitly.
               </p>
             </div>
           </div>

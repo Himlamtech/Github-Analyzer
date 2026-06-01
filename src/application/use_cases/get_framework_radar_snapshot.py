@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import re
 from typing import Protocol, cast
 
 from src.application.dtos.intelligence_dto import (
@@ -10,7 +11,7 @@ from src.application.dtos.intelligence_dto import (
     FrameworkRadarSnapshotDTO,
     RadarWinnerDTO,
 )
-from src.application.intelligence_taxonomy import framework_registry
+from src.application.intelligence_taxonomy import framework_registry, titleize_token
 
 
 class FrameworkRadarDashboardReader(Protocol):
@@ -36,6 +37,20 @@ def _as_int(value: object) -> int:
 
 def _clamp(value: float, minimum: float = 0.0, maximum: float = 1.0) -> float:
     return max(minimum, min(value, maximum))
+
+
+_GENERIC_TOPIC_TOKENS = {
+    "ai",
+    "agents",
+    "agent",
+    "llm",
+    "python",
+    "typescript",
+    "javascript",
+    "tooling",
+    "framework",
+    "sdk",
+}
 
 
 class GetFrameworkRadarSnapshotUseCase:
@@ -64,41 +79,16 @@ class GetFrameworkRadarSnapshotUseCase:
             if not matched:
                 continue
 
-            total_velocity = sum(_as_float(row.get("star_count_in_window")) for row in matched)
-            total_stars = sum(_as_float(row.get("stargazers_count")) for row in matched)
-            avg_issues = sum(_as_float(row.get("open_issues_count")) for row in matched) / len(
-                matched
-            )
-            contributor_energy = min(
-                100,
-                round(total_velocity / max(len(matched), 1) / 4.0 + len(matched) * 12),
-            )
-            velocity_score = round(_clamp(total_velocity / 1200.0), 2)
-            commercial_readiness = round(
-                _clamp(total_stars / 250000.0 + 0.15 - avg_issues / 400.0), 2
-            )
             frameworks.append(
-                FrameworkRadarItemDTO(
+                self._build_framework_item(
                     framework_id=definition.framework_id,
                     framework_name=definition.framework_name,
-                    velocity_score=velocity_score,
-                    commercial_readiness_score=commercial_readiness,
-                    contributor_energy_score=contributor_energy,
-                    market_footprint=self._market_footprint(
-                        total_stars=total_stars, repo_count=len(matched)
-                    ),
-                    matched_repo_count=len(matched),
-                    representative_repos=[
-                        str(row.get("repo_full_name") or "") for row in matched[:3]
-                    ],
-                    strategic_insight_summary=self._insight_summary(
-                        framework_name=definition.framework_name,
-                        total_velocity=total_velocity,
-                        repo_count=len(matched),
-                        avg_issues=avg_issues,
-                    ),
+                    matched=matched,
                 )
             )
+
+        if not frameworks:
+            frameworks = self._build_fallback_frameworks(repo_pool)
 
         frameworks.sort(
             key=lambda item: (
@@ -135,6 +125,85 @@ class GetFrameworkRadarSnapshotUseCase:
             winners=winners,
             warnings=warnings,
         )
+
+    def _build_fallback_frameworks(
+        self, repo_pool: list[dict[str, object]]
+    ) -> list[FrameworkRadarItemDTO]:
+        grouped: dict[str, list[dict[str, object]]] = {}
+        for row in repo_pool:
+            label = self._fallback_label(row)
+            grouped.setdefault(label, []).append(row)
+
+        ranked_groups = sorted(
+            grouped.items(),
+            key=lambda item: sum(_as_float(row.get("star_count_in_window")) for row in item[1]),
+            reverse=True,
+        )
+        return [
+            self._build_framework_item(
+                framework_id=self._slugify(label),
+                framework_name=label,
+                matched=rows,
+            )
+            for label, rows in ranked_groups[:5]
+            if rows
+        ]
+
+    def _build_framework_item(
+        self,
+        *,
+        framework_id: str,
+        framework_name: str,
+        matched: list[dict[str, object]],
+    ) -> FrameworkRadarItemDTO:
+        total_velocity = sum(_as_float(row.get("star_count_in_window")) for row in matched)
+        total_stars = sum(_as_float(row.get("stargazers_count")) for row in matched)
+        avg_issues = sum(_as_float(row.get("open_issues_count")) for row in matched) / len(matched)
+        contributor_energy = min(
+            100,
+            round(total_velocity / max(len(matched), 1) / 4.0 + len(matched) * 12),
+        )
+        velocity_score = round(_clamp(total_velocity / 1200.0), 2)
+        commercial_readiness = round(
+            _clamp(total_stars / 250000.0 + 0.15 - avg_issues / 400.0), 2
+        )
+        return FrameworkRadarItemDTO(
+            framework_id=framework_id,
+            framework_name=framework_name,
+            velocity_score=velocity_score,
+            commercial_readiness_score=commercial_readiness,
+            contributor_energy_score=contributor_energy,
+            market_footprint=self._market_footprint(total_stars=total_stars, repo_count=len(matched)),
+            matched_repo_count=len(matched),
+            representative_repos=[str(row.get("repo_full_name") or "") for row in matched[:3]],
+            strategic_insight_summary=self._insight_summary(
+                framework_name=framework_name,
+                total_velocity=total_velocity,
+                repo_count=len(matched),
+                avg_issues=avg_issues,
+            ),
+        )
+
+    @staticmethod
+    def _fallback_label(row: dict[str, object]) -> str:
+        topics = [str(topic).strip() for topic in cast("list[object]", row.get("topics") or [])]
+        for topic in topics:
+            normalized = topic.lower().strip()
+            if normalized and normalized not in _GENERIC_TOPIC_TOKENS:
+                return titleize_token(topic)
+
+        category = str(row.get("category") or "").strip()
+        if category:
+            return category
+
+        repo_name = str(row.get("repo_name") or row.get("repo_full_name") or "Emerging Stack")
+        repo_tail = repo_name.split("/")[-1]
+        return titleize_token(repo_tail)
+
+    @staticmethod
+    def _slugify(value: str) -> str:
+        slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+        return f"ecosystem-{slug or 'other'}"
 
     @staticmethod
     def _repo_haystack(row: dict[str, object]) -> str:
