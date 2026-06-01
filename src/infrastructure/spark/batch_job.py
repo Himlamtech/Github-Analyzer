@@ -16,12 +16,6 @@ from typing import TYPE_CHECKING, cast
 import pyspark.sql.functions as spark_fn
 import structlog
 
-from src.infrastructure.observability.metrics import (
-    CLICKHOUSE_INSERT_ROWS_TOTAL,
-    SPARK_BATCH_DURATION_SECONDS,
-    SPARK_RECORDS_PROCESSED_TOTAL,
-)
-
 if TYPE_CHECKING:
     from pyspark.sql import DataFrame, SparkSession
 
@@ -71,7 +65,6 @@ class GithubBatchJob:
         self._write_activity_summary(raw_df)
 
         elapsed = time.monotonic() - t_start
-        SPARK_BATCH_DURATION_SECONDS.observe(elapsed)
         logger.info("github_batch_job.completed", elapsed_seconds=round(elapsed, 2))
 
     def _read_parquet(self, start_date: date, end_date: date) -> DataFrame:
@@ -118,8 +111,6 @@ class GithubBatchJob:
 
         row_count = star_df.count()
         self._jdbc_write(star_df, "repo_star_counts")
-        SPARK_RECORDS_PROCESSED_TOTAL.labels(sink="clickhouse").inc(row_count)
-        CLICKHOUSE_INSERT_ROWS_TOTAL.inc(row_count)
         logger.info("github_batch_job.star_counts_written", rows=row_count)
 
     def _write_activity_summary(self, df: DataFrame) -> None:
@@ -141,8 +132,6 @@ class GithubBatchJob:
 
         row_count = summary_df.count()
         self._jdbc_write(summary_df, "repo_activity_summary")
-        SPARK_RECORDS_PROCESSED_TOTAL.labels(sink="clickhouse").inc(row_count)
-        CLICKHOUSE_INSERT_ROWS_TOTAL.inc(row_count)
         logger.info("github_batch_job.activity_summary_written", rows=row_count)
 
     def _jdbc_write(self, df: DataFrame, table: str) -> None:

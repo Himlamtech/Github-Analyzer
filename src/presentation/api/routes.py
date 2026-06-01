@@ -1,4 +1,4 @@
-"""FastAPI route definitions for health, pipeline status, and event queries."""
+"""FastAPI route definitions for health, pipeline status, and recent events."""
 
 from __future__ import annotations
 
@@ -13,22 +13,12 @@ from pydantic import BaseModel
 import structlog
 from structlog.contextvars import bind_contextvars, clear_contextvars
 
-from src.application.dtos.github_event_dto import HourlyActivityDTO, RepoStarCountDTO
 from src.infrastructure.config import Settings, get_settings
-from src.infrastructure.observability.metrics import (
-    API_IN_FLIGHT_REQUESTS,
-    API_REQUEST_DURATION_SECONDS,
-    API_REQUESTS_TOTAL,
-    DATA_FRESHNESS_SECONDS,
-    start_metrics_server,
-)
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
-    from datetime import date
 
     from src.infrastructure.storage.clickhouse_repository import ClickHouseEventRepository
-    from src.infrastructure.storage.duckdb_query_service import DuckDBQueryService
 
 logger = structlog.get_logger(__name__)
 _PIPELINE_STALE_THRESHOLD_SECONDS = 300.0
@@ -43,6 +33,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
         "http://frontend:3000",
     ],
     allow_methods=["GET", "POST"],
@@ -51,8 +44,10 @@ app.add_middleware(
 )
 
 from src.presentation.api.dashboard_routes import router as _dashboard_router  # noqa: E402
+from src.presentation.api.intelligence_routes import router as _intelligence_router  # noqa: E402
 
 app.include_router(_dashboard_router)
+app.include_router(_intelligence_router)
 
 
 def _get_clickhouse_repo(
@@ -68,15 +63,6 @@ def _get_clickhouse_repo(
         password=settings.clickhouse_password,
         database=settings.clickhouse_database,
     )
-
-
-def _get_duckdb_service(
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> object:
-    """Construct a DuckDBQueryService for the request."""
-    from src.infrastructure.storage.duckdb_query_service import DuckDBQueryService
-
-    return DuckDBQueryService(base_path=settings.parquet_base_path)
 
 
 class HealthResponse(BaseModel):
@@ -105,39 +91,13 @@ class EventSummaryResponse(BaseModel):
     created_at: str
 
 
-@app.on_event("startup")
-async def _startup() -> None:
-    """Start Prometheus metrics HTTP server on startup."""
-    from src.infrastructure.storage.clickhouse_repo_observation_bootstrap import (
-        ClickHouseRepoObservationBootstrapService,
-    )
-
-    settings = get_settings()
-    try:
-        start_metrics_server(port=settings.metrics_port)
-        logger.info("api.metrics_server_started", port=settings.metrics_port)
-    except OSError as exc:
-        logger.warning("api.metrics_server_port_busy", error=str(exc))
-    try:
-        await ClickHouseRepoObservationBootstrapService(
-            host=settings.clickhouse_host,
-            port=settings.clickhouse_port,
-            user=settings.clickhouse_user,
-            password=settings.clickhouse_password,
-            database=settings.clickhouse_database,
-        ).execute()
-    except Exception as exc:
-        logger.error("api.clickhouse_repo_observation_bootstrap_failed", error=str(exc))
-
-
 @app.middleware("http")
 async def _instrument_request(
     request: Request,
     call_next: Callable[[Request], Awaitable[Response]],
 ) -> Response:
-    """Record HTTP metrics and expose the request ID in responses."""
+    """Bind request context and expose the request ID in responses."""
     start_time = time.perf_counter()
-    API_IN_FLIGHT_REQUESTS.inc()
     request_id = request.headers.get("X-Request-ID", str(uuid4()))
     route_template = request.scope.get("route")
     route_path = getattr(route_template, "path", request.url.path)
@@ -149,24 +109,9 @@ async def _instrument_request(
         http_path=request.url.path,
     )
 
-    try:
-        response = await call_next(request)
-    finally:
-        API_IN_FLIGHT_REQUESTS.dec()
+    response = await call_next(request)
 
     elapsed = time.perf_counter() - start_time
-    status_code = str(response.status_code)
-
-    API_REQUESTS_TOTAL.labels(
-        method=request.method,
-        route=route_path,
-        status_code=status_code,
-    ).inc()
-    API_REQUEST_DURATION_SECONDS.labels(
-        method=request.method,
-        route=route_path,
-        status_code=status_code,
-    ).observe(elapsed)
 
     response.headers["X-Request-Id"] = request_id
     bind_contextvars(
@@ -212,7 +157,6 @@ async def pipeline_status(
         ch_ok = True
         if max_ts is not None:
             freshness = time.time() - max_ts
-            DATA_FRESHNESS_SECONDS.set(freshness)
     except Exception as exc:
         logger.warning("api.clickhouse_health_check_failed", error=str(exc))
 
@@ -264,71 +208,3 @@ async def get_latest_events(
         )
         for e in filtered[:limit]
     ]
-
-
-@app.get(
-    "/events/top-repos",
-    response_model=list[RepoStarCountDTO],
-    tags=["Analytics"],
-)
-async def get_top_repos(
-    duckdb_svc: Annotated[object, Depends(_get_duckdb_service)],
-    days: Annotated[int, Query(ge=1, le=90)] = 7,
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-) -> list[RepoStarCountDTO]:
-    """Return the top repositories by star count over the last N days."""
-    svc = cast("DuckDBQueryService", duckdb_svc)
-    try:
-        return await svc.get_top_repos_by_stars(days=days, limit=limit)
-    except Exception as exc:
-        logger.error("api.get_top_repos_failed", error=str(exc))
-        raise HTTPException(status_code=503, detail="Query failed") from exc
-
-
-@app.get(
-    "/events/volume",
-    response_model=dict[str, int],
-    tags=["Analytics"],
-)
-async def get_event_volume(
-    duckdb_svc: Annotated[object, Depends(_get_duckdb_service)],
-    query_date: Annotated[date | None, Query()] = None,
-) -> dict[str, int]:
-    """Return event type distribution for a given UTC date."""
-    from datetime import datetime
-
-    svc = cast("DuckDBQueryService", duckdb_svc)
-    target_date = query_date or datetime.now(tz=UTC).date()
-
-    try:
-        return await svc.get_event_volume_by_type(target_date)
-    except Exception as exc:
-        logger.error("api.get_event_volume_failed", error=str(exc))
-        raise HTTPException(status_code=503, detail="Query failed") from exc
-
-
-@app.get(
-    "/events/hourly",
-    response_model=list[HourlyActivityDTO],
-    tags=["Analytics"],
-)
-async def get_hourly_activity(
-    duckdb_svc: Annotated[object, Depends(_get_duckdb_service)],
-    repo_name: Annotated[str, Query(min_length=3)],
-    query_date: Annotated[date | None, Query()] = None,
-) -> list[HourlyActivityDTO]:
-    """Return per-hour event counts for a specific repository."""
-    from datetime import datetime
-
-    svc = cast("DuckDBQueryService", duckdb_svc)
-    target_date = query_date or datetime.now(tz=UTC).date()
-
-    try:
-        return await svc.get_hourly_activity(repo_name=repo_name, query_date=target_date)
-    except Exception as exc:
-        logger.error(
-            "api.get_hourly_activity_failed",
-            repo=repo_name,
-            error=str(exc),
-        )
-        raise HTTPException(status_code=503, detail="Query failed") from exc

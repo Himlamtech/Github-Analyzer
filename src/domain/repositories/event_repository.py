@@ -76,7 +76,7 @@ class EventRepositoryABC(ABC):
     async def get_max_created_at(self) -> float | None:
         """Return the Unix timestamp of the most recent stored event.
 
-        Used to compute the data-freshness Prometheus gauge.
+        Used to compute the latest ingested-event timestamp.
 
         Returns:
             Unix epoch float, or ``None`` if no events are stored yet.

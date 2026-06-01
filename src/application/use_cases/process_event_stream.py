@@ -79,14 +79,12 @@ class ProcessEventStreamUseCase:
 async def _main() -> None:
     """Composition root for standalone execution via ``make process``."""
     from src.infrastructure.config import get_settings
-    from src.infrastructure.observability.logging_config import configure_logging
-    from src.infrastructure.observability.metrics import start_metrics_server
+    from src.infrastructure.logging_config import configure_logging
     from src.infrastructure.spark.session_factory import create_spark_session
     from src.infrastructure.spark.streaming_job import GithubStreamingJob
 
     settings = get_settings()
     configure_logging(settings.log_level)
-    start_metrics_server(settings.metrics_port)
 
     spark = create_spark_session(settings)
     streaming_job = GithubStreamingJob(spark=spark, settings=settings)

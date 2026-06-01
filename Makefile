@@ -1,4 +1,4 @@
-.PHONY: setup bootstrap-clickhouse stream process query monitor discover-repos sync-repos frontend-dev frontend-build frontend-type-check test lint format clean help
+.PHONY: setup bootstrap-clickhouse stream process discover-repos sync-repos frontend-dev frontend-build frontend-type-check test lint format clean help
 
 PYTHON := uv run python
 PYTEST := uv run pytest
@@ -19,7 +19,7 @@ PARQUET_DIR    := ./data/raw
 setup: ## Bring up Docker stack, create Kafka topic, init ClickHouse tables
 	@mkdir -p $(DATA_DIR) $(CHECKPOINT_DIR) $(PARQUET_DIR)
 	@echo "▶ Starting Docker services..."
-	docker compose up -d zookeeper kafka clickhouse prometheus grafana api frontend
+	docker compose up -d zookeeper kafka clickhouse api frontend
 	@echo "▶ Waiting for Kafka to be healthy..."
 	@until docker compose exec -T kafka kafka-broker-api-versions --bootstrap-server localhost:9092 > /dev/null 2>&1; do \
 		echo "  Kafka not ready, retrying in 5s..."; sleep 5; done
@@ -51,16 +51,6 @@ process: ## Start Spark Structured Streaming job (Kafka → Parquet + ClickHouse
 	@echo "▶ Starting Spark Structured Streaming job..."
 	$(PYTHON) -m src.application.use_cases.process_event_stream
 
-query: ## Launch DuckDB interactive shell on Parquet files
-	@echo "▶ Opening DuckDB shell on $(PARQUET_DIR)..."
-	$(PYTHON) -c "import duckdb; duckdb.connect(':memory:').execute(\"SELECT * FROM read_parquet('$(PARQUET_DIR)/**/*.parquet', hive_partitioning=true, union_by_name=true) LIMIT 10\").show()"
-	@echo "Tip: Run 'python -m src.infrastructure.storage.duckdb_query_service' for interactive mode."
-
-monitor: ## Open Grafana dashboard in browser
-	@echo "▶ Opening Grafana at http://localhost:3001 (admin / \$$GRAFANA_PASSWORD)"
-	@xdg-open http://localhost:3001 2>/dev/null || open http://localhost:3001 2>/dev/null || \
-		echo "Navigate to http://localhost:3001"
-
 ## ── Phase 2 ─────────────────────────────────────────────────────────────────
 
 discover-repos: ## Build or refresh the high-star repository catalog from GitHub Search
@@ -79,12 +69,12 @@ enrich-repos: ## One-shot enrichment script: top repos from events → repo_meta
 	@echo "▶ Running standalone repo enrichment script..."
 	$(PYTHON) scripts/enrich_repos_from_events.py --limit 100
 
-frontend-dev: ## Start Next.js dev server on http://localhost:3000
-	@echo "▶ Starting Next.js dev server..."
+frontend-dev: ## Start Vite dev server on http://localhost:3000
+	@echo "▶ Starting Vite dev server..."
 	cd frontend && npm run dev
 
-frontend-build: ## Build Next.js production bundle
-	@echo "▶ Building Next.js frontend..."
+frontend-build: ## Build Vite production bundle
+	@echo "▶ Building Vite frontend..."
 	cd frontend && npm run build
 
 frontend-type-check: ## Run TypeScript type checker on frontend

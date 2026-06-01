@@ -5,12 +5,10 @@
 # SCHEDULE : */5 * * * *  (every 5 minutes)
 # PURPOSE  : Check Kafka consumer group lag for github_raw_events topic.
 #            Logs a WARNING if total lag exceeds threshold (default 50,000).
-#            Exports lag value to Prometheus pushgateway if PUSHGATEWAY_URL set.
 #
 # DOMAIN   : Infrastructure layer — Kafka consumer lag monitoring
 #            Reads  : kafka consumer-groups describe (via kafka-consumer-groups.sh)
 #            Writes : scheduler/logs/02_kafka_lag_check.log
-#                     Prometheus pushgateway (optional)
 #
 # IDEMPOTENT: YES — read-only, no side effects.
 # =============================================================================
@@ -59,14 +57,4 @@ log_info "Consumer group '${CONSUMER_GROUP}' total lag: ${TOTAL_LAG}"
 # ── Threshold check ───────────────────────────────────────────────────────────
 if (( TOTAL_LAG > LAG_THRESHOLD )); then
   log_warn "LAG ALERT: ${TOTAL_LAG} > threshold ${LAG_THRESHOLD} — Spark streaming may be falling behind"
-fi
-
-# ── Optional: push to Prometheus pushgateway ─────────────────────────────────
-if [[ -n "${PUSHGATEWAY_URL:-}" ]]; then
-  cat <<METRICS | curl -s --data-binary @- "${PUSHGATEWAY_URL}/metrics/job/github_analyzer/instance/kafka_lag" > /dev/null
-# HELP kafka_consumer_lag_total Total consumer group lag for github_raw_events
-# TYPE kafka_consumer_lag_total gauge
-kafka_consumer_lag_total{group="${CONSUMER_GROUP}",topic="${TOPIC}"} ${TOTAL_LAG}
-METRICS
-  log_info "Pushed kafka_consumer_lag_total=${TOTAL_LAG} to pushgateway"
 fi

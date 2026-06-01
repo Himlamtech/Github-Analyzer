@@ -33,13 +33,6 @@ from src.domain.exceptions import (
     RateLimitExceededError,
 )
 from src.infrastructure.github.repo_fetcher import map_repo_response
-from src.infrastructure.observability.metrics import (
-    GITHUB_API_RATE_LIMIT_REMAINING,
-    GITHUB_API_RATE_LIMIT_RESET_AT_SECONDS,
-    GITHUB_API_REQUESTS_TOTAL,
-    GITHUB_API_TOKEN_CONFIGURED_INFO,
-    GITHUB_API_TOKEN_EXHAUSTED,
-)
 
 logger = structlog.get_logger(__name__)
 
@@ -73,14 +66,9 @@ class _TokenState:
         """Update rate-limit state from GitHub response headers."""
         if remaining := headers.get("x-ratelimit-remaining"):
             self.remaining = int(remaining)
-            GITHUB_API_RATE_LIMIT_REMAINING.labels(token_index=self.index).set(self.remaining)
         if reset_epoch := headers.get("x-ratelimit-reset"):
             reset_at_epoch = float(reset_epoch)
             self.reset_at = reset_at_epoch - time.time() + time.monotonic()
-            GITHUB_API_RATE_LIMIT_RESET_AT_SECONDS.labels(token_index=self.index).set(
-                reset_at_epoch
-            )
-        GITHUB_API_TOKEN_EXHAUSTED.labels(token_index=self.index).set(int(self.is_exhausted()))
 
 
 class GitHubClient:
@@ -113,7 +101,6 @@ class GitHubClient:
             },
             follow_redirects=True,
         )
-        self._initialize_token_metrics()
 
     async def __aenter__(self) -> GitHubClient:
         return self
@@ -151,17 +138,6 @@ class GitHubClient:
         wait_seconds = max(0.0, earliest_reset - time.monotonic())
         raise RateLimitExceededError(reset_at_seconds=wait_seconds)
 
-    def _initialize_token_metrics(self) -> None:
-        """Emit baseline Prometheus series for every configured GitHub token."""
-        for state in self._states:
-            GITHUB_API_TOKEN_CONFIGURED_INFO.labels(token_index=state.index).set(1)
-            GITHUB_API_RATE_LIMIT_REMAINING.labels(token_index=state.index).set(state.remaining)
-            reset_at_epoch = time.time() + max(0.0, state.reset_at - time.monotonic())
-            GITHUB_API_RATE_LIMIT_RESET_AT_SECONDS.labels(token_index=state.index).set(
-                reset_at_epoch
-            )
-            GITHUB_API_TOKEN_EXHAUSTED.labels(token_index=state.index).set(0)
-
     async def _get(
         self, endpoint: str, state: _TokenState
     ) -> tuple[int, list[dict[str, object]] | None, httpx.Headers]:
@@ -178,7 +154,6 @@ class GitHubClient:
 
         response = await self._http_client.get(endpoint, headers=request_headers)
         status = response.status_code
-        GITHUB_API_REQUESTS_TOTAL.labels(token_index=state.index, status_code=str(status)).inc()
         state.update_from_headers(response.headers)
 
         if status == 304:
@@ -227,7 +202,6 @@ class GitHubClient:
             headers={"Authorization": f"Bearer {state.token}"},
         )
         status = response.status_code
-        GITHUB_API_REQUESTS_TOTAL.labels(token_index=state.index, status_code=str(status)).inc()
         state.update_from_headers(response.headers)
 
         if not response.is_success:
@@ -280,10 +254,6 @@ class GitHubClient:
             },
         )
         status = response.status_code
-        GITHUB_API_REQUESTS_TOTAL.labels(
-            token_index=state.index,
-            status_code=str(status),
-        ).inc()
         state.update_from_headers(response.headers)
 
         if status == 401:

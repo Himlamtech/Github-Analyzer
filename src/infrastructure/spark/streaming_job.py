@@ -17,12 +17,6 @@ from typing import TYPE_CHECKING, Any
 from pyspark.sql import DataFrame, SparkSession, functions
 import structlog
 
-from src.infrastructure.observability.metrics import (
-    SPARK_BATCH_DURATION_SECONDS,
-    SPARK_PARQUET_FILE_COUNT,
-    SPARK_PARQUET_FILES_WRITTEN_TOTAL,
-    SPARK_RECORDS_PROCESSED_TOTAL,
-)
 from src.infrastructure.spark.schemas import GITHUB_EVENT_SCHEMA
 
 logger = structlog.get_logger(__name__)
@@ -130,7 +124,7 @@ class GithubStreamingJob:
         """Build the Parquet write stream.
 
         Partitions output by ``event_date`` and ``event_type`` for efficient
-        DuckDB partition pruning.
+        archive scans and backfill reads.
 
         Args:
             parsed: Typed streaming DataFrame.
@@ -200,11 +194,6 @@ class GithubStreamingJob:
         after_file_count = self._count_parquet_files(parquet_base_path, partitions)
         files_written = max(0, after_file_count - before_file_count)
         elapsed = time.monotonic() - t_start
-
-        SPARK_BATCH_DURATION_SECONDS.observe(elapsed)
-        SPARK_RECORDS_PROCESSED_TOTAL.labels(sink="parquet").inc(row_count)
-        SPARK_PARQUET_FILES_WRITTEN_TOTAL.inc(files_written)
-        SPARK_PARQUET_FILE_COUNT.set(after_file_count)
 
         logger.info(
             "spark_streaming_job.parquet_batch_written",
@@ -320,8 +309,6 @@ class GithubStreamingJob:
                     )
 
                 elapsed = time.monotonic() - t_start
-                SPARK_BATCH_DURATION_SECONDS.observe(elapsed)
-                SPARK_RECORDS_PROCESSED_TOTAL.labels(sink="clickhouse").inc(row_count)
 
                 logger.info(
                     "spark_streaming_job.clickhouse_batch_written",

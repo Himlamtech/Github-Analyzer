@@ -4,7 +4,7 @@
 #
 # SCHEDULE : */5 * * * *  (every 5 minutes)
 # PURPOSE  : Comprehensive health check for all pipeline components:
-#              1. Docker containers (kafka, clickhouse, prometheus, grafana)
+#              1. Docker containers (kafka, clickhouse, api, frontend)
 #              2. Kafka topic existence + partition count
 #              3. ClickHouse HTTP ping + table row counts
 #              4. Parquet base path existence + recent partition check
@@ -58,7 +58,7 @@ record_check() {
 }
 
 # ── 1. Docker container checks ────────────────────────────────────────────────
-for service in kafka clickhouse prometheus grafana; do
+for service in kafka clickhouse api frontend; do
   CONTAINER_STATE=$(
     ${DOCKER_COMPOSE} ps "${service}" 2>/dev/null \
     | awk 'NR>1 {print $0}' \

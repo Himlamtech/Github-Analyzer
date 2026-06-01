@@ -12,11 +12,6 @@ from src.domain.exceptions import (
     RateLimitExceededError,
 )
 from src.infrastructure.github.client import GitHubClient, _TokenState
-from src.infrastructure.observability.metrics import (
-    GITHUB_API_RATE_LIMIT_REMAINING,
-    GITHUB_API_TOKEN_CONFIGURED_INFO,
-    GITHUB_API_TOKEN_EXHAUSTED,
-)
 
 
 class TestTokenState:
@@ -55,15 +50,13 @@ class TestTokenState:
 class TestGitHubClientTokenPool:
     """Tests for round-robin token selection and circuit breaker."""
 
-    def test_initializes_metrics_for_every_configured_token(self) -> None:
+    def test_initializes_state_for_every_configured_token(self) -> None:
         client = GitHubClient(tokens=["tok1", "tok2", "tok3"])
 
         assert len(client._states) == 3
-        assert GITHUB_API_TOKEN_CONFIGURED_INFO.labels(token_index=0)._value.get() == 1
-        assert GITHUB_API_TOKEN_CONFIGURED_INFO.labels(token_index=1)._value.get() == 1
-        assert GITHUB_API_TOKEN_CONFIGURED_INFO.labels(token_index=2)._value.get() == 1
-        assert GITHUB_API_RATE_LIMIT_REMAINING.labels(token_index=2)._value.get() == 5000
-        assert GITHUB_API_TOKEN_EXHAUSTED.labels(token_index=1)._value.get() == 0
+        assert [state.index for state in client._states] == [0, 1, 2]
+        assert [state.remaining for state in client._states] == [5000, 5000, 5000]
+        assert all(state.is_exhausted() is False for state in client._states)
 
     def test_raises_rate_limit_error_when_all_tokens_exhausted(self) -> None:
         """All-exhausted token pool must raise RateLimitExceededError."""

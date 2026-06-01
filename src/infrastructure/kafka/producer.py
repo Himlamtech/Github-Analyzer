@@ -18,10 +18,6 @@ import orjson
 import structlog
 
 from src.domain.exceptions import ProducerException
-from src.infrastructure.observability.metrics import (
-    KAFKA_MESSAGES_PRODUCED_TOTAL,
-    KAFKA_PRODUCER_ERROR_TOTAL,
-)
 
 logger = structlog.get_logger(__name__)
 
@@ -120,7 +116,6 @@ class KafkaEventProducer:
                 key=key,
                 value=value,
             )
-            KAFKA_MESSAGES_PRODUCED_TOTAL.labels(topic=self._topic).inc()
             logger.debug(
                 "kafka_producer.published",
                 topic=self._topic,
@@ -128,19 +123,14 @@ class KafkaEventProducer:
                 repo_name=event.repo_name,
             )
         except KafkaTimeoutError as exc:
-            KAFKA_PRODUCER_ERROR_TOTAL.labels(topic=self._topic, error_type="timeout").inc()
             raise ProducerException(
                 f"Kafka publish timed out for event {event.event_id}: {exc}"
             ) from exc
         except ProducerClosed as exc:
-            KAFKA_PRODUCER_ERROR_TOTAL.labels(
-                topic=self._topic, error_type="producer_closed"
-            ).inc()
             raise ProducerException(
                 f"Kafka producer was closed while publishing event {event.event_id}: {exc}"
             ) from exc
         except (KafkaError, RuntimeError, OSError) as exc:
-            KAFKA_PRODUCER_ERROR_TOTAL.labels(topic=self._topic, error_type="kafka").inc()
             raise ProducerException(
                 f"Kafka publish failed for event {event.event_id}: {exc}"
             ) from exc

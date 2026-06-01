@@ -304,7 +304,6 @@ class TestPollGithubEventsUseCaseErrorHandling:
 async def test_main_wires_dependencies_and_executes_use_case() -> None:
     settings = SimpleNamespace(
         log_level="INFO",
-        metrics_port=9091,
         kafka_bootstrap_servers="localhost:9092",
         kafka_retention_hours=168,
         kafka_topic="github_raw_events",
@@ -321,11 +320,8 @@ async def test_main_wires_dependencies_and_executes_use_case() -> None:
     config_module = ModuleType("src.infrastructure.config")
     config_module.get_settings = lambda: settings  # type: ignore[attr-defined]
 
-    logging_module = ModuleType("src.infrastructure.observability.logging_config")
+    logging_module = ModuleType("src.infrastructure.logging_config")
     logging_module.configure_logging = lambda level: None  # type: ignore[attr-defined]
-
-    metrics_module = ModuleType("src.infrastructure.observability.metrics")
-    metrics_module.start_metrics_server = lambda port: None  # type: ignore[attr-defined]
 
     github_client_module = ModuleType("src.infrastructure.github.client")
 
@@ -369,8 +365,7 @@ async def test_main_wires_dependencies_and_executes_use_case() -> None:
             sys.modules,
             {
                 "src.infrastructure.config": config_module,
-                "src.infrastructure.observability.logging_config": logging_module,
-                "src.infrastructure.observability.metrics": metrics_module,
+                "src.infrastructure.logging_config": logging_module,
                 "src.infrastructure.github.client": github_client_module,
                 "src.infrastructure.github.event_filter": filter_module,
                 "src.infrastructure.github.event_mapper": mapper_module,

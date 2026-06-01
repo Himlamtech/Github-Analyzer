@@ -106,10 +106,6 @@ class ClickHouseBackfillError(StorageError):
     """Failed to bootstrap ClickHouse tables from the local Parquet archive."""
 
 
-class DuckDBQueryError(StorageError):
-    """Failed to execute a DuckDB analytical query."""
-
-
 class SparkJobError(DomainException):
     """Spark structured streaming or batch job failed."""
 
@@ -124,3 +120,7 @@ class RepoMetadataParseError(ValidationError):
 
 class DashboardQueryError(StorageError):
     """A dashboard analytical query against ClickHouse failed."""
+
+
+class ExternalSourceError(DomainException):
+    """Failed to read or parse an official external intelligence source."""

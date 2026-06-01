@@ -101,7 +101,7 @@ def test_on_shutdown_sets_event_and_stops_job() -> None:
 
 @pytest.mark.asyncio
 async def test_main_wires_dependencies_and_executes_use_case() -> None:
-    settings = SimpleNamespace(log_level="INFO", metrics_port=9091)
+    settings = SimpleNamespace(log_level="INFO")
     spark = object()
     execute_mock = AsyncMock()
     streaming_job_instances: list[object] = []
@@ -109,11 +109,8 @@ async def test_main_wires_dependencies_and_executes_use_case() -> None:
     config_module = ModuleType("src.infrastructure.config")
     config_module.get_settings = lambda: settings  # type: ignore[attr-defined]
 
-    logging_module = ModuleType("src.infrastructure.observability.logging_config")
+    logging_module = ModuleType("src.infrastructure.logging_config")
     logging_module.configure_logging = lambda level: None  # type: ignore[attr-defined]
-
-    metrics_module = ModuleType("src.infrastructure.observability.metrics")
-    metrics_module.start_metrics_server = lambda port: None  # type: ignore[attr-defined]
 
     session_factory_module = ModuleType("src.infrastructure.spark.session_factory")
     session_factory_module.create_spark_session = lambda cfg: spark  # type: ignore[attr-defined]
@@ -142,8 +139,7 @@ async def test_main_wires_dependencies_and_executes_use_case() -> None:
             sys.modules,
             {
                 "src.infrastructure.config": config_module,
-                "src.infrastructure.observability.logging_config": logging_module,
-                "src.infrastructure.observability.metrics": metrics_module,
+                "src.infrastructure.logging_config": logging_module,
                 "src.infrastructure.spark.session_factory": session_factory_module,
                 "src.infrastructure.spark.streaming_job": streaming_module,
             },

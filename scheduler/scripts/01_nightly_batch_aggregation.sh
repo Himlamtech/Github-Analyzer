@@ -52,7 +52,7 @@ os.chdir("${PROJECT_ROOT}")
 sys.path.insert(0, "${PROJECT_ROOT}")
 
 from src.infrastructure.config import get_settings
-from src.infrastructure.observability.logging_config import configure_logging
+from src.infrastructure.logging_config import configure_logging
 from src.infrastructure.spark.session_factory import create_spark_session
 from src.infrastructure.spark.batch_job import GithubBatchJob
 

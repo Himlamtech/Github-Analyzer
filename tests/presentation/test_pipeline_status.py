@@ -75,3 +75,20 @@ def test_pipeline_status_healthy_pipeline_returns_healthy(
 
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/events/top-repos",
+        "/events/volume",
+        "/events/hourly",
+    ],
+)
+def test_removed_legacy_public_analytics_routes_return_404(
+    client: TestClient,
+    path: str,
+) -> None:
+    response = client.get(path)
+
+    assert response.status_code == 404

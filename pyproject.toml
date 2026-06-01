@@ -18,16 +18,12 @@ dependencies = [
     "pyspark==3.5.1",
     # ClickHouse
     "clickhouse-driver>=0.2.9",
-    # DuckDB
-    "duckdb>=1.0.0",
     # API
     "fastapi>=0.111.0",
     "uvicorn[standard]>=0.30.0",
     # Config
     "pydantic>=2.7.0",
     "pydantic-settings>=2.3.0",
-    # Observability
-    "prometheus-client>=0.20.0",
     "structlog>=24.2.0",
     # Async utilities
     "anyio>=4.4.0",
@@ -90,10 +86,8 @@ plugins = ["pydantic.mypy"]
 module = [
     "aiokafka.*",
     "clickhouse_driver.*",
-    "duckdb.*",
     "pyspark.*",
     "structlog.*",
-    "prometheus_client.*",
 ]
 ignore_missing_imports = true
 

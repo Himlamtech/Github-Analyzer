@@ -3,12 +3,11 @@
 DTOs cross layer boundaries without exposing domain internals.
 ``GithubEventInputDTO``: raw API payload → validated structure for use cases.
 ``GithubEventOutputDTO``: domain entity → serialised form for Kafka / API.
-``RepoStarCountDTO`` / ``HourlyActivityDTO``: query result shapes for DuckDB.
 """
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -69,22 +68,3 @@ class GithubEventOutputDTO(BaseModel):
     repo_primary_language: str = ""
     repo_topics: list[str] = Field(default_factory=list)
     repo_description: str = ""
-
-
-class RepoStarCountDTO(BaseModel):
-    """Result shape for top-repos-by-stars DuckDB query."""
-
-    model_config = ConfigDict(frozen=True)
-
-    repo_name: str
-    event_date: date
-    star_count: int
-
-
-class HourlyActivityDTO(BaseModel):
-    """Result shape for hourly-activity DuckDB query."""
-
-    model_config = ConfigDict(frozen=True)
-
-    hour: int = Field(..., ge=0, le=23)
-    event_count: int = Field(..., ge=0)
