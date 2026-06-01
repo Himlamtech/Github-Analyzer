@@ -49,6 +49,8 @@ export interface NewsImpactEvent {
   causalityScore: number;
   codeImpactMetric: string;
   narrativeText: string;
+  linkedEntities: string[];
+  topImpactedRepos: string[];
   codeTrendData: { time: string; value: number }[];
 }
 
@@ -230,6 +232,29 @@ export interface BreakoutRepositoryResponse {
   unique_actors_7d: number;
   event_count_7d: number;
   star_gain_vs_previous_window: number;
+  explanation_trace: string[];
+  last_computed_at: string;
+}
+
+export interface NewsImpactCurvePointResponse {
+  time_bucket: string;
+  value: number;
+}
+
+export interface NewsImpactEventResponse {
+  event_id: string;
+  source: string;
+  headline: string;
+  published_at: string;
+  provider: string;
+  event_type: string;
+  linked_entities: string[];
+  linked_categories: string[];
+  causality_score: number;
+  lag_hours: number;
+  impact_summary: string;
+  impact_curve: NewsImpactCurvePointResponse[];
+  top_impacted_repos: string[];
   explanation_trace: string[];
   last_computed_at: string;
 }

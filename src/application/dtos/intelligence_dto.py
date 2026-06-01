@@ -166,3 +166,52 @@ class NewsImpactEventDTO(BaseModel):
     top_impacted_repos: list[str]
     explanation_trace: list[str]
     last_computed_at: datetime
+
+
+class NewsImpactSourceDTO(BaseModel):
+    """Configured upstream source for news-impact ingestion readiness."""
+
+    model_config = ConfigDict(frozen=True)
+
+    provider: str
+    url: str
+    source_type: str
+    enabled: bool
+
+
+class NewsImpactReadinessDTO(BaseModel):
+    """Operational readiness snapshot for external news-impact ingestion."""
+
+    model_config = ConfigDict(frozen=True)
+
+    mode: str
+    sync_enabled: bool
+    configured_source_count: int = Field(..., ge=0)
+    enabled_source_count: int = Field(..., ge=0)
+    status: str
+    missing_requirements: list[str]
+    sources: list[NewsImpactSourceDTO]
+
+
+class ExternalNewsPreviewItemDTO(BaseModel):
+    """Single latest item fetched from an official external news source."""
+
+    model_config = ConfigDict(frozen=True)
+
+    source_id: str
+    provider: str
+    title: str
+    url: str
+    published_at: datetime
+    summary: str
+
+
+class ExternalNewsSourcePreviewDTO(BaseModel):
+    """Preview payload for a configured official external source."""
+
+    model_config = ConfigDict(frozen=True)
+
+    provider: str
+    url: str
+    source_type: str
+    items: list[ExternalNewsPreviewItemDTO]

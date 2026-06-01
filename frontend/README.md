@@ -20,6 +20,7 @@ cp .env.example .env
 Available variables:
 
 - `VITE_API_BASE_URL`: FastAPI base URL, default `http://localhost:8000`
+- `VITE_ALLOWED_HOSTS`: Comma-separated extra hosts allowed by the Vite dev server, default includes `github.chipthoc.com`
 
 ## Commands
 

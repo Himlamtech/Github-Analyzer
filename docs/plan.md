@@ -14,13 +14,14 @@ The immediate goal is not to build every intelligence surface at once. The goal 
 - FastAPI exposes health and dashboard analytics routes.
 - The new Vite/React frontend is the active frontend.
 - `Overview` and `BreakoutDetector` already consume live backend data.
-- `EcosystemRotation` can use live topic rotation data partially.
+- `EcosystemRotation` uses the backend rotation intelligence contract partially.
+- `CompetitiveRadar`, `WeeklyBrief`, and `NewsImpact` now have curated backend snapshot contracts.
 
 ### Missing today
 
-- No intelligence-specific backend contracts for `NewsImpact`.
-- No framework-radar backend model for `CompetitiveRadar`.
-- No weekly-brief backend model or editorial snapshot contract.
+- No trusted external-source ingestion layer for `NewsImpact` yet.
+- `CompetitiveRadar` is still a curated backend snapshot, not a computed framework model.
+- `WeeklyBrief` is still a curated backend snapshot, not a generated/versioned editorial pipeline.
 - Category logic is still too neutral for real AI ecosystem intelligence.
 - Most advanced frontend metrics are still derived or curated rather than computed from named server-side models.
 
@@ -196,6 +197,12 @@ Turn `NewsImpact` into a real product feature backed by external-source ingestio
 ### Missing dependency
 
 The project currently does not have a trusted external news/launch ingestion layer.
+
+### Implemented foundation now
+
+- `GET /intelligence/news-impact` exists as a curated backend snapshot contract.
+- `GET /intelligence/news-impact/readiness` now exposes configured mode, source count, and missing prerequisites for live ingestion.
+- `GET /intelligence/news-impact/sources/preview` now fetches latest items from enabled official RSS/Atom feeds.
 
 ### Proposed backend scope
 

@@ -9,6 +9,8 @@ import type {
   FrameworkRadarItemResponse,
   FrameworkRadarSnapshot,
   FrameworkRadarSnapshotResponse,
+  NewsImpactEvent,
+  NewsImpactEventResponse,
   PipelineStatus,
   PipelineStatusResponse,
   RepoTimeseriesPoint,
@@ -207,6 +209,31 @@ function toEcosystemCategory(row: RotationCategoryResponse): EcosystemCategory {
   };
 }
 
+function toNewsImpactEvent(row: NewsImpactEventResponse): NewsImpactEvent {
+  return {
+    id: row.event_id,
+    date: new Date(row.published_at).toLocaleDateString('en-US', {
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }),
+    timeOffset: `${row.lag_hours} Hours After`,
+    headline: row.headline,
+    category: row.linked_categories[0] ?? row.event_type,
+    summary: row.explanation_trace[0] ?? row.impact_summary,
+    causalityScore: Math.round(row.causality_score),
+    codeImpactMetric: row.impact_summary,
+    narrativeText: row.explanation_trace.join(' '),
+    linkedEntities: row.linked_entities,
+    topImpactedRepos: row.top_impacted_repos,
+    codeTrendData: row.impact_curve.map((point) => ({
+      time: point.time_bucket,
+      value: point.value,
+    })),
+  };
+}
+
 function toFrameworkRadarItem(row: FrameworkRadarItemResponse): FrameworkRadarItem {
   return {
     id: row.framework_id,
@@ -279,6 +306,12 @@ export async function fetchFrameworkRadarSnapshot(): Promise<FrameworkRadarSnaps
     winners: snapshot.winners,
     warnings: snapshot.warnings,
   };
+}
+
+export async function fetchNewsImpactEvents(): Promise<NewsImpactEvent[]> {
+  const rows = await requestJson<NewsImpactEventResponse[]>('/intelligence/news-impact');
+
+  return rows.map(toNewsImpactEvent);
 }
 
 export async function fetchWeeklyBriefSnapshot(): Promise<WeeklyBriefSnapshot> {

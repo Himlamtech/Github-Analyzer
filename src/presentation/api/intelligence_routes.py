@@ -9,7 +9,10 @@ import structlog
 
 from src.application.dtos.intelligence_dto import (
     BreakoutRepositoryDTO,
+    ExternalNewsSourcePreviewDTO,
     FrameworkRadarSnapshotDTO,
+    NewsImpactEventDTO,
+    NewsImpactReadinessDTO,
     RotationCategoryDTO,
     WeeklyBriefSnapshotDTO,
 )
@@ -18,16 +21,36 @@ from src.application.use_cases.build_rotation_view import BuildRotationViewUseCa
 from src.application.use_cases.get_framework_radar_snapshot import (
     GetFrameworkRadarSnapshotUseCase,
 )
+from src.application.use_cases.get_news_impact_readiness import (
+    GetNewsImpactReadinessUseCase,
+)
+from src.application.use_cases.get_news_impact_snapshot import GetNewsImpactSnapshotUseCase
 from src.application.use_cases.get_weekly_brief_snapshot import GetWeeklyBriefSnapshotUseCase
+from src.application.use_cases.preview_external_news_sources import (
+    PreviewExternalNewsSourcesUseCase,
+)
 from src.domain.exceptions import DashboardQueryError
 from src.infrastructure.config import Settings, get_settings
+from src.infrastructure.external_sources.rss_news_reader import RssNewsReader
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+    from src.domain.repositories.external_news_reader import ExternalNewsReaderABC
     from src.infrastructure.storage.clickhouse_dashboard_service import ClickHouseDashboardService
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/intelligence", tags=["Intelligence"])
+
+
+async def _get_external_news_reader() -> AsyncIterator[object]:
+    """Construct and close the official external news reader."""
+    reader = RssNewsReader()
+    try:
+        yield reader
+    finally:
+        await reader.aclose()
 
 
 def _get_dashboard_service(
@@ -89,6 +112,37 @@ async def get_rotation(
 async def get_framework_radar() -> FrameworkRadarSnapshotDTO:
     """Return the current curated framework radar snapshot."""
     return GetFrameworkRadarSnapshotUseCase().execute()
+
+
+@router.get("/news-impact", response_model=list[NewsImpactEventDTO])
+async def get_news_impact() -> list[NewsImpactEventDTO]:
+    """Return the current curated news-to-code impact snapshot."""
+    return GetNewsImpactSnapshotUseCase().execute()
+
+
+@router.get("/news-impact/readiness", response_model=NewsImpactReadinessDTO)
+async def get_news_impact_readiness(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> NewsImpactReadinessDTO:
+    """Return whether NewsImpact can be upgraded from curated snapshot to live ingestion."""
+    return GetNewsImpactReadinessUseCase(settings=settings).execute()
+
+
+@router.get(
+    "/news-impact/sources/preview",
+    response_model=list[ExternalNewsSourcePreviewDTO],
+)
+async def get_news_impact_source_preview(
+    settings: Annotated[Settings, Depends(get_settings)],
+    reader: Annotated[object, Depends(_get_external_news_reader)],
+    limit_per_source: Annotated[int, Query(ge=1, le=10)] = 3,
+) -> list[ExternalNewsSourcePreviewDTO]:
+    """Fetch the latest items from enabled official external sources."""
+    use_case = PreviewExternalNewsSourcesUseCase(
+        reader=cast("ExternalNewsReaderABC", reader),
+        settings=settings,
+    )
+    return await use_case.execute(limit_per_source=limit_per_source)
 
 
 @router.get("/weekly-brief/latest", response_model=WeeklyBriefSnapshotDTO)

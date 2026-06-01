@@ -9,9 +9,19 @@ from __future__ import annotations
 
 from datetime import date
 from functools import lru_cache
+from typing import Literal
 
-from pydantic import AnyHttpUrl, Field
+from pydantic import AnyHttpUrl, BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class ExternalNewsSourceConfig(BaseModel):
+    """Configured official external source for news-impact intelligence."""
+
+    provider: str = Field(..., min_length=1)
+    url: AnyHttpUrl
+    source_type: Literal["rss", "atom", "json", "html"] = "rss"
+    enabled: bool = True
 
 
 class Settings(BaseSettings):
@@ -89,6 +99,18 @@ class Settings(BaseSettings):
     repo_discovery_start_date: date = Field(
         default=date(2007, 10, 29),
         description="Earliest repository creation date to include in discovery shards.",
+    )
+    news_intelligence_mode: Literal["curated", "hybrid", "live"] = Field(
+        default="curated",
+        description="Serving mode for the NewsImpact intelligence surface.",
+    )
+    news_intelligence_sync_enabled: bool = Field(
+        default=False,
+        description="Whether external-source sync for NewsImpact is enabled.",
+    )
+    news_intelligence_sources: list[ExternalNewsSourceConfig] = Field(
+        default_factory=list,
+        description="Configured official external sources for news-impact ingestion.",
     )
 
     log_level: str = Field(default="INFO")

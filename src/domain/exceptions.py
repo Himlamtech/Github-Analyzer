@@ -120,3 +120,7 @@ class RepoMetadataParseError(ValidationError):
 
 class DashboardQueryError(StorageError):
     """A dashboard analytical query against ClickHouse failed."""
+
+
+class ExternalSourceError(DomainException):
+    """Failed to read or parse an official external intelligence source."""

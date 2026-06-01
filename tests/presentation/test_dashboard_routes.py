@@ -7,10 +7,14 @@ from datetime import UTC, datetime
 from fastapi.testclient import TestClient
 import pytest
 
-from src.infrastructure.config import get_settings
+from src.domain.entities.external_news_item import ExternalNewsItem
+from src.infrastructure.config import ExternalNewsSourceConfig, Settings, get_settings
 from src.presentation.api.dashboard_routes import _get_dashboard_service
 from src.presentation.api.intelligence_routes import (
     _get_dashboard_service as _get_intelligence_service,
+)
+from src.presentation.api.intelligence_routes import (
+    _get_external_news_reader,
 )
 from src.presentation.api.routes import app
 
@@ -105,8 +109,68 @@ class FakeDashboardService:
         ]
 
 
+class FakeExternalNewsReader:
+    async def fetch_latest(
+        self,
+        *,
+        provider: str,
+        url: str,
+        source_type: str,
+        limit: int,
+    ) -> list[ExternalNewsItem]:
+        del url, source_type
+        return [
+            ExternalNewsItem(
+                source_id=f"{provider.lower()}-preview-1",
+                provider=provider,
+                title=f"{provider} source preview",
+                url="https://example.com/preview-1",
+                published_at=_NOW,
+                summary="Official preview summary.",
+            )
+        ][:limit]
+
+
 def _override_settings() -> object:
-    return get_settings()
+    base_settings = get_settings()
+    return Settings(
+        github_api_tokens=base_settings.github_api_tokens,
+        github_api_base_url=base_settings.github_api_base_url,
+        poll_interval_seconds=base_settings.poll_interval_seconds,
+        kafka_bootstrap_servers=base_settings.kafka_bootstrap_servers,
+        kafka_topic=base_settings.kafka_topic,
+        kafka_retention_hours=base_settings.kafka_retention_hours,
+        clickhouse_host=base_settings.clickhouse_host,
+        clickhouse_port=base_settings.clickhouse_port,
+        clickhouse_user=base_settings.clickhouse_user,
+        clickhouse_password=base_settings.clickhouse_password,
+        clickhouse_database=base_settings.clickhouse_database,
+        parquet_base_path=base_settings.parquet_base_path,
+        checkpoint_base_path=base_settings.checkpoint_base_path,
+        spark_master=base_settings.spark_master,
+        spark_driver_memory=base_settings.spark_driver_memory,
+        spark_executor_memory=base_settings.spark_executor_memory,
+        spark_parquet_max_records_per_file=base_settings.spark_parquet_max_records_per_file,
+        spark_parquet_target_partitions_per_batch=(
+            base_settings.spark_parquet_target_partitions_per_batch
+        ),
+        repo_metadata_path=base_settings.repo_metadata_path,
+        repo_catalog_path=base_settings.repo_catalog_path,
+        repo_discovery_min_stars=base_settings.repo_discovery_min_stars,
+        repo_discovery_max_shard_size=base_settings.repo_discovery_max_shard_size,
+        repo_discovery_start_date=base_settings.repo_discovery_start_date,
+        news_intelligence_mode="hybrid",
+        news_intelligence_sync_enabled=True,
+        news_intelligence_sources=[
+            ExternalNewsSourceConfig(
+                provider="OpenAI",
+                url="https://openai.com/news/rss.xml",
+                source_type="rss",
+                enabled=True,
+            )
+        ],
+        log_level=base_settings.log_level,
+    )
 
 
 @pytest.fixture
@@ -114,6 +178,7 @@ def client() -> TestClient:
     app.dependency_overrides[get_settings] = _override_settings
     app.dependency_overrides[_get_dashboard_service] = lambda: FakeDashboardService()
     app.dependency_overrides[_get_intelligence_service] = lambda: FakeDashboardService()
+    app.dependency_overrides[_get_external_news_reader] = lambda: FakeExternalNewsReader()
     try:
         yield TestClient(app)
     finally:
@@ -150,6 +215,41 @@ def test_framework_radar_route_returns_snapshot(client: TestClient) -> None:
     assert payload["frameworks"][0]["framework_id"] == "langchain"
     assert payload["winners"]
     assert payload["warnings"]
+
+
+def test_news_impact_route_returns_curated_snapshot(client: TestClient) -> None:
+    response = client.get("/intelligence/news-impact")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload
+    assert payload[0]["event_id"] == "anthropic-computer-use-2024-10-22"
+    assert payload[0]["impact_curve"]
+    assert payload[0]["top_impacted_repos"]
+
+
+def test_news_impact_readiness_route_returns_source_status(client: TestClient) -> None:
+    response = client.get("/intelligence/news-impact/readiness")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["mode"] == "hybrid"
+    assert payload["status"] == "ready"
+    assert payload["configured_source_count"] == 1
+    assert payload["enabled_source_count"] == 1
+    assert not payload["missing_requirements"]
+
+
+def test_news_impact_source_preview_route_returns_latest_official_items(
+    client: TestClient,
+) -> None:
+    response = client.get("/intelligence/news-impact/sources/preview")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) == 1
+    assert payload[0]["provider"] == "OpenAI"
+    assert payload[0]["items"][0]["source_id"] == "openai-preview-1"
 
 
 def test_weekly_brief_route_returns_snapshot(client: TestClient) -> None:
