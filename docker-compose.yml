@@ -9,8 +9,8 @@ volumes:
     name: github-kafka-data
   frontend_node_modules:
     name: github-frontend-node-modules
-  frontend_next_cache:
-    name: github-frontend-next-cache
+  frontend_vite_cache:
+    name: github-frontend-vite-cache
   clickhouse_data:
     external: true
     name: github-clickhouse-data
@@ -108,10 +108,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:8000}
     command:
-      ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3000"]
+      ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]
     hostname: frontend
     networks:
       - github-networks
@@ -120,9 +118,9 @@ services:
     volumes:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
-      - frontend_next_cache:/app/.next
+      - frontend_vite_cache:/app/node_modules/.vite
     environment:
-      API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:8000}
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://api:8000}
     depends_on:
       api:
         condition: service_healthy

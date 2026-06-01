@@ -33,6 +33,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
         "http://frontend:3000",
     ],
     allow_methods=["GET", "POST"],
@@ -41,8 +44,10 @@ app.add_middleware(
 )
 
 from src.presentation.api.dashboard_routes import router as _dashboard_router  # noqa: E402
+from src.presentation.api.intelligence_routes import router as _intelligence_router  # noqa: E402
 
 app.include_router(_dashboard_router)
+app.include_router(_intelligence_router)
 
 
 def _get_clickhouse_repo(

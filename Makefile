@@ -69,12 +69,12 @@ enrich-repos: ## One-shot enrichment script: top repos from events → repo_meta
 	@echo "▶ Running standalone repo enrichment script..."
 	$(PYTHON) scripts/enrich_repos_from_events.py --limit 100
 
-frontend-dev: ## Start Next.js dev server on http://localhost:3000
-	@echo "▶ Starting Next.js dev server..."
+frontend-dev: ## Start Vite dev server on http://localhost:3000
+	@echo "▶ Starting Vite dev server..."
 	cd frontend && npm run dev
 
-frontend-build: ## Build Next.js production bundle
-	@echo "▶ Building Next.js frontend..."
+frontend-build: ## Build Vite production bundle
+	@echo "▶ Building Vite frontend..."
 	cd frontend && npm run build
 
 frontend-type-check: ## Run TypeScript type checker on frontend

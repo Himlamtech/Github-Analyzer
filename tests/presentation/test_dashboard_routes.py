@@ -9,6 +9,9 @@ import pytest
 
 from src.infrastructure.config import get_settings
 from src.presentation.api.dashboard_routes import _get_dashboard_service
+from src.presentation.api.intelligence_routes import (
+    _get_dashboard_service as _get_intelligence_service,
+)
 from src.presentation.api.routes import app
 
 _NOW = datetime(2026, 3, 30, 12, 0, tzinfo=UTC)
@@ -51,6 +54,16 @@ class FakeDashboardService:
         item = self._repo_item()
         item["star_count_in_window"] = 0
         return [item][:limit]
+
+    async def get_top_repos(
+        self,
+        *,
+        category: str | None,
+        days: int,
+        limit: int,
+    ) -> list[dict[str, object]]:
+        del category, days
+        return [self._repo_item()][:limit]
 
     async def get_trending(self, days: int, limit: int) -> list[dict[str, object]]:
         del days
@@ -100,10 +113,54 @@ def _override_settings() -> object:
 def client() -> TestClient:
     app.dependency_overrides[get_settings] = _override_settings
     app.dependency_overrides[_get_dashboard_service] = lambda: FakeDashboardService()
+    app.dependency_overrides[_get_intelligence_service] = lambda: FakeDashboardService()
     try:
         yield TestClient(app)
     finally:
         app.dependency_overrides.clear()
+
+
+def test_breakout_route_returns_intelligence_scores(client: TestClient) -> None:
+    response = client.get("/intelligence/breakout", params={"limit": 5, "days": 7})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload[0]["repo"]["repo_full_name"] == "browser-use/browser-use"
+    assert payload[0]["breakout_score"] > 0
+    assert payload[0]["confidence_score"] > 0
+    assert payload[0]["explanation_trace"]
+
+
+def test_rotation_route_returns_intelligence_categories(client: TestClient) -> None:
+    response = client.get("/intelligence/rotation", params={"limit": 5, "days": 7})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload[0]["category"] == "Browser Use"
+    assert payload[0]["confidence_score"] > 0
+    assert payload[0]["rotation_drivers"]
+
+
+def test_framework_radar_route_returns_snapshot(client: TestClient) -> None:
+    response = client.get("/intelligence/framework-radar")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["frameworks"]
+    assert payload["frameworks"][0]["framework_id"] == "langchain"
+    assert payload["winners"]
+    assert payload["warnings"]
+
+
+def test_weekly_brief_route_returns_snapshot(client: TestClient) -> None:
+    response = client.get("/intelligence/weekly-brief/latest")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["brief_id"] == "weekly-signal-vol-14"
+    assert payload["pillars"]
+    assert payload["summary_chart_data"]
+    assert payload["regional_indicators"]
 
 
 def test_shock_movers_route_returns_market_lists(client: TestClient) -> None:
