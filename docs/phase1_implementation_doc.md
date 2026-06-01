@@ -110,7 +110,7 @@ Trach nhiem:
 - goi repositories/query services
 - ap scoring rules v1
 - ghi snapshot vao marts
-- emit logging/metrics cho build result
+- emit logging cho build result
 
 #### Infrastructure
 
@@ -222,9 +222,9 @@ Migration strategy:
 - create-if-not-exists
 - backfill snapshot dau tien bang job thu cong hoac scheduler run
 
-### Observability impact
+### Runtime health impact
 
-Can them metrics cho:
+Can them logging va state snapshots cho:
 
 - build duration
 - build row count
@@ -242,7 +242,7 @@ Can them metrics cho:
 - `breakout_repo_scores` va `ecosystem_rotation_daily` duoc tao va co du lieu.
 - `GET /intelligence/breakout` va `GET /intelligence/rotation` tra du lieu tu curated marts.
 - frontend co the bind 2 page dau tien ma khong phu thuoc vao raw analytics routes.
-- build jobs co logging, metrics, va scheduler integration.
+- build jobs co logging va scheduler integration.
 - tests pass va quality gates xanh.
 
 ## 7. Testing And Verification
@@ -313,7 +313,7 @@ uv run pytest -v
    Objective: build snapshot breakout tu raw facts va metadata.
    Affected area: application, infrastructure, tests.
    Dependency: step 2.
-   Output artifact: `build_breakout_rankings.py` + metrics/logging.
+   Output artifact: `build_breakout_rankings.py` + logging.
    Validation: snapshot co rows, scoring fields dung range.
 
 4. Implement breakout serving API
@@ -346,7 +346,7 @@ uv run pytest -v
 
 8. Frontend cutover cho 2 page dau tien
    Objective: bind frontend moi vao intelligence endpoints.
-   Affected area: frontend consumer contracts, backend observability.
+   Affected area: frontend consumer contracts, backend logging/health checks.
    Dependency: step 4 va step 6.
    Output artifact: page data binding moi.
    Validation: frontend khong con can dashboard raw routes cho 2 page nay.
@@ -362,7 +362,7 @@ uv run pytest -v
    Files/modules: `src/infrastructure/storage/*`, bootstrap/schema logic, tests infrastructure.
 
 3. `feat(intelligence): build breakout rankings pipeline`
-   Objective: them use case build breakout va metrics/logging.
+   Objective: them use case build breakout va logging.
    Files/modules: `src/application/use_cases/build_breakout_rankings.py`, tests application.
 
 4. `feat(api): add breakout intelligence endpoint`

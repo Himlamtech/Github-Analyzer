@@ -95,15 +95,3 @@ if [[ "${GROWTH_PER_HOUR}" -gt "${MAX_GROWTH_PER_HOUR}" ]]; then
   log_warn "PARQUET FILE GROWTH ALERT: growth_per_hour ${GROWTH_PER_HOUR} exceeds threshold ${MAX_GROWTH_PER_HOUR}"
 fi
 
-if [[ -n "${PUSHGATEWAY_URL:-}" ]]; then
-  cat <<METRICS | curl -s --data-binary @- "${PUSHGATEWAY_URL}/metrics/job/github_analyzer/instance/parquet_file_count" > /dev/null
-# HELP parquet_file_count_total Total parquet file count under the raw data directory
-# TYPE parquet_file_count_total gauge
-parquet_file_count_total ${CURRENT_COUNT}
-# HELP parquet_file_growth_per_hour Estimated parquet file growth per hour
-# TYPE parquet_file_growth_per_hour gauge
-parquet_file_growth_per_hour ${GROWTH_PER_HOUR}
-METRICS
-  log_info "Pushed parquet file count metrics to pushgateway"
-fi
-

@@ -24,7 +24,6 @@ from src.domain.exceptions import (
     ClickHouseWriteError,
 )
 from src.domain.repositories.event_repository import EventRepositoryABC
-from src.infrastructure.observability.metrics import CLICKHOUSE_INSERT_ROWS_TOTAL
 
 logger = structlog.get_logger(__name__)
 
@@ -194,7 +193,6 @@ class ClickHouseEventRepository(EventRepositoryABC):
             for i in range(0, len(rows), _BATCH_SIZE):
                 chunk = rows[i : i + _BATCH_SIZE]
                 self._execute_bulk_insert(client, _INSERT_EVENTS_QUERY, chunk)
-                CLICKHOUSE_INSERT_ROWS_TOTAL.inc(len(chunk))
                 logger.debug(
                     "clickhouse_repository.batch_written",
                     rows=len(chunk),

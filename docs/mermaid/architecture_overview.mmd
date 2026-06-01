@@ -25,10 +25,3 @@ flowchart TD
         CH --> API
         API --> FE
     end
-
-    subgraph OBS["Lớp Observability"]
-        PROM["Prometheus<br/>port 9093"]
-        GRAF["Grafana<br/>port 3001"]
-        API -->|"/metrics"| PROM
-        PROM --> GRAF
-    end

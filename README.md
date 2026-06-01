@@ -31,8 +31,6 @@ PollGithubEventsUseCase ── RepositoryEventFilter ──▶ Kafka (github_raw
           (port 3000)
 ```
 
-**Observability:** FastAPI `/metrics` → Prometheus (port 9093) → Grafana (port 3001)
-
 ## Services
 
 | Service | Default host port | Purpose |
@@ -42,8 +40,6 @@ PollGithubEventsUseCase ── RepositoryEventFilter ──▶ Kafka (github_raw
 | Kafka | `9092` | Event streaming (16 partitions) |
 | ClickHouse HTTP | `8123` | External tooling / UI |
 | ClickHouse native | `9100` | Host-mapped native TCP (`9000` inside Docker network) |
-| Prometheus | `9093` | Metrics scraper |
-| Grafana | `3001` | Metrics dashboard |
 
 ## Quickstart
 
@@ -67,7 +63,7 @@ uv sync
 make setup
 ```
 
-Starts Zookeeper, Kafka (16 partitions), ClickHouse, Prometheus, Grafana, and the FastAPI + Next.js containers. Waits for health checks and initialises ClickHouse tables via `clickhouse/init.sql`.
+Starts Zookeeper, Kafka (16 partitions), ClickHouse, and the FastAPI + Next.js containers. Waits for health checks and initialises ClickHouse tables via `clickhouse/init.sql`.
 
 Backend and frontend now both use bind mounts on the server. `./src` is mounted into the Python containers and `./frontend` is mounted into the Next.js container, so code changes are reflected inside Docker immediately.
 
@@ -94,8 +90,6 @@ KAFKA_PORT
 KAFKA_JMX_HOST_PORT
 CLICKHOUSE_HTTP_PORT
 CLICKHOUSE_NATIVE_PORT
-PROMETHEUS_PORT
-GRAFANA_PORT
 ```
 
 To expose ClickHouse safely behind a reverse proxy or Cloudflare Tunnel, keep
@@ -128,14 +122,6 @@ make sync-events-repos   # Enrich repos found in active events from ClickHouse
 make enrich-repos        # Bulk GitHub API enrichment for all known repos
 ```
 
-### 5. Monitor
-
-```bash
-make monitor     # Opens Grafana at http://localhost:3001
-```
-
-Default credentials: `admin` / value of `GRAFANA_PASSWORD` (default: `admin`)
-
 Dashboard: http://localhost:3000
 
 ---
@@ -163,7 +149,7 @@ src/
 │   ├── spark/                    # SparkSession factory, StreamingJob, Schemas
 │   ├── storage/                  # ClickHouseRepository, ParquetRepository,
 │   │                             #   ClickHouseDashboardService
-│   └── observability/            # Prometheus metrics, structlog config
+│   └── logging_config.py         # structlog configuration
 └── presentation/
     └── api/
         ├── routes.py             # /health /pipeline/status /events/*
@@ -252,7 +238,6 @@ login, repository id, and repository name.
 | `KAFKA_BOOTSTRAP_SERVERS` | — | default `localhost:9092` |
 | `CLICKHOUSE_HOST` | — | default `localhost` |
 | `CLICKHOUSE_PORT` | — | default `9100` (host) / `9000` (inside Docker network) |
-| `GRAFANA_PASSWORD` | — | default `admin` |
 | `SPARK_MASTER` | — | default `local[16]` |
 | `SPARK_DRIVER_MEMORY` | — | default `8g` |
 

@@ -22,15 +22,6 @@ from src.domain.exceptions import (
     RateLimitExceededError,
     ValidationError,
 )
-from src.infrastructure.observability.metrics import (
-    EVENTS_FILTERED_TOTAL,
-    EVENTS_INGESTED_TOTAL,
-    POLL_BATCH_SIZE,
-    POLL_CONSECUTIVE_ERRORS,
-    POLL_CYCLE_DURATION_SECONDS,
-    POLL_CYCLE_TOTAL,
-    POLL_LAST_SUCCESS_TIMESTAMP,
-)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -121,16 +112,15 @@ class PollGithubEventsUseCase:
                     break
                 cycle_start = time.monotonic()
                 try:
-                    POLL_BATCH_SIZE.observe(len(raw_events))
                     await self._process_batch(raw_events)
-                    POLL_CYCLE_TOTAL.inc()
-                    POLL_LAST_SUCCESS_TIMESTAMP.set(time.time())
-                    POLL_CONSECUTIVE_ERRORS.set(0)
                 except (KafkaError, ValidationError) as exc:
-                    POLL_CONSECUTIVE_ERRORS.inc()
                     logger.error("poll_github_events.cycle_error", error=str(exc))
                 finally:
-                    POLL_CYCLE_DURATION_SECONDS.observe(time.monotonic() - cycle_start)
+                    logger.debug(
+                        "poll_github_events.cycle_completed",
+                        duration_seconds=round(time.monotonic() - cycle_start, 3),
+                        raw_event_count=len(raw_events),
+                    )
                 await asyncio.sleep(self._poll_interval)
         except RateLimitExceededError as exc:
             logger.warning(
@@ -139,7 +129,6 @@ class PollGithubEventsUseCase:
             )
             await asyncio.sleep(exc.reset_at_seconds)
         except GitHubAPIError as exc:
-            POLL_CONSECUTIVE_ERRORS.inc()
             logger.error("poll_github_events.github_api_error", error=str(exc))
         except KafkaError as exc:
             logger.error("poll_github_events.kafka_error", error=str(exc))
@@ -160,7 +149,6 @@ class PollGithubEventsUseCase:
 
         for raw in raw_events:
             if not self._filter.should_ingest(raw):
-                EVENTS_FILTERED_TOTAL.inc()
                 filtered_count += 1
                 continue
 
@@ -180,7 +168,6 @@ class PollGithubEventsUseCase:
 
             try:
                 await self._producer.publish(output_dto)
-                EVENTS_INGESTED_TOTAL.inc()
                 published_count += 1
                 logger.debug(
                     "poll_github_events.published",
@@ -214,14 +201,10 @@ async def _main() -> None:
     from src.infrastructure.github.event_mapper import GitHubEventMapper
     from src.infrastructure.kafka.producer import KafkaEventProducer
     from src.infrastructure.kafka.topic_admin import KafkaTopicAdmin
-    from src.infrastructure.observability.logging_config import configure_logging
+    from src.infrastructure.logging_config import configure_logging
 
     settings = get_settings()
     configure_logging(settings.log_level)
-
-    from src.infrastructure.observability.metrics import start_metrics_server
-
-    start_metrics_server(settings.metrics_port)
 
     topic_admin = KafkaTopicAdmin(
         bootstrap_servers=settings.kafka_bootstrap_servers,

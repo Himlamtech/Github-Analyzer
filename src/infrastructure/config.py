@@ -91,7 +91,6 @@ class Settings(BaseSettings):
         description="Earliest repository creation date to include in discovery shards.",
     )
 
-    metrics_port: int = Field(default=9091, ge=1024, le=65535)
     log_level: str = Field(default="INFO")
 
 

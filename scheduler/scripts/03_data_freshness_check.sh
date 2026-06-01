@@ -4,15 +4,13 @@
 #
 # SCHEDULE : */5 * * * *  (every 5 minutes)
 # PURPOSE  : Query ClickHouse for max(created_at) in github_data table.
-#            Computes staleness in seconds and writes it to:
-#              1. A local state file (scheduler/state/data_freshness.json)
-#              2. Prometheus pushgateway (if PUSHGATEWAY_URL is set)
+#            Computes staleness in seconds and writes it to
+#            scheduler/state/data_freshness.json.
 #            Logs WARNING if staleness exceeds threshold (default 600s / 10 min).
 #
 # DOMAIN   : Infrastructure layer — ClickHouse data freshness probe
 #            Reads  : ClickHouse github_analyzer.github_data
 #            Writes : scheduler/state/data_freshness.json
-#                     Prometheus pushgateway (optional)
 #
 # IDEMPOTENT: YES — read-only query, state file is overwritten each run.
 # =============================================================================
@@ -85,13 +83,3 @@ cat > "${STATE_FILE}" <<JSON
 JSON
 
 log_info "State written to ${STATE_FILE}"
-
-# ── Optional: push to Prometheus pushgateway ─────────────────────────────────
-if [[ -n "${PUSHGATEWAY_URL:-}" ]]; then
-  cat <<METRICS | curl -s --data-binary @- "${PUSHGATEWAY_URL}/metrics/job/github_analyzer/instance/data_freshness" > /dev/null
-# HELP github_data_freshness_seconds Seconds since last event was ingested into ClickHouse
-# TYPE github_data_freshness_seconds gauge
-github_data_freshness_seconds{database="${CLICKHOUSE_DATABASE:-github_analyzer}",table="github_data"} ${STALENESS_SECONDS}
-METRICS
-  log_info "Pushed github_data_freshness_seconds=${STALENESS_SECONDS} to pushgateway"
-fi

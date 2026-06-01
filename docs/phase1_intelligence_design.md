@@ -448,7 +448,7 @@ Response shape:
 - `breakout_repo_scores` va `ecosystem_rotation_daily` duoc build theo cadence da chot.
 - frontend co the bind vao 2 endpoint moi ma khong can query raw dashboard endpoints.
 - p95 query cho intelligence endpoints dat SLA da de xuat.
-- co observability cho build freshness, build failures, va category coverage.
+- co logging va health checks cho build freshness, build failures, va category coverage.
 
 ## 14. Recommended Next Step
 

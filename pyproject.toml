@@ -26,8 +26,6 @@ dependencies = [
     # Config
     "pydantic>=2.7.0",
     "pydantic-settings>=2.3.0",
-    # Observability
-    "prometheus-client>=0.20.0",
     "structlog>=24.2.0",
     # Async utilities
     "anyio>=4.4.0",
@@ -93,7 +91,6 @@ module = [
     "duckdb.*",
     "pyspark.*",
     "structlog.*",
-    "prometheus_client.*",
 ]
 ignore_missing_imports = true
 

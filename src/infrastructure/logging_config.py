@@ -19,15 +19,13 @@ def configure_logging(level: str = "INFO") -> None:
     """Configure structlog and stdlib logging for the entire process.
 
     Should be called once at application startup (composition root).
-    Subsequent calls are idempotent — structlog re-configuration is safe.
+    Subsequent calls are idempotent.
 
     Args:
         level: Log level string (DEBUG, INFO, WARNING, ERROR, CRITICAL).
-               Case-insensitive.
     """
     log_level = getattr(logging, level.upper(), logging.INFO)
 
-    # Stdlib root logger — catches logs from third-party libraries
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
@@ -43,13 +41,10 @@ def configure_logging(level: str = "INFO") -> None:
         structlog.processors.ExceptionRenderer(),
     ]
 
-    is_tty = sys.stdout.isatty()
-
-    if is_tty:
-        # Human-readable for local development
-        renderer: structlog.types.Processor = structlog.dev.ConsoleRenderer()
+    renderer: structlog.types.Processor
+    if sys.stdout.isatty():
+        renderer = structlog.dev.ConsoleRenderer()
     else:
-        # Machine-parseable JSON for containers / production
         renderer = structlog.processors.JSONRenderer()
 
     structlog.configure(
