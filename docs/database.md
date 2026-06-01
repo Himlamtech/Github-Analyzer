@@ -9,6 +9,8 @@ Current responsibilities:
 - serve live dashboard queries
 - provide latest-event reads
 - support time-series queries for breakout repository detail views
+- persist official external news items for `NewsImpact`
+- persist source health snapshots for external news sync observability
 
 ## Parquet
 
@@ -35,5 +37,6 @@ Likely marts:
 - `breakout_repo_scores`
 - `ecosystem_rotation_daily`
 - `source_health_snapshots`
+- `external_news_items`
 
 These marts should exist before high-level pages such as breakout confidence, durable momentum, false-hype risk, or framework radar become fully live.

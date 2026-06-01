@@ -14,6 +14,9 @@ The frontend now calls the backend directly for the core dashboard path.
 - `/intelligence/news-impact`: curated backend snapshot for news-to-code analysis
 - `/intelligence/news-impact/readiness`: operational readiness for external news-source ingestion
 - `/intelligence/news-impact/sources/preview`: latest items fetched from enabled official RSS/Atom feeds
+- `POST /intelligence/news-impact/sources/sync`: fetch enabled official sources and persist latest items into ClickHouse
+- `/intelligence/news-impact/sources/latest`: latest persisted official external news items
+- `/intelligence/news-impact/sources/health`: latest persisted source health snapshot per official source
 - `/intelligence/framework-radar`: curated backend snapshot for framework radar
 - `/intelligence/weekly-brief/latest`: curated backend snapshot for weekly brief
 - `/dashboard/repo-timeseries`: breakout detail drawer
@@ -39,6 +42,7 @@ The frontend now calls the backend directly for the core dashboard path.
 - `NewsImpact`, `CompetitiveRadar`, and `WeeklyBrief` are served by curated backend snapshots, not external-source intelligence marts yet
 - `NewsImpact` readiness for external ingestion is exposed separately so the team can verify mode, enabled sources, and missing prerequisites
 - official external feed preview is available so the team can validate source wiring before building persistence and causality scoring
+- official external source sync now supports `fetch -> persist -> read` for NewsImpact feed items and source health
 - some metrics shown in the UI are derived presentation metrics computed client-side from backend responses
 - local frontend build requires Node.js 20+ because of the current Vite/Tailwind dependency line
 

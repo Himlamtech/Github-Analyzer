@@ -10,7 +10,14 @@ GitHub Analyzer ingests GitHub event streams, stores them in ClickHouse and Parq
 - The old frontend has been replaced by a new Vite/React frontend in `frontend/`.
 - The dashboard now mixes two kinds of views:
   - live operational analytics powered by FastAPI
-  - curated research/presentation views that are intentionally static for now
+  - intelligence and research views that are at different maturity levels: `Live`, `Partial`, or `Curated`
+
+Current implementation maturity:
+
+- `Overview` and `BreakoutDetector` are live backend-bound views.
+- `EcosystemRotation` is partially live and reads the backend rotation contract.
+- `NewsImpact` has a curated serving contract plus official feed ingestion foundations.
+- `CompetitiveRadar` and `WeeklyBrief` are backend-served curated snapshots waiting for computed models.
 
 ## Product direction
 
@@ -57,3 +64,5 @@ The project should avoid shipping UI surfaces that imply strong intelligence fea
 - source freshness guard
 - external data quarantine
 - official launch/news ingestion
+- entity linking between external launch/news items and GitHub repositories
+- causality scoring that reads persisted external news plus GitHub telemetry

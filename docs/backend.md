@@ -26,13 +26,23 @@
 - `GET /events/latest`
 - `GET /dashboard/top-repos`
 - `GET /dashboard/trending`
-- `GET /dashboard/topic-rotation`
 - `GET /dashboard/repo-timeseries`
+- `GET /intelligence/breakout`
+- `GET /intelligence/rotation`
+- `GET /intelligence/news-impact`
+- `GET /intelligence/news-impact/readiness`
+- `GET /intelligence/news-impact/sources/preview`
+- `POST /intelligence/news-impact/sources/sync`
+- `GET /intelligence/news-impact/sources/latest`
+- `GET /intelligence/news-impact/sources/health`
+- `GET /intelligence/framework-radar`
+- `GET /intelligence/weekly-brief/latest`
 
 ## Current backend constraints
 
 - Dashboard category logic is currently simplified and mostly falls back to neutral classification.
-- Some presentation views in the frontend do not yet have dedicated backend endpoints.
+- Some intelligence views are still powered by curated snapshots rather than computed serving marts.
+- External news ingestion is now persisted, but entity linking, dedup/quarantine, and causality scoring are not complete yet.
 - CORS now allows both `localhost:3000` and `localhost:5173` dev origins.
 
 ## Target backend direction
@@ -45,10 +55,11 @@ When the intelligence product expands, backend work should be organized into thr
 
 Examples of the next meaningful backend additions:
 
-- breakout confidence and explanation traces
-- ecosystem rotation built from curated category-level marts
-- source freshness and serving-read protection
-- external launch/news sync before `NewsImpact` becomes live
+- entity linking for persisted external news items
+- duplicate and low-confidence quarantine for external source content
+- causality scoring between external launch/news items and GitHub telemetry
+- framework-level computed marts for `CompetitiveRadar`
+- versioned briefing snapshots for `WeeklyBrief`
 
 ## Guardrails
 

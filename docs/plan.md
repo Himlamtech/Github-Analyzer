@@ -19,7 +19,7 @@ The immediate goal is not to build every intelligence surface at once. The goal 
 
 ### Missing today
 
-- No trusted external-source ingestion layer for `NewsImpact` yet.
+- `NewsImpact` now has external-source ingestion foundations, but not a trusted end-to-end causality pipeline yet.
 - `CompetitiveRadar` is still a curated backend snapshot, not a computed framework model.
 - `WeeklyBrief` is still a curated backend snapshot, not a generated/versioned editorial pipeline.
 - Category logic is still too neutral for real AI ecosystem intelligence.
@@ -196,13 +196,15 @@ Turn `NewsImpact` into a real product feature backed by external-source ingestio
 
 ### Missing dependency
 
-The project currently does not have a trusted external news/launch ingestion layer.
+The project now has external news/launch ingestion foundations, but it still lacks trusted end-to-end linking, quarantine, and causality scoring.
 
 ### Implemented foundation now
 
 - `GET /intelligence/news-impact` exists as a curated backend snapshot contract.
 - `GET /intelligence/news-impact/readiness` now exposes configured mode, source count, and missing prerequisites for live ingestion.
 - `GET /intelligence/news-impact/sources/preview` now fetches latest items from enabled official RSS/Atom feeds.
+- `POST /intelligence/news-impact/sources/sync` now persists official feed items and source health snapshots into ClickHouse.
+- `GET /intelligence/news-impact/sources/latest` and `GET /intelligence/news-impact/sources/health` now read persisted sync outputs.
 
 ### Proposed backend scope
 
@@ -422,3 +424,74 @@ The project is in a healthy implementation state when:
 - curated pages are clearly labeled until they become live
 - frontend never invents critical product intelligence on its own
 - docs remain the single source of truth for current and next-step implementation work
+
+## 10. Remaining gaps by use case
+
+### Use cases already complete enough for this phase
+
+- live dashboard overview
+- breakout intelligence contract
+- ecosystem rotation contract
+- backend-served framework radar snapshot
+- backend-served weekly brief snapshot
+- backend-served curated news-impact snapshot
+- official external feed preview, sync, persisted latest-item reads, and source health reads
+
+### Use cases still missing to complete the product properly
+
+1. External news dedup and quarantine
+2. Entity linking from official news items to repos, providers, frameworks, and categories
+3. News-to-code causality scoring from persisted official items plus GitHub telemetry
+4. Source freshness guard surfaced for `NewsImpact`
+5. Framework registry/model catalog sync
+6. Computed framework radar marts replacing curated framework coordinates
+7. Versioned weekly brief snapshot archive and publish workflow
+8. Meaningful AI taxonomy replacing the current neutral category fallback
+
+## 11. Recommended completion order from here
+
+### Step A. Finish `NewsImpact` backend integrity
+
+1. Add dedup/quarantine rules for persisted external news items.
+2. Add provider/framework/repo/category linking outputs.
+3. Add persisted source freshness signals.
+
+Acceptance criteria:
+
+- duplicated feed items are not served as separate product events
+- low-confidence or malformed source items can be excluded from serving
+- each served news item can carry linked entities beyond raw provider/title data
+
+### Step B. Replace curated `NewsImpact` intelligence with computed intelligence
+
+1. Build causality scoring from external news items plus GitHub telemetry windows.
+2. Add `GET /intelligence/news-impact/{event_id}` for a full dossier view.
+3. Rebind frontend main `NewsImpact` narrative to computed persisted outputs instead of curated explanation text.
+
+Acceptance criteria:
+
+- at least one served event uses persisted official source data end-to-end
+- lag and impact curve are computed from backend data, not static seed points
+- frontend main event selection can load a server-backed dossier contract
+
+### Step C. Finish taxonomy and framework intelligence
+
+1. Add framework/entity registry sync.
+2. Upgrade category taxonomy beyond the neutral fallback.
+3. Recompute rotation and radar using framework/category marts.
+
+Acceptance criteria:
+
+- category labels are meaningful AI ecosystem segments
+- `CompetitiveRadar` no longer depends on curated framework coordinates
+- `EcosystemRotation` explanations can cite taxonomy-backed evidence
+
+### Step D. Finish briefing workflow
+
+1. Add versioned weekly brief snapshots with archive support.
+2. Add an editorial publish flow or version tag for release cadence.
+
+Acceptance criteria:
+
+- latest brief and archived briefs are both addressable from backend
+- each brief is timestamped/versioned and can be traced to a generation or publish run

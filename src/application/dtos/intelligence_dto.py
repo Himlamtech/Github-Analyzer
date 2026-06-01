@@ -215,3 +215,25 @@ class ExternalNewsSourcePreviewDTO(BaseModel):
     url: str
     source_type: str
     items: list[ExternalNewsPreviewItemDTO]
+
+
+class ExternalNewsSourceHealthDTO(BaseModel):
+    """Latest persisted health snapshot for an external source."""
+
+    model_config = ConfigDict(frozen=True)
+
+    provider: str
+    source_url: str
+    status: str
+    fetched_count: int = Field(..., ge=0)
+    error_message: str | None
+    checked_at: datetime
+
+
+class ExternalNewsSyncResultDTO(BaseModel):
+    """Result of syncing enabled external news sources into persistence."""
+
+    model_config = ConfigDict(frozen=True)
+
+    persisted_item_count: int = Field(..., ge=0)
+    source_health: list[ExternalNewsSourceHealthDTO]

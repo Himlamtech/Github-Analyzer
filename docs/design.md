@@ -18,7 +18,7 @@ When a panel represents macro narrative or editorial framing, it may remain cura
 
 - `Overview` -> live operational summary from dashboard and pipeline endpoints
 - `BreakoutDetector` -> live repository ranking and repo time series
-- `EcosystemRotation` -> transitional view using live topic rotation where possible
-- `NewsImpact` -> curated until official launch/news sync exists
-- `CompetitiveRadar` -> curated until framework-level marts exist
-- `WeeklyBrief` -> curated editorial output
+- `EcosystemRotation` -> transitional view using `/intelligence/rotation`
+- `NewsImpact` -> curated intelligence payload from backend, with external-source preview/sync operating behind the scenes
+- `CompetitiveRadar` -> curated backend snapshot until framework-level marts exist
+- `WeeklyBrief` -> curated backend snapshot until versioned briefing pipeline exists

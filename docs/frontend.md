@@ -27,7 +27,14 @@ These views fetch backend data through `frontend/src/lib/api.ts` and hooks under
 - `WeeklyBrief`
 - `CompetitiveRadar`
 
-These views remain useful for storytelling and design presentation, but they are not yet driven fully by backend APIs.
+These views remain useful for storytelling and design presentation, but they are not all at the same maturity level anymore.
+
+Current maturity split:
+
+- `EcosystemRotation`: partial backend binding
+- `NewsImpact`: backend snapshot + external-source preview/sync foundation
+- `CompetitiveRadar`: backend snapshot
+- `WeeklyBrief`: backend snapshot
 
 ## Binding rule
 
@@ -42,7 +49,10 @@ This keeps the UI honest while still allowing the new visual direction to move a
 
 - `Overview`: pipeline status, latest events, top movers
 - `BreakoutDetector`: top repos and repo time series
-- `EcosystemRotation`: currently mixed, prefers live topic rotation data when available
+- `EcosystemRotation`: category rotation contract from `/intelligence/rotation`
+- `NewsImpact`: curated main narrative from `/intelligence/news-impact`; external source operations exist in backend but are not surfaced in the main UI yet
+- `CompetitiveRadar`: backend snapshot from `/intelligence/framework-radar`
+- `WeeklyBrief`: backend snapshot from `/intelligence/weekly-brief/latest`
 
 ## Runtime configuration
 

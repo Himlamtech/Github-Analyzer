@@ -15,6 +15,7 @@ from src.presentation.api.intelligence_routes import (
 )
 from src.presentation.api.intelligence_routes import (
     _get_external_news_reader,
+    _get_external_news_repository,
 )
 from src.presentation.api.routes import app
 
@@ -131,6 +132,77 @@ class FakeExternalNewsReader:
         ][:limit]
 
 
+class FakeExternalNewsRepository:
+    def __init__(self) -> None:
+        self.items = [
+            {
+                "source_id": "openai-preview-1",
+                "provider": "OpenAI",
+                "title": "OpenAI source preview",
+                "url": "https://example.com/preview-1",
+                "published_at": _NOW,
+                "summary": "Official preview summary.",
+            }
+        ]
+        self.health = [
+            {
+                "provider": "OpenAI",
+                "source_url": "https://openai.com/news/rss.xml",
+                "status": "ok",
+                "fetched_count": 1,
+                "error_message": None,
+                "checked_at": _NOW,
+            }
+        ]
+
+    async def upsert_items(self, items: list[ExternalNewsItem]) -> int:
+        self.items = [
+            {
+                "source_id": item.source_id,
+                "provider": item.provider,
+                "title": item.title,
+                "url": item.url,
+                "published_at": item.published_at,
+                "summary": item.summary,
+            }
+            for item in items
+        ]
+        return len(items)
+
+    async def append_source_health_snapshot(
+        self,
+        *,
+        provider: str,
+        source_url: str,
+        status: str,
+        fetched_count: int,
+        error_message: str | None,
+        checked_at: datetime,
+    ) -> None:
+        self.health = [
+            {
+                "provider": provider,
+                "source_url": source_url,
+                "status": status,
+                "fetched_count": fetched_count,
+                "error_message": error_message,
+                "checked_at": checked_at,
+            }
+        ]
+
+    async def list_latest_items(
+        self,
+        *,
+        provider: str | None,
+        limit: int,
+    ) -> list[dict[str, object]]:
+        del provider
+        return self.items[:limit]
+
+    async def list_latest_source_health(self) -> list[dict[str, object]]:
+        return self.health
+
+
 def _override_settings() -> object:
     base_settings = get_settings()
     return Settings(
@@ -175,10 +247,12 @@ def _override_settings() -> object:
 
 @pytest.fixture
 def client() -> TestClient:
+    fake_repository = FakeExternalNewsRepository()
     app.dependency_overrides[get_settings] = _override_settings
     app.dependency_overrides[_get_dashboard_service] = lambda: FakeDashboardService()
     app.dependency_overrides[_get_intelligence_service] = lambda: FakeDashboardService()
     app.dependency_overrides[_get_external_news_reader] = lambda: FakeExternalNewsReader()
+    app.dependency_overrides[_get_external_news_repository] = lambda: fake_repository
     try:
         yield TestClient(app)
     finally:
@@ -250,6 +324,32 @@ def test_news_impact_source_preview_route_returns_latest_official_items(
     assert len(payload) == 1
     assert payload[0]["provider"] == "OpenAI"
     assert payload[0]["items"][0]["source_id"] == "openai-preview-1"
+
+
+def test_news_impact_source_sync_route_persists_items(client: TestClient) -> None:
+    response = client.post("/intelligence/news-impact/sources/sync")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["persisted_item_count"] == 1
+    assert payload["source_health"][0]["status"] == "ok"
+
+
+def test_news_impact_source_latest_route_returns_persisted_items(client: TestClient) -> None:
+    response = client.get("/intelligence/news-impact/sources/latest")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload[0]["source_id"] == "openai-preview-1"
+
+
+def test_news_impact_source_health_route_returns_latest_snapshots(client: TestClient) -> None:
+    response = client.get("/intelligence/news-impact/sources/health")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload[0]["provider"] == "OpenAI"
+    assert payload[0]["status"] == "ok"
 
 
 def test_weekly_brief_route_returns_snapshot(client: TestClient) -> None:

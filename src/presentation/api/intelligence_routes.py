@@ -9,7 +9,10 @@ import structlog
 
 from src.application.dtos.intelligence_dto import (
     BreakoutRepositoryDTO,
+    ExternalNewsPreviewItemDTO,
+    ExternalNewsSourceHealthDTO,
     ExternalNewsSourcePreviewDTO,
+    ExternalNewsSyncResultDTO,
     FrameworkRadarSnapshotDTO,
     NewsImpactEventDTO,
     NewsImpactReadinessDTO,
@@ -26,12 +29,20 @@ from src.application.use_cases.get_news_impact_readiness import (
 )
 from src.application.use_cases.get_news_impact_snapshot import GetNewsImpactSnapshotUseCase
 from src.application.use_cases.get_weekly_brief_snapshot import GetWeeklyBriefSnapshotUseCase
+from src.application.use_cases.list_persisted_external_news import (
+    ListExternalNewsSourceHealthUseCase,
+    ListPersistedExternalNewsItemsUseCase,
+)
 from src.application.use_cases.preview_external_news_sources import (
     PreviewExternalNewsSourcesUseCase,
 )
+from src.application.use_cases.sync_external_news_sources import SyncExternalNewsSourcesUseCase
 from src.domain.exceptions import DashboardQueryError
 from src.infrastructure.config import Settings, get_settings
 from src.infrastructure.external_sources.rss_news_reader import RssNewsReader
+from src.infrastructure.storage.clickhouse_external_news_repository import (
+    ClickHouseExternalNewsRepository,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -51,6 +62,19 @@ async def _get_external_news_reader() -> AsyncIterator[object]:
         yield reader
     finally:
         await reader.aclose()
+
+
+def _get_external_news_repository(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> object:
+    """Construct a ClickHouse-backed repository for external news persistence."""
+    return ClickHouseExternalNewsRepository(
+        host=settings.clickhouse_host,
+        port=settings.clickhouse_port,
+        user=settings.clickhouse_user,
+        password=settings.clickhouse_password,
+        database=settings.clickhouse_database,
+    )
 
 
 def _get_dashboard_service(
@@ -143,6 +167,55 @@ async def get_news_impact_source_preview(
         settings=settings,
     )
     return await use_case.execute(limit_per_source=limit_per_source)
+
+
+@router.post(
+    "/news-impact/sources/sync",
+    response_model=ExternalNewsSyncResultDTO,
+)
+async def sync_news_impact_sources(
+    settings: Annotated[Settings, Depends(get_settings)],
+    reader: Annotated[object, Depends(_get_external_news_reader)],
+    repository: Annotated[object, Depends(_get_external_news_repository)],
+    limit_per_source: Annotated[int, Query(ge=1, le=50)] = 10,
+) -> ExternalNewsSyncResultDTO:
+    """Fetch enabled official external feeds and persist latest items into ClickHouse."""
+    use_case = SyncExternalNewsSourcesUseCase(
+        reader=cast("ExternalNewsReaderABC", reader),
+        repository=cast("ClickHouseExternalNewsRepository", repository),
+        settings=settings,
+    )
+    return await use_case.execute(limit_per_source=limit_per_source)
+
+
+@router.get(
+    "/news-impact/sources/latest",
+    response_model=list[ExternalNewsPreviewItemDTO],
+)
+async def get_persisted_news_impact_items(
+    repository: Annotated[object, Depends(_get_external_news_repository)],
+    provider: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> list[ExternalNewsPreviewItemDTO]:
+    """Return latest persisted external news items from ClickHouse."""
+    use_case = ListPersistedExternalNewsItemsUseCase(
+        repository=cast("ClickHouseExternalNewsRepository", repository),
+    )
+    return await use_case.execute(provider=provider, limit=limit)
+
+
+@router.get(
+    "/news-impact/sources/health",
+    response_model=list[ExternalNewsSourceHealthDTO],
+)
+async def get_news_impact_source_health(
+    repository: Annotated[object, Depends(_get_external_news_repository)],
+) -> list[ExternalNewsSourceHealthDTO]:
+    """Return latest persisted health snapshot per official external source."""
+    use_case = ListExternalNewsSourceHealthUseCase(
+        repository=cast("ClickHouseExternalNewsRepository", repository),
+    )
+    return await use_case.execute()
 
 
 @router.get("/weekly-brief/latest", response_model=WeeklyBriefSnapshotDTO)
