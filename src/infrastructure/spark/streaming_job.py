@@ -10,6 +10,7 @@ Architecture:
 
 from __future__ import annotations
 
+from pathlib import Path
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -18,6 +19,8 @@ import structlog
 
 from src.infrastructure.observability.metrics import (
     SPARK_BATCH_DURATION_SECONDS,
+    SPARK_PARQUET_FILE_COUNT,
+    SPARK_PARQUET_FILES_WRITTEN_TOTAL,
     SPARK_RECORDS_PROCESSED_TOTAL,
 )
 from src.infrastructure.spark.schemas import GITHUB_EVENT_SCHEMA
@@ -30,6 +33,7 @@ if TYPE_CHECKING:
 StreamingQuery = Any
 
 _CLICKHOUSE_INSERT_CHUNK_SIZE = 1_000
+_PARQUET_PARTITION_COLUMNS = ("event_date", "event_type")
 
 
 class GithubStreamingJob:
@@ -134,17 +138,81 @@ class GithubStreamingJob:
         Returns:
             The started Parquet StreamingQuery.
         """
+
+        def write_batch(batch_df: DataFrame, batch_id: int) -> None:
+            self._write_parquet_batch(batch_df, batch_id)
+
         return (
-            parsed.writeStream.format("parquet")
-            .option("path", self._cfg.parquet_base_path)
+            parsed.writeStream.foreachBatch(write_batch)
             .option(
                 "checkpointLocation",
                 f"{self._cfg.checkpoint_base_path}/parquet",
             )
-            .partitionBy("event_date", "event_type")
             .trigger(processingTime="60 seconds")
-            .outputMode("append")
             .start()
+        )
+
+    @staticmethod
+    def _count_parquet_files(base_path: Path, partitions: list[tuple[str, str]]) -> int:
+        return sum(
+            len(
+                list(
+                    (base_path / f"event_date={event_date}" / f"event_type={event_type}").glob(
+                        "*.parquet"
+                    )
+                )
+            )
+            for event_date, event_type in partitions
+        )
+
+    def _write_parquet_batch(self, batch_df: DataFrame, batch_id: int) -> None:
+        t_start = time.monotonic()
+        partition_rows = batch_df.select(*_PARQUET_PARTITION_COLUMNS).distinct().collect()
+        partitions = [
+            (str(row["event_date"]), str(row["event_type"]))
+            for row in partition_rows
+            if row["event_date"] and row["event_type"]
+        ]
+        if not partitions:
+            return
+
+        row_count = batch_df.count()
+        if row_count == 0:
+            return
+
+        parquet_base_path = Path(self._cfg.parquet_base_path)
+        before_file_count = self._count_parquet_files(parquet_base_path, partitions)
+        target_partitions = min(
+            self._cfg.spark_parquet_target_partitions_per_batch,
+            max(1, len(partitions)),
+        )
+
+        (
+            batch_df.repartition(target_partitions, *_PARQUET_PARTITION_COLUMNS)
+            .write.mode("append")
+            .format("parquet")
+            .option("compression", "snappy")
+            .option("maxRecordsPerFile", self._cfg.spark_parquet_max_records_per_file)
+            .partitionBy(*_PARQUET_PARTITION_COLUMNS)
+            .save(self._cfg.parquet_base_path)
+        )
+
+        after_file_count = self._count_parquet_files(parquet_base_path, partitions)
+        files_written = max(0, after_file_count - before_file_count)
+        elapsed = time.monotonic() - t_start
+
+        SPARK_BATCH_DURATION_SECONDS.observe(elapsed)
+        SPARK_RECORDS_PROCESSED_TOTAL.labels(sink="parquet").inc(row_count)
+        SPARK_PARQUET_FILES_WRITTEN_TOTAL.inc(files_written)
+        SPARK_PARQUET_FILE_COUNT.set(after_file_count)
+
+        logger.info(
+            "spark_streaming_job.parquet_batch_written",
+            batch_id=batch_id,
+            rows=row_count,
+            partitions=len(partitions),
+            files_written=files_written,
+            elapsed_seconds=round(elapsed, 2),
         )
 
     def _build_clickhouse_sink(self, parsed: DataFrame) -> StreamingQuery:
@@ -194,15 +262,6 @@ class GithubStreamingJob:
                     functions.coalesce(functions.col("repo_description"), functions.lit("")).alias(
                         "repo_description"
                     ),
-                    functions.coalesce(
-                        functions.col("repo_full_metadata_json"), functions.lit("")
-                    ).alias("repo_full_metadata_json"),
-                    functions.coalesce(functions.col("repo_readme_text"), functions.lit("")).alias(
-                        "repo_readme_text"
-                    ),
-                    functions.coalesce(functions.col("repo_issues_json"), functions.lit("")).alias(
-                        "repo_issues_json"
-                    ),
                 )
 
                 client = clickhouse_driver.Client(
@@ -230,9 +289,6 @@ class GithubStreamingJob:
                             row["repo_primary_language"],
                             row["repo_topics"],
                             row["repo_description"],
-                            row["repo_full_metadata_json"],
-                            row["repo_readme_text"],
-                            row["repo_issues_json"],
                         )
                     )
                     row_count += 1
@@ -245,8 +301,7 @@ class GithubStreamingJob:
                         "(event_id, event_type, actor_id, actor_login, "
                         "repo_id, repo_name, created_at, payload_json, "
                         "repo_stargazers_count, repo_primary_language, repo_topics, "
-                        "repo_description, repo_full_metadata_json, repo_readme_text, "
-                        "repo_issues_json) VALUES",
+                        "repo_description) VALUES",
                         pending_rows,
                     )
                     pending_rows = []
@@ -260,8 +315,7 @@ class GithubStreamingJob:
                         "(event_id, event_type, actor_id, actor_login, "
                         "repo_id, repo_name, created_at, payload_json, "
                         "repo_stargazers_count, repo_primary_language, repo_topics, "
-                        "repo_description, repo_full_metadata_json, repo_readme_text, "
-                        "repo_issues_json) VALUES",
+                        "repo_description) VALUES",
                         pending_rows,
                     )
 

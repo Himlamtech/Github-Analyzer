@@ -25,8 +25,7 @@ _TRUNCATE_TABLE_QUERY = "TRUNCATE TABLE github_data"
 _INSERT_EVENTS_QUERY = """
 INSERT INTO github_data
 (event_id, event_type, actor_id, actor_login, repo_id, repo_name, created_at, payload_json,
- repo_stargazers_count, repo_primary_language, repo_topics, repo_description,
- repo_full_metadata_json, repo_readme_text, repo_issues_json)
+ repo_stargazers_count, repo_primary_language, repo_topics, repo_description)
 VALUES
 """
 
@@ -158,9 +157,6 @@ class ClickHouseBackfillService:
             str(record.get("repo_primary_language") or ""),
             repo_topics,
             str(record.get("repo_description") or ""),
-            str(record.get("repo_full_metadata_json") or ""),
-            str(record.get("repo_readme_text") or ""),
-            str(record.get("repo_issues_json") or ""),
         )
 
     @staticmethod

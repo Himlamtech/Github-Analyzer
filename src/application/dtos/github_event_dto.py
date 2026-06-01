@@ -33,9 +33,6 @@ class GithubEventInputDTO(BaseModel):
     repo_primary_language: str = Field(default="")
     repo_topics: list[str] = Field(default_factory=list)
     repo_description: str = Field(default="")
-    repo_full_metadata_json: str = Field(default="")
-    repo_readme_text: str = Field(default="")
-    repo_issues_json: str = Field(default="")
     created_at: datetime
     public: bool = True
 
@@ -72,9 +69,6 @@ class GithubEventOutputDTO(BaseModel):
     repo_primary_language: str = ""
     repo_topics: list[str] = Field(default_factory=list)
     repo_description: str = ""
-    repo_full_metadata_json: str = ""
-    repo_readme_text: str = ""
-    repo_issues_json: str = ""
 
 
 class RepoStarCountDTO(BaseModel):

@@ -62,9 +62,6 @@ def _write_partition(
             "repo_primary_language": [str(row["repo_primary_language"]) for row in rows],
             "repo_topics": [row["repo_topics"] for row in rows],
             "repo_description": [str(row["repo_description"]) for row in rows],
-            "repo_full_metadata_json": [str(row["repo_full_metadata_json"]) for row in rows],
-            "repo_readme_text": [str(row["repo_readme_text"]) for row in rows],
-            "repo_issues_json": [str(row["repo_issues_json"]) for row in rows],
         }
     )
     pq.write_table(table, partition_dir / "part-000.parquet")
@@ -104,9 +101,6 @@ def test_backfill_inserts_rows_from_matching_partitions(tmp_path: Path) -> None:
             "repo_primary_language": "Python",
             "repo_topics": ["ai", "agents"],
             "repo_description": "repo one",
-            "repo_full_metadata_json": "{}",
-            "repo_readme_text": "readme",
-            "repo_issues_json": "[]",
         },
         {
             "event_id": "evt-2",
@@ -121,9 +115,6 @@ def test_backfill_inserts_rows_from_matching_partitions(tmp_path: Path) -> None:
             "repo_primary_language": "TypeScript",
             "repo_topics": ["web"],
             "repo_description": "repo two",
-            "repo_full_metadata_json": "{}",
-            "repo_readme_text": "readme",
-            "repo_issues_json": "[]",
         },
     ]
     _write_partition(tmp_path, event_date="2026-03-28", event_type="WatchEvent", rows=rows)
@@ -157,9 +148,6 @@ def test_backfill_respects_partition_date_window(tmp_path: Path) -> None:
             "repo_primary_language": "Python",
             "repo_topics": ["ai"],
             "repo_description": "inside window",
-            "repo_full_metadata_json": "{}",
-            "repo_readme_text": "readme",
-            "repo_issues_json": "[]",
         }
     ]
     outside_window_rows = [
@@ -176,9 +164,6 @@ def test_backfill_respects_partition_date_window(tmp_path: Path) -> None:
             "repo_primary_language": "Python",
             "repo_topics": ["legacy"],
             "repo_description": "outside window",
-            "repo_full_metadata_json": "{}",
-            "repo_readme_text": "readme",
-            "repo_issues_json": "[]",
         }
     ]
     _write_partition(
@@ -220,9 +205,6 @@ def test_backfill_force_truncates_existing_rows_before_insert(tmp_path: Path) ->
             "repo_primary_language": "Python",
             "repo_topics": ["ai"],
             "repo_description": "repo one",
-            "repo_full_metadata_json": "{}",
-            "repo_readme_text": "readme",
-            "repo_issues_json": "[]",
         }
     ]
     _write_partition(tmp_path, event_date="2026-03-28", event_type="WatchEvent", rows=rows)
@@ -251,9 +233,6 @@ def test_backfill_raises_when_table_not_empty_without_force(tmp_path: Path) -> N
             "repo_primary_language": "Python",
             "repo_topics": ["ai"],
             "repo_description": "repo one",
-            "repo_full_metadata_json": "{}",
-            "repo_readme_text": "readme",
-            "repo_issues_json": "[]",
         }
     ]
     _write_partition(tmp_path, event_date="2026-03-28", event_type="WatchEvent", rows=rows)

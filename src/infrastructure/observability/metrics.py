@@ -82,6 +82,16 @@ SPARK_RECORDS_PROCESSED_TOTAL: Counter = prom.Counter(
     labelnames=["sink"],  # "parquet" | "clickhouse"
 )
 
+SPARK_PARQUET_FILES_WRITTEN_TOTAL: Counter = prom.Counter(
+    "spark_parquet_files_written_total",
+    "Total parquet files written by the Spark processor.",
+)
+
+SPARK_PARQUET_FILE_COUNT: Gauge = prom.Gauge(
+    "spark_parquet_file_count",
+    "Current parquet file count for partitions touched by the latest Spark parquet batch.",
+)
+
 # ── ClickHouse ────────────────────────────────────────────────────────────────
 
 CLICKHOUSE_INSERT_ROWS_TOTAL: Counter = prom.Counter(

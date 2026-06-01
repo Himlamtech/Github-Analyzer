@@ -69,9 +69,6 @@ class GitHubEventMapper:
                 repo_primary_language=str(full_repo.get("language") or ""),
                 repo_topics=self._as_string_list(full_repo.get("topics")),
                 repo_description=str(full_repo.get("description") or ""),
-                repo_full_metadata_json=orjson.dumps(full_repo).decode(),
-                repo_readme_text=str(raw.get("_repo_readme_text") or ""),
-                repo_issues_json=orjson.dumps(raw.get("_repo_issues") or []).decode(),
                 created_at=str(raw["created_at"]),
                 public=bool(raw.get("public", True)),
             )
@@ -101,9 +98,6 @@ class GitHubEventMapper:
         payload["_repo_primary_language"] = dto.repo_primary_language
         payload["_repo_topics"] = dto.repo_topics
         payload["_repo_description"] = dto.repo_description
-        payload["_repo_full_metadata_json"] = dto.repo_full_metadata_json
-        payload["_repo_readme_text"] = dto.repo_readme_text
-        payload["_repo_issues_json"] = dto.repo_issues_json
 
         return GithubEvent(
             event_id=dto.event_id,
@@ -134,9 +128,6 @@ class GitHubEventMapper:
         repo_primary_language = str(payload.pop("_repo_primary_language", "") or "")
         repo_topics = self._as_string_list(payload.pop("_repo_topics", []))
         repo_description = str(payload.pop("_repo_description", "") or "")
-        repo_full_metadata_json = str(payload.pop("_repo_full_metadata_json", "") or "")
-        repo_readme_text = str(payload.pop("_repo_readme_text", "") or "")
-        repo_issues_json = str(payload.pop("_repo_issues_json", "") or "")
 
         return GithubEventOutputDTO(
             event_id=entity.event_id,
@@ -152,7 +143,4 @@ class GitHubEventMapper:
             repo_primary_language=repo_primary_language,
             repo_topics=repo_topics,
             repo_description=repo_description,
-            repo_full_metadata_json=repo_full_metadata_json,
-            repo_readme_text=repo_readme_text,
-            repo_issues_json=repo_issues_json,
         )

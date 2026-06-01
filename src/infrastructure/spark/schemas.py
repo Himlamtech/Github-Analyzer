@@ -46,9 +46,6 @@ GITHUB_EVENT_SCHEMA: StructType = StructType(
         StructField("repo_primary_language", StringType(), nullable=True),
         StructField("repo_topics", ArrayType(StringType()), nullable=True),
         StructField("repo_description", StringType(), nullable=True),
-        StructField("repo_full_metadata_json", StringType(), nullable=True),
-        StructField("repo_readme_text", StringType(), nullable=True),
-        StructField("repo_issues_json", StringType(), nullable=True),
         StructField("public", BooleanType(), nullable=True),
     ]
 )
@@ -68,9 +65,6 @@ PARQUET_EVENT_SCHEMA: StructType = StructType(
         StructField("repo_primary_language", StringType(), nullable=True),
         StructField("repo_topics", ArrayType(StringType()), nullable=True),
         StructField("repo_description", StringType(), nullable=True),
-        StructField("repo_full_metadata_json", StringType(), nullable=True),
-        StructField("repo_readme_text", StringType(), nullable=True),
-        StructField("repo_issues_json", StringType(), nullable=True),
         StructField("public", BooleanType(), nullable=True),
         # Partition columns — written as directory names, not data columns
         StructField("event_date", StringType(), nullable=False),
@@ -103,8 +97,5 @@ CLICKHOUSE_EVENT_SCHEMA: StructType = StructType(
         StructField("repo_primary_language", StringType(), nullable=True),
         StructField("repo_topics", ArrayType(StringType()), nullable=True),
         StructField("repo_description", StringType(), nullable=True),
-        StructField("repo_full_metadata_json", StringType(), nullable=True),
-        StructField("repo_readme_text", StringType(), nullable=True),
-        StructField("repo_issues_json", StringType(), nullable=True),
     ]
 )

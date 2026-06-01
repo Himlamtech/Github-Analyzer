@@ -64,6 +64,8 @@ class Settings(BaseSettings):
     spark_master: str = Field(default="local[16]")
     spark_driver_memory: str = Field(default="8g")
     spark_executor_memory: str = Field(default="12g")
+    spark_parquet_max_records_per_file: int = Field(default=50_000, ge=1)
+    spark_parquet_target_partitions_per_batch: int = Field(default=8, ge=1)
 
     repo_metadata_path: str = Field(
         default="./data/repos",

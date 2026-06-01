@@ -107,6 +107,9 @@ MAILTO=""
 # 08 — Full pipeline health check (every 5 min)
 */5 * * * * "${SCRIPTS_DIR}/08_health_check.sh" >> "${PROJECT_ROOT}/scheduler/logs/cron.log" 2>&1
 
+# 10 — Parquet file count growth guardrail (every 15 min)
+*/15 * * * * "${SCRIPTS_DIR}/10_parquet_file_count_check.sh" >> "${PROJECT_ROOT}/scheduler/logs/cron.log" 2>&1
+
 ${CRON_END}
 CRON
 )

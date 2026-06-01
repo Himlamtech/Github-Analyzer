@@ -63,9 +63,6 @@ def _write_new_watch_schema(path: Path) -> None:
             "repo_primary_language": ["Python"],
             "repo_topics": [["llm", "agent"]],
             "repo_description": ["An AI repository."],
-            "repo_full_metadata_json": ['{"full_name":"openai/gpt-5"}'],
-            "repo_readme_text": ["README"],
-            "repo_issues_json": ["[]"],
             "public": [True],
         },
     )

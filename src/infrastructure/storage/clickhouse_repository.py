@@ -35,8 +35,7 @@ _BATCH_SIZE = 10_000
 _INSERT_EVENTS_QUERY = """
 INSERT INTO github_data
 (event_id, event_type, actor_id, actor_login, repo_id, repo_name, created_at, payload_json,
- repo_stargazers_count, repo_primary_language, repo_topics, repo_description,
- repo_full_metadata_json, repo_readme_text, repo_issues_json)
+ repo_stargazers_count, repo_primary_language, repo_topics, repo_description)
 VALUES
 """
 
@@ -130,9 +129,6 @@ class ClickHouseEventRepository(EventRepositoryABC):
             str(entity.payload.get("_repo_primary_language", "") or ""),
             self._as_string_list(entity.payload.get("_repo_topics", [])),
             str(entity.payload.get("_repo_description", "") or ""),
-            str(entity.payload.get("_repo_full_metadata_json", "") or ""),
-            str(entity.payload.get("_repo_readme_text", "") or ""),
-            str(entity.payload.get("_repo_issues_json", "") or ""),
         )
 
     def _execute_bulk_insert(
