@@ -11,15 +11,21 @@ import {
   YAxis,
 } from 'recharts';
 
+import { fetchNewsImpactEventDetail } from '../lib/api';
 import type { NewsImpactEvent } from '../types';
+import type { NewsImpactReadiness } from '../types';
 
 interface NewsImpactProps {
   events: NewsImpactEvent[];
+  readiness: NewsImpactReadiness | null;
   isLoading: boolean;
 }
 
-export const NewsImpact: React.FC<NewsImpactProps> = ({ events, isLoading }) => {
+export const NewsImpact: React.FC<NewsImpactProps> = ({ events, readiness, isLoading }) => {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(events[0]?.id ?? null);
+  const [selectedEventDetail, setSelectedEventDetail] = useState<NewsImpactEvent | null>(null);
+  const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!events.length) {
@@ -34,6 +40,52 @@ export const NewsImpact: React.FC<NewsImpactProps> = ({ events, isLoading }) => 
     () => events.find((event) => event.id === selectedEventId) ?? null,
     [events, selectedEventId],
   );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!selectedEventId) {
+      setSelectedEventDetail(null);
+      setDetailError(null);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    const eventId = selectedEventId;
+
+    async function loadDetail(): Promise<void> {
+      try {
+        setIsDetailLoading(true);
+        const detail = await fetchNewsImpactEventDetail(eventId);
+        if (!isMounted) {
+          return;
+        }
+        setSelectedEventDetail(detail);
+        setDetailError(null);
+      } catch (loadError) {
+        if (!isMounted) {
+          return;
+        }
+        setSelectedEventDetail(null);
+        setDetailError(
+          loadError instanceof Error ? loadError.message : 'Unable to load event detail.',
+        );
+      } finally {
+        if (isMounted) {
+          setIsDetailLoading(false);
+        }
+      }
+    }
+
+    void loadDetail();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedEventId]);
+
+  const activeEvent = selectedEventDetail ?? selectedEvent;
 
   const averageCausality = useMemo(() => {
     if (!events.length) {
@@ -61,7 +113,7 @@ export const NewsImpact: React.FC<NewsImpactProps> = ({ events, isLoading }) => 
     );
   }
 
-  if (!selectedEvent) {
+  if (!activeEvent) {
     return (
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-sm text-amber-800 shadow-sm">
         News impact snapshot is currently unavailable.
@@ -77,9 +129,8 @@ export const NewsImpact: React.FC<NewsImpactProps> = ({ events, isLoading }) => 
           News-to-Code Impact Tracker
         </h1>
         <p className="text-sm text-slate-600">
-          Connecting market narratives back to bare-metal codebase reality. This surface is
-          now served from a curated backend snapshot while the external-source ingestion layer
-          is being built.
+          Connecting official launch narratives back to GitHub telemetry using persisted source
+          ingestion, readiness checks, and backend-computed impact curves.
         </p>
       </div>
 
@@ -96,8 +147,19 @@ export const NewsImpact: React.FC<NewsImpactProps> = ({ events, isLoading }) => 
             <div className="flex justify-between border-b border-slate-200 pb-2">
               <span className="text-slate-500">STATUS</span>
               <strong className="flex items-center gap-1 font-semibold uppercase text-amber-700">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                Hybrid live snapshot
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    readiness?.status === 'ready' ? 'bg-emerald-500' : 'bg-amber-500'
+                  }`}
+                />
+                {readiness?.status ?? 'loading'}
+              </strong>
+            </div>
+
+            <div className="flex justify-between border-b border-slate-200 pb-2">
+              <span className="text-slate-500">READINESS MODE</span>
+              <strong className="font-bold uppercase text-slate-900">
+                {readiness?.mode ?? 'unknown'}
               </strong>
             </div>
 
@@ -109,6 +171,13 @@ export const NewsImpact: React.FC<NewsImpactProps> = ({ events, isLoading }) => 
             <div className="flex justify-between border-b border-slate-200 pb-2">
               <span className="text-slate-500">TIME SHIFT LAG</span>
               <strong className="font-bold text-slate-900">~{averageLag} Hours</strong>
+            </div>
+
+            <div className="flex justify-between">
+              <span className="text-slate-500">HEALTHY SOURCES</span>
+              <strong className="font-bold text-slate-900">
+                {readiness?.healthySourceCount ?? 0} / {readiness?.enabledSourceCount ?? 0}
+              </strong>
             </div>
           </div>
 
@@ -142,7 +211,7 @@ export const NewsImpact: React.FC<NewsImpactProps> = ({ events, isLoading }) => 
 
           <div className="relative space-y-4 border-l border-slate-205 pl-3.5">
             {events.map((event) => {
-              const isSelected = selectedEvent.id === event.id;
+              const isSelected = activeEvent.id === event.id;
 
               return (
                 <div
@@ -183,9 +252,9 @@ export const NewsImpact: React.FC<NewsImpactProps> = ({ events, isLoading }) => 
                   </p>
 
                   <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-[10px] text-slate-500 font-mono">
-                    <span className="font-semibold uppercase text-slate-500">{event.category}</span>
+                    <span className="font-semibold uppercase text-slate-500">{event.provider}</span>
                     <span className="rounded border border-emerald-150 bg-emerald-50 px-2 py-0.5 font-bold text-emerald-700">
-                      {event.codeImpactMetric}
+                      {event.timeOffset}
                     </span>
                   </div>
                 </div>
@@ -204,12 +273,12 @@ export const NewsImpact: React.FC<NewsImpactProps> = ({ events, isLoading }) => 
             </div>
 
             <h4 className="text-xs font-display font-medium uppercase tracking-wide text-amber-700 font-mono">
-              {selectedEvent.category} TELEMETRY
+              {activeEvent.category} TELEMETRY
             </h4>
 
             <div className="h-40 w-full pt-2">
               <ResponsiveContainer width="100%" height="100%">
-                <ReLineChart data={selectedEvent.codeTrendData} margin={{ top: 5, right: 5, left: -24, bottom: 5 }}>
+                <ReLineChart data={activeEvent.codeTrendData} margin={{ top: 5, right: 5, left: -24, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.6} />
                   <XAxis dataKey="time" stroke="#475569" style={{ fontSize: 9, fontFamily: 'monospace' }} />
                   <YAxis stroke="#475569" style={{ fontSize: 9, fontFamily: 'monospace' }} />
@@ -232,14 +301,25 @@ export const NewsImpact: React.FC<NewsImpactProps> = ({ events, isLoading }) => 
             <div className="space-y-1.5 select-text text-[11px] leading-relaxed font-mono">
               <span className="block font-bold uppercase text-slate-500">Research Narrative</span>
               <p className="max-h-36 overflow-y-auto rounded border border-slate-100 bg-slate-50 p-2.5 text-xs leading-relaxed text-slate-700">
-                {selectedEvent.narrativeText}
+                {activeEvent.narrativeText}
               </p>
+            </div>
+
+            <div className="space-y-1.5 text-[11px] font-mono">
+              <span className="block font-bold uppercase text-slate-500">Evidence Trace</span>
+              <div className="space-y-2">
+                {activeEvent.explanationTrace.map((entry) => (
+                  <div key={entry} className="rounded border border-slate-150 bg-slate-50 px-3 py-2 text-slate-700">
+                    {entry}
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="space-y-1.5 text-[11px] font-mono">
               <span className="block font-bold uppercase text-slate-500">Linked Entities</span>
               <div className="flex flex-wrap gap-2">
-                {selectedEvent.linkedEntities.map((entity) => (
+                {activeEvent.linkedEntities.map((entity) => (
                   <span key={entity} className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-700">
                     {entity}
                   </span>
@@ -248,9 +328,20 @@ export const NewsImpact: React.FC<NewsImpactProps> = ({ events, isLoading }) => 
             </div>
 
             <div className="space-y-1.5 text-[11px] font-mono">
+              <span className="block font-bold uppercase text-slate-500">Linked Frameworks</span>
+              <div className="flex flex-wrap gap-2">
+                {activeEvent.linkedFrameworks.map((framework) => (
+                  <span key={framework} className="rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-indigo-700">
+                    {framework}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5 text-[11px] font-mono">
               <span className="block font-bold uppercase text-slate-500">Top Impacted Repos</span>
               <div className="space-y-2">
-                {selectedEvent.topImpactedRepos.map((repo) => (
+                {activeEvent.topImpactedRepos.map((repo) => (
                   <div key={repo} className="rounded border border-slate-150 bg-slate-50 px-3 py-2 text-slate-700">
                     {repo}
                   </div>
@@ -261,10 +352,15 @@ export const NewsImpact: React.FC<NewsImpactProps> = ({ events, isLoading }) => 
 
           <div className="mt-4 border-t border-slate-100 pt-4">
             <button
-              onClick={() => alert(`Backend-backed curated dossier ready for: ${selectedEvent.headline}`)}
+              onClick={() =>
+                alert(
+                  `Provider: ${activeEvent.provider}. Quality: ${activeEvent.qualityScore}. ${detailError ?? 'Full backend dossier loaded.'}`,
+                )
+              }
               className="flex w-full items-center justify-center gap-1.5 rounded bg-slate-900 py-2 text-[11px] font-semibold text-white transition-all hover:bg-slate-800 active:scale-95"
             >
-              Request Full Causality Dossier <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
+              {isDetailLoading ? 'Refreshing Event Detail...' : 'Request Full Causality Dossier'}{' '}
+              <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
             </button>
           </div>
         </div>

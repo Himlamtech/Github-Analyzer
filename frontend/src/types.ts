@@ -46,12 +46,44 @@ export interface NewsImpactEvent {
   headline: string;
   category: string;
   summary: string;
+  provider: string;
+  sourceType: string;
   causalityScore: number;
+  qualityScore: number;
   codeImpactMetric: string;
   narrativeText: string;
   linkedEntities: string[];
+  linkedFrameworks: string[];
   topImpactedRepos: string[];
+  explanationTrace: string[];
+  lastComputedAt: string;
   codeTrendData: { time: string; value: number }[];
+}
+
+export interface NewsImpactReadinessSource {
+  provider: string;
+  url: string;
+  sourceType: string;
+  enabled: boolean;
+  lastStatus: string | null;
+  freshnessStatus: string;
+  ageMinutes: number | null;
+  fetchedCount: number | null;
+  errorMessage: string | null;
+  checkedAt: string | null;
+}
+
+export interface NewsImpactReadiness {
+  mode: string;
+  syncEnabled: boolean;
+  configuredSourceCount: number;
+  enabledSourceCount: number;
+  healthySourceCount: number;
+  staleSourceCount: number;
+  status: string;
+  freshnessStatus: string;
+  missingRequirements: string[];
+  sources: NewsImpactReadinessSource[];
 }
 
 export interface WeeklyBriefPillar {
@@ -68,6 +100,8 @@ export interface FrameworkRadarItem {
   contributorEnergy: number;
   marketFootprint: string;
   strategicInsight: string;
+  matchedRepoCount: number;
+  representativeRepos: string[];
 }
 
 export interface RadarSummaryItem {
@@ -113,6 +147,13 @@ export interface WeeklyBriefSnapshot {
   regionalIndicators: WeeklyBriefRegion[];
   authors: WeeklyBriefAuthor[];
   disclaimer: string;
+}
+
+export interface WeeklyBriefArchiveEntry {
+  briefId: string;
+  publishedAt: string;
+  title: string;
+  subtitle: string;
 }
 
 export interface PipelineStatus {
@@ -250,13 +291,45 @@ export interface NewsImpactEventResponse {
   event_type: string;
   linked_entities: string[];
   linked_categories: string[];
+  linked_repos: string[];
+  linked_frameworks: string[];
+  quality_score: number;
+  source_type: string;
   causality_score: number;
   lag_hours: number;
   impact_summary: string;
   impact_curve: NewsImpactCurvePointResponse[];
   top_impacted_repos: string[];
+  is_quarantined: boolean;
+  quarantine_reason: string | null;
   explanation_trace: string[];
   last_computed_at: string;
+}
+
+export interface NewsImpactReadinessSourceResponse {
+  provider: string;
+  url: string;
+  source_type: string;
+  enabled: boolean;
+  last_status: string | null;
+  freshness_status: string;
+  age_minutes: number | null;
+  fetched_count: number | null;
+  error_message: string | null;
+  checked_at: string | null;
+}
+
+export interface NewsImpactReadinessResponse {
+  mode: string;
+  sync_enabled: boolean;
+  configured_source_count: number;
+  enabled_source_count: number;
+  healthy_source_count: number;
+  stale_source_count: number;
+  status: string;
+  freshness_status: string;
+  missing_requirements: string[];
+  sources: NewsImpactReadinessSourceResponse[];
 }
 
 export interface RadarSummaryResponse {
@@ -271,6 +344,8 @@ export interface FrameworkRadarItemResponse {
   commercial_readiness_score: number;
   contributor_energy_score: number;
   market_footprint: string;
+  matched_repo_count: number;
+  representative_repos: string[];
   strategic_insight_summary: string;
 }
 
@@ -318,4 +393,11 @@ export interface WeeklyBriefSnapshotResponse {
   regional_indicators: WeeklyBriefRegionResponse[];
   authors: WeeklyBriefAuthorResponse[];
   disclaimer: string;
+}
+
+export interface WeeklyBriefArchiveEntryResponse {
+  brief_id: string;
+  published_at: string;
+  title: string;
+  subtitle: string;
 }

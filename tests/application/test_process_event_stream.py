@@ -36,6 +36,12 @@ class FailingStartJob(StubStreamingJob):
         raise RuntimeError("spark boom")
 
 
+class CancelledTerminationJob(StubStreamingJob):
+    def await_termination(self) -> None:
+        self.await_calls += 1
+        raise RuntimeError("Job 106 cancelled part of cancelled job group abc123")
+
+
 class StubLoop:
     def __init__(self) -> None:
         self.handlers: dict[signal.Signals, object] = {}
@@ -86,6 +92,23 @@ async def test_execute_job_failure_raises_spark_job_error_and_stops() -> None:
 
     assert job.start_calls == 1
     assert job.await_calls == 0
+    assert job.stop_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_execute_shutdown_cancellation_returns_gracefully_and_stops() -> None:
+    job = CancelledTerminationJob()
+    use_case = ProcessEventStreamUseCase(streaming_job=job)
+    loop = StubLoop()
+
+    with patch(
+        "src.application.use_cases.process_event_stream.asyncio.get_running_loop",
+        return_value=loop,
+    ):
+        await use_case.execute()
+
+    assert job.start_calls == 1
+    assert job.await_calls == 1
     assert job.stop_calls == 1
 
 

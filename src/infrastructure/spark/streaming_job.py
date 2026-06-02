@@ -30,6 +30,11 @@ _CLICKHOUSE_INSERT_CHUNK_SIZE = 1_000
 _PARQUET_PARTITION_COLUMNS = ("event_date", "event_type")
 
 
+def _is_cancelled_spark_batch(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return "cancelled job group" in message or "stage cancelled" in message
+
+
 class GithubStreamingJob:
     """Manages the Spark Structured Streaming pipeline.
 
@@ -317,6 +322,13 @@ class GithubStreamingJob:
                     elapsed_seconds=round(elapsed, 2),
                 )
             except Exception as exc:
+                if _is_cancelled_spark_batch(exc):
+                    logger.warning(
+                        "spark_streaming_job.clickhouse_batch_cancelled",
+                        batch_id=batch_id,
+                        error=str(exc),
+                    )
+                    return
                 logger.error(
                     "spark_streaming_job.clickhouse_batch_failed",
                     batch_id=batch_id,

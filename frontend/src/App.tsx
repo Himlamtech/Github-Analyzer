@@ -19,6 +19,7 @@ import { useDashboardData } from './hooks/useDashboardData';
 import { useBreakoutData } from './hooks/useBreakoutData';
 import { useFrameworkRadarData } from './hooks/useFrameworkRadarData';
 import { useNewsImpactData } from './hooks/useNewsImpactData';
+import { useRotationData } from './hooks/useRotationData';
 import { useWeeklyBriefData } from './hooks/useWeeklyBriefData';
 import { API_BASE_URL } from './lib/api';
 import { BreakoutDetector } from './components/BreakoutDetector';
@@ -46,14 +47,21 @@ export default function App() {
   } = useFrameworkRadarData();
   const {
     data: weeklyBrief,
+    archive: weeklyBriefArchive,
     isLoading: isWeeklyBriefLoading,
     error: weeklyBriefError,
   } = useWeeklyBriefData();
   const {
     events: newsImpactEvents,
+    readiness: newsImpactReadiness,
     isLoading: isNewsImpactLoading,
     error: newsImpactError,
   } = useNewsImpactData();
+  const {
+    categories: rotationCategories,
+    isLoading: isRotationLoading,
+    error: rotationError,
+  } = useRotationData();
 
   useEffect(() => {
     window.alert = (message: string) => {
@@ -216,9 +224,9 @@ export default function App() {
       </AnimatePresence>
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
-        {(error || breakoutError || frameworkRadarError || weeklyBriefError || newsImpactError) && (
+        {(error || breakoutError || frameworkRadarError || weeklyBriefError || newsImpactError || rotationError) && (
           <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Live dashboard data is temporarily unavailable for one or more surfaces. Curated research views still render when snapshots are available, and the app will retry automatically. Error: {error ?? breakoutError ?? frameworkRadarError ?? weeklyBriefError ?? newsImpactError}
+            Live dashboard data is temporarily unavailable for one or more surfaces. Curated research views still render when snapshots are available, and the app will retry automatically. Error: {error ?? breakoutError ?? frameworkRadarError ?? weeklyBriefError ?? newsImpactError ?? rotationError}
           </div>
         )}
 
@@ -243,9 +251,19 @@ export default function App() {
                 repositories={breakoutRepositories}
               />
             )}
-            {activeTab === 'ecosystems' && <EcosystemRotation categories={data?.topicRotation ?? []} />}
+            {activeTab === 'ecosystems' && (
+              <EcosystemRotation
+                categories={rotationCategories}
+                isLoading={isRotationLoading}
+                error={rotationError}
+              />
+            )}
             {activeTab === 'newsImpact' && (
-              <NewsImpact events={newsImpactEvents} isLoading={isNewsImpactLoading} />
+              <NewsImpact
+                events={newsImpactEvents}
+                readiness={newsImpactReadiness}
+                isLoading={isNewsImpactLoading}
+              />
             )}
             {activeTab === 'radar' && (
               <CompetitiveRadar
@@ -256,7 +274,11 @@ export default function App() {
               />
             )}
             {activeTab === 'weeklyBrief' && (
-              <WeeklyBrief data={weeklyBrief} isLoading={isWeeklyBriefLoading} />
+              <WeeklyBrief
+                data={weeklyBrief}
+                archive={weeklyBriefArchive}
+                isLoading={isWeeklyBriefLoading}
+              />
             )}
           </motion.div>
         </AnimatePresence>

@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
 
-import { fetchNewsImpactEvents } from '../lib/api';
-import type { NewsImpactEvent } from '../types';
+import { fetchNewsImpactEvents, fetchNewsImpactReadiness } from '../lib/api';
+import type { NewsImpactEvent, NewsImpactReadiness } from '../types';
 
 interface NewsImpactDataState {
   events: NewsImpactEvent[];
+  readiness: NewsImpactReadiness | null;
   isLoading: boolean;
   error: string | null;
 }
 
 export function useNewsImpactData(): NewsImpactDataState {
   const [events, setEvents] = useState<NewsImpactEvent[]>([]);
+  const [readiness, setReadiness] = useState<NewsImpactReadiness | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,11 +22,15 @@ export function useNewsImpactData(): NewsImpactDataState {
     async function loadNewsImpact(): Promise<void> {
       try {
         setIsLoading(true);
-        const snapshot = await fetchNewsImpactEvents();
+        const [snapshot, readinessSnapshot] = await Promise.all([
+          fetchNewsImpactEvents(),
+          fetchNewsImpactReadiness(),
+        ]);
         if (!isMounted) {
           return;
         }
         setEvents(snapshot);
+        setReadiness(readinessSnapshot);
         setError(null);
       } catch (loadError) {
         if (!isMounted) {
@@ -49,5 +55,5 @@ export function useNewsImpactData(): NewsImpactDataState {
     };
   }, []);
 
-  return { events, isLoading, error };
+  return { events, readiness, isLoading, error };
 }

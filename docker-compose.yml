@@ -7,10 +7,6 @@ networks:
 volumes:
   kafka_data:
     name: github-kafka-data
-  frontend_node_modules:
-    name: github-frontend-node-modules
-  frontend_vite_cache:
-    name: github-frontend-vite-cache
   clickhouse_data:
     external: true
     name: github-clickhouse-data
@@ -105,33 +101,26 @@ services:
   frontend:
     image: gha-frontend
     container_name: github-frontend
-    user: "${UID:-1000}:${GID:-1000}"
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    command:
-      ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     hostname: frontend
     networks:
       - github-networks
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
-    volumes:
-      - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
-      - frontend_vite_cache:/app/node_modules/.vite
-    environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://api:8000}
     depends_on:
       api:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => process.exit(r.statusCode < 400 ? 0 : 1))"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 20s
 
   api:
     image: gha-api
@@ -226,10 +215,11 @@ services:
       context: .
       dockerfile: Dockerfile
     hostname: processor
-    command: ["python", "-m", "src.application.use_cases.process_event_stream"]
+    command: ["uv", "run", "python", "-m", "src.application.use_cases.process_event_stream"]
     networks:
       - github-networks
     volumes:
+      - ./src:/app/src
       - ./data:/app/data
     environment:
       GITHUB_API_TOKENS: ${GITHUB_API_TOKENS}

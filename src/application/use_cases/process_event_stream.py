@@ -21,6 +21,11 @@ from src.domain.exceptions import SparkJobError
 logger = structlog.get_logger(__name__)
 
 
+def _is_graceful_spark_cancellation(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return "cancelled job group" in message or "query terminated" in message
+
+
 class SparkStreamingJobProtocol(Protocol):
     """Minimal interface required from the Spark streaming infrastructure."""
 
@@ -63,6 +68,12 @@ class ProcessEventStreamUseCase:
             logger.info("process_event_stream.started")
             await loop.run_in_executor(None, self._job.await_termination)
         except Exception as exc:
+            if _is_graceful_spark_cancellation(exc):
+                logger.warning(
+                    "process_event_stream.termination_cancelled_gracefully",
+                    error=str(exc),
+                )
+                return
             raise SparkJobError(f"Spark streaming job failed: {exc}") from exc
         finally:
             logger.info("process_event_stream.stopping")

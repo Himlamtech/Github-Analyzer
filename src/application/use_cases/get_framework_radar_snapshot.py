@@ -43,12 +43,16 @@ _GENERIC_TOPIC_TOKENS = {
     "ai",
     "agents",
     "agent",
+    "agentic-ai",
+    "awesome-list",
     "llm",
+    "other",
     "python",
     "typescript",
     "javascript",
     "tooling",
     "framework",
+    "free",
     "sdk",
 }
 
@@ -164,16 +168,17 @@ class GetFrameworkRadarSnapshotUseCase:
             round(total_velocity / max(len(matched), 1) / 4.0 + len(matched) * 12),
         )
         velocity_score = round(_clamp(total_velocity / 1200.0), 2)
-        commercial_readiness = round(
-            _clamp(total_stars / 250000.0 + 0.15 - avg_issues / 400.0), 2
-        )
+        commercial_readiness = round(_clamp(total_stars / 250000.0 + 0.15 - avg_issues / 400.0), 2)
         return FrameworkRadarItemDTO(
             framework_id=framework_id,
             framework_name=framework_name,
             velocity_score=velocity_score,
             commercial_readiness_score=commercial_readiness,
             contributor_energy_score=contributor_energy,
-            market_footprint=self._market_footprint(total_stars=total_stars, repo_count=len(matched)),
+            market_footprint=self._market_footprint(
+                total_stars=total_stars,
+                repo_count=len(matched),
+            ),
             matched_repo_count=len(matched),
             representative_repos=[str(row.get("repo_full_name") or "") for row in matched[:3]],
             strategic_insight_summary=self._insight_summary(
@@ -193,7 +198,7 @@ class GetFrameworkRadarSnapshotUseCase:
                 return titleize_token(topic)
 
         category = str(row.get("category") or "").strip()
-        if category:
+        if category and category.lower() != "other":
             return category
 
         repo_name = str(row.get("repo_name") or row.get("repo_full_name") or "Emerging Stack")
