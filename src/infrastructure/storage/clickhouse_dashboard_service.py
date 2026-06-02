@@ -271,6 +271,136 @@ ORDER BY star_count_in_window DESC, stargazers_count DESC
 LIMIT %(limit)s
 """
 
+_NEW_REPOS_REACHING_THRESHOLD_QUERY = """
+WITH
+    latest AS (
+        SELECT
+            repo_full_name,
+            argMax(repo_id, snapshot_at) AS repo_id,
+            argMax(repo_name, snapshot_at) AS repo_name,
+            argMax(html_url, snapshot_at) AS html_url,
+            argMax(description, snapshot_at) AS description,
+            argMax(primary_language, snapshot_at) AS primary_language,
+            argMax(topics, snapshot_at) AS topics,
+            argMax(category, snapshot_at) AS category,
+            argMax(stargazers_count, snapshot_at) AS stargazers_count,
+            argMax(watchers_count, snapshot_at) AS watchers_count,
+            argMax(forks_count, snapshot_at) AS forks_count,
+            argMax(open_issues_count, snapshot_at) AS open_issues_count,
+            argMax(subscribers_count, snapshot_at) AS subscribers_count,
+            argMax(owner_login, snapshot_at) AS owner_login,
+            argMax(owner_avatar_url, snapshot_at) AS owner_avatar_url,
+            argMax(license_name, snapshot_at) AS license_name,
+            argMax(github_created_at, snapshot_at) AS github_created_at,
+            argMax(github_pushed_at, snapshot_at) AS github_pushed_at,
+            argMax(rank, snapshot_at) AS rank
+        FROM repo_metadata_history
+        FINAL
+        WHERE snapshot_at < %(week_end)s
+        GROUP BY repo_full_name
+    ),
+    before_week AS (
+        SELECT
+            repo_full_name,
+            argMax(stargazers_count, snapshot_at) AS baseline_stars
+        FROM repo_metadata_history
+        FINAL
+        WHERE snapshot_at < %(week_start)s
+        GROUP BY repo_full_name
+    ),
+    first_week AS (
+        SELECT
+            repo_full_name,
+            argMin(stargazers_count, snapshot_at) AS first_week_stars
+        FROM repo_metadata_history
+        FINAL
+        WHERE snapshot_at >= %(week_start)s
+          AND snapshot_at < %(week_end)s
+        GROUP BY repo_full_name
+    ),
+    crossing AS (
+        SELECT
+            repo_full_name,
+            min(snapshot_at) AS crossed_threshold_at
+        FROM repo_metadata_history
+        FINAL
+        WHERE snapshot_at >= %(week_start)s
+          AND snapshot_at < %(week_end)s
+          AND stargazers_count >= %(threshold)s
+        GROUP BY repo_full_name
+    )
+SELECT
+    repo_id,
+    repo_full_name,
+    repo_name,
+    html_url,
+    description,
+    primary_language,
+    topics,
+    category,
+    stargazers_count,
+    watchers_count,
+    forks_count,
+    open_issues_count,
+    subscribers_count,
+    owner_login,
+    owner_avatar_url,
+    license_name,
+    github_created_at,
+    github_pushed_at,
+    rank,
+    star_count_in_window,
+    baseline_stars,
+    current_stars,
+    crossed_threshold_at
+FROM (
+    SELECT
+        latest.repo_id AS repo_id,
+        latest.repo_full_name AS repo_full_name,
+        latest.repo_name AS repo_name,
+        latest.html_url AS html_url,
+        latest.description AS description,
+        latest.primary_language AS primary_language,
+        latest.topics AS topics,
+        latest.category AS category,
+        latest.stargazers_count AS stargazers_count,
+        latest.watchers_count AS watchers_count,
+        latest.forks_count AS forks_count,
+        latest.open_issues_count AS open_issues_count,
+        latest.subscribers_count AS subscribers_count,
+        latest.owner_login AS owner_login,
+        latest.owner_avatar_url AS owner_avatar_url,
+        latest.license_name AS license_name,
+        latest.github_created_at AS github_created_at,
+        latest.github_pushed_at AS github_pushed_at,
+        latest.rank AS rank,
+        coalesce(
+            before_week.baseline_stars,
+            first_week.first_week_stars,
+            latest.stargazers_count
+        ) AS baseline_stars,
+        latest.stargazers_count AS current_stars,
+        greatest(
+            latest.stargazers_count - coalesce(
+                before_week.baseline_stars,
+                first_week.first_week_stars,
+                latest.stargazers_count
+            ),
+            0
+        ) AS star_count_in_window,
+        crossing.crossed_threshold_at AS crossed_threshold_at
+    FROM latest
+    LEFT JOIN before_week ON before_week.repo_full_name = latest.repo_full_name
+    LEFT JOIN first_week ON first_week.repo_full_name = latest.repo_full_name
+    LEFT JOIN crossing ON crossing.repo_full_name = latest.repo_full_name
+) AS threshold_crossings
+WHERE baseline_stars < %(threshold)s
+  AND current_stars >= %(threshold)s
+  AND star_count_in_window > 0
+ORDER BY star_count_in_window DESC, current_stars DESC, repo_full_name ASC
+LIMIT %(limit)s
+"""
+
 _TOPIC_BREAKDOWN_QUERY = """
 SELECT
     topic,
@@ -650,6 +780,15 @@ FINAL
         return item
 
     @staticmethod
+    def _parse_threshold_crossing_row(row: tuple[Any, ...], *, rank: int) -> dict[str, Any]:
+        item = ClickHouseDashboardService._parse_repo_row(row)
+        item["baseline_stars"] = int(row[20])
+        item["current_stars"] = int(row[21])
+        item["crossed_threshold_at"] = row[22]
+        item["rank"] = rank
+        return item
+
+    @staticmethod
     def _apply_category_filter(
         items: list[dict[str, Any]],
         *,
@@ -717,6 +856,30 @@ FINAL
                 item["growth_rank"] = rank
                 results.append(item)
             return results
+
+        return await asyncio.to_thread(_run)
+
+    async def get_new_repos_reaching_star_threshold(
+        self,
+        *,
+        threshold: int = 10_000,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        week_start, week_end = self._current_gmt7_week_bounds()
+        self._require_repo_metadata_history()
+        params: dict[str, Any] = {
+            "week_start": week_start,
+            "week_end": week_end,
+            "threshold": threshold,
+            "limit": limit,
+        }
+
+        def _run() -> list[dict[str, Any]]:
+            rows = self._execute_query(_NEW_REPOS_REACHING_THRESHOLD_QUERY, params)
+            return [
+                self._parse_threshold_crossing_row(row, rank=rank)
+                for rank, row in enumerate(rows, start=1)
+            ]
 
         return await asyncio.to_thread(_run)
 

@@ -103,6 +103,21 @@ class FakeDashboardService:
         framework_item["growth_rank"] = 2
         return [item, framework_item][:limit]
 
+    async def get_new_repos_reaching_star_threshold(
+        self,
+        *,
+        threshold: int,
+        limit: int,
+    ) -> list[dict[str, object]]:
+        assert threshold == 10_000
+        item = self._repo_item()
+        item["baseline_stars"] = 9_500
+        item["current_stars"] = 10_800
+        item["star_count_in_window"] = 1_300
+        item["crossed_threshold_at"] = _NOW
+        item["rank"] = 1
+        return [item][:limit]
+
     async def get_shock_movers(
         self,
         *,
@@ -180,7 +195,24 @@ class FakeExternalNewsRepository:
                 "quality_score": 90.0,
                 "is_quarantined": False,
                 "quarantine_reason": None,
-            }
+            },
+            {
+                "source_id": "https://example.com/preview-1",
+                "provider": "OpenAI",
+                "title": "OpenAI URL-shaped source launch",
+                "url": "https://example.com/preview-1",
+                "published_at": _NOW,
+                "summary": "Official URL-shaped source summary for browser automation agents.",
+                "source_type": "rss",
+                "event_type": "launch",
+                "linked_entities": ["OpenAI", "Browser Use"],
+                "linked_categories": ["Coding Agents & Automation"],
+                "linked_repo_full_names": ["browser-use/browser-use"],
+                "linked_framework_ids": ["browser-use", "openai-agents"],
+                "quality_score": 88.0,
+                "is_quarantined": False,
+                "quarantine_reason": None,
+            },
         ]
         self.health = [
             {
@@ -373,6 +405,48 @@ def test_news_impact_detail_route_returns_single_event(client: TestClient) -> No
     assert payload["linked_frameworks"] == ["browser-use", "openai-agents"]
 
 
+def test_news_impact_detail_query_route_handles_simple_source_id(client: TestClient) -> None:
+    response = client.get(
+        "/intelligence/news-impact/detail",
+        params={"source_id": "openai-preview-1"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["event_id"] == "openai-preview-1"
+
+
+def test_news_impact_detail_query_route_handles_url_shaped_source_id(
+    client: TestClient,
+) -> None:
+    source_id = "https://example.com/preview-1"
+
+    response = client.get(
+        "/intelligence/news-impact/detail",
+        params={"source_id": source_id},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["event_id"] == source_id
+
+
+def test_news_impact_legacy_detail_path_handles_url_shaped_source_id(
+    client: TestClient,
+) -> None:
+    response = client.get("/intelligence/news-impact/https://example.com/preview-1")
+
+    assert response.status_code == 200
+    assert response.json()["event_id"] == "https://example.com/preview-1"
+
+
+def test_news_impact_legacy_detail_path_returns_controlled_not_found(
+    client: TestClient,
+) -> None:
+    response = client.get("/intelligence/news-impact/https://example.com/unknown")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "News impact event not found"
+
+
 def test_news_impact_readiness_route_returns_source_status(client: TestClient) -> None:
     response = client.get("/intelligence/news-impact/readiness")
 
@@ -477,6 +551,21 @@ def test_trending_route_returns_current_week_growth_rank(client: TestClient) -> 
     assert payload[0]["repo"]["repo_full_name"] == "browser-use/browser-use"
     assert payload[0]["star_count_in_window"] == 1_200
     assert payload[0]["growth_rank"] == 1
+
+
+def test_new_repos_reaching_10k_route_returns_weekly_milestones(
+    client: TestClient,
+) -> None:
+    response = client.get("/dashboard/new-repos-reaching-10k", params={"limit": 5})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload[0]["repo"]["repo_full_name"] == "browser-use/browser-use"
+    assert payload[0]["baseline_stars"] == 9_500
+    assert payload[0]["current_stars"] == 10_800
+    assert payload[0]["star_count_in_window"] == 1_300
+    assert payload[0]["crossed_threshold_at"] == _NOW.isoformat().replace("+00:00", "Z")
+    assert payload[0]["rank"] == 1
 
 
 def test_topic_rotation_route_returns_ranked_topics(client: TestClient) -> None:

@@ -13,7 +13,9 @@ import {
   Layers,
   Sparkles,
   Command,
-  Maximize2
+  Maximize2,
+  Star,
+  Trophy
 } from 'lucide-react';
 
 import type { DashboardSnapshot } from '../types';
@@ -24,6 +26,21 @@ interface OverviewProps {
   onNavigate: (tab: string) => void;
 }
 
+function formatNumber(value: number | undefined): string {
+  return typeof value === 'number' ? value.toLocaleString() : '--';
+}
+
+function formatDate(value: string | null | undefined): string {
+  if (!value) {
+    return 'Crossed this week';
+  }
+  return new Date(value).toLocaleDateString('en-US', {
+    month: 'short',
+    day: '2-digit',
+    timeZone: 'UTC',
+  });
+}
+
 export const Overview: React.FC<OverviewProps> = ({ data, isLoading, onNavigate }) => {
   const [logs, setLogs] = useState<string[]>([
     'Initializing Stratega telemetry pipeline...',
@@ -32,7 +49,10 @@ export const Overview: React.FC<OverviewProps> = ({ data, isLoading, onNavigate 
     'Preparing breakout repository telemetry...',
   ]);
 
-  const leadingRepo = data?.trendingRepos[0] ?? data?.topRepos[0] ?? null;
+  const topStarredRepos = data?.topStarredRepos ?? data?.topRepos ?? [];
+  const weeklyStarIncreases = data?.weeklyStarIncreases ?? data?.trendingRepos ?? [];
+  const newTenKRepos = data?.newTenKRepos ?? [];
+  const leadingRepo = weeklyStarIncreases[0] ?? topStarredRepos[0] ?? null;
   const latestEvent = data?.latestEvents[0] ?? null;
   const rotationTopic = data?.topicRotation[0] ?? null;
   const pipelineStatus = data?.pipelineStatus?.status ?? 'loading';
@@ -247,7 +267,148 @@ export const Overview: React.FC<OverviewProps> = ({ data, isLoading, onNavigate 
         </div>
       </section>
 
-      {/* 3. BENTO GRID: SOPHISTICATED SIGNALS */}
+      {/* 3. LIVE GITHUB DASHBOARD USE CASES */}
+      <section className="max-w-6xl mx-auto px-4 space-y-8">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div className="space-y-2">
+            <h2 className="text-xs font-mono text-emerald-600 font-bold uppercase tracking-widest">
+              GitHub Dashboard
+            </h2>
+            <p className="text-2xl sm:text-3xl font-display font-medium text-slate-950">
+              Live repository rankings for all-time scale and weekly breakout velocity
+            </p>
+          </div>
+          <div className="text-xs font-mono text-slate-500 bg-white border border-slate-200 rounded-full px-4 py-2 w-fit">
+            Refreshed: {data?.refreshedAt ? new Date(data.refreshedAt).toLocaleTimeString() : 'loading'}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-display text-lg font-semibold text-slate-900">All-time most-starred</h3>
+                <p className="text-xs text-slate-500 font-mono">Historical GitHub star leaders</p>
+              </div>
+              <div className="p-2 rounded-lg bg-amber-50 text-amber-600 border border-amber-200">
+                <Trophy className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="space-y-3">
+              {topStarredRepos.slice(0, 5).map((repo, index) => (
+                <a
+                  key={`top-starred-${repo.fullName}`}
+                  href={repo.repoUrl || undefined}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded-xl border border-slate-100 hover:border-amber-200 hover:bg-amber-50/40 p-3 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-mono text-slate-400">#{index + 1}</div>
+                      <div className="font-semibold text-sm text-slate-900 truncate">{repo.fullName}</div>
+                      <div className="text-xs text-slate-500 truncate">{repo.language}</div>
+                    </div>
+                    <div className="text-right font-mono text-xs text-amber-700 shrink-0">
+                      <Star className="w-3.5 h-3.5 inline mr-1" />
+                      {formatNumber(repo.starCount)}
+                    </div>
+                  </div>
+                </a>
+              ))}
+              {topStarredRepos.length === 0 && (
+                <div className="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+                  Waiting for all-time repository rankings from the dashboard API.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-display text-lg font-semibold text-slate-900">Biggest star increases</h3>
+                <p className="text-xs text-slate-500 font-mono">Current GMT+7 week growth</p>
+              </div>
+              <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="space-y-3">
+              {weeklyStarIncreases.slice(0, 5).map((repo, index) => (
+                <a
+                  key={`weekly-growth-${repo.fullName}`}
+                  href={repo.repoUrl || undefined}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded-xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40 p-3 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-mono text-slate-400">#{repo.rank || index + 1}</div>
+                      <div className="font-semibold text-sm text-slate-900 truncate">{repo.fullName}</div>
+                      <div className="text-xs text-slate-500 truncate">{formatNumber(repo.starCount)} total stars</div>
+                    </div>
+                    <div className="text-right font-mono text-xs text-emerald-700 shrink-0">
+                      +{formatNumber(repo.starGain7d)}
+                      <div className="text-[10px] text-slate-400">this week</div>
+                    </div>
+                  </div>
+                </a>
+              ))}
+              {weeklyStarIncreases.length === 0 && (
+                <div className="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+                  Waiting for weekly star growth leaders from repository history.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-display text-lg font-semibold text-slate-900">New 10k-star repos</h3>
+                <p className="text-xs text-slate-500 font-mono">Crossed the milestone this week</p>
+              </div>
+              <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200">
+                <Sparkles className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="space-y-3">
+              {newTenKRepos.slice(0, 5).map((repo) => (
+                <a
+                  key={`ten-k-${repo.fullName}`}
+                  href={repo.repoUrl || undefined}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/40 p-3 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-mono text-slate-400">{formatDate(repo.crossedThresholdAt)}</div>
+                      <div className="font-semibold text-sm text-slate-900 truncate">{repo.fullName}</div>
+                      <div className="text-xs text-slate-500 truncate">
+                        {formatNumber(repo.baselineStars)} → {formatNumber(repo.currentStars)} stars
+                      </div>
+                    </div>
+                    <div className="text-right font-mono text-xs text-indigo-700 shrink-0">
+                      +{formatNumber(repo.starGain7d)}
+                      <div className="text-[10px] text-slate-400">delta</div>
+                    </div>
+                  </div>
+                </a>
+              ))}
+              {newTenKRepos.length === 0 && (
+                <div className="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500 leading-relaxed">
+                  No repositories crossed 10k stars yet this week. This card will populate automatically when repository history detects a new milestone.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. BENTO GRID: SOPHISTICATED SIGNALS */}
       <section className="max-w-6xl mx-auto px-4 space-y-12">
         <div className="text-center md:text-left space-y-2">
           <h2 className="text-xs font-mono text-emerald-600 font-bold uppercase tracking-widest">

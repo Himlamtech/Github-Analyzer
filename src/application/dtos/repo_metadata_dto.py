@@ -66,6 +66,19 @@ class TrendingRepoDTO(BaseModel):
     growth_rank: int = Field(..., ge=1)
 
 
+class NewTenKRepoDTO(BaseModel):
+    """Repository that crossed the 10k-star milestone in the current week."""
+
+    model_config = ConfigDict(frozen=True)
+
+    repo: RepoMetadataDTO
+    baseline_stars: int = Field(..., ge=0)
+    current_stars: int = Field(..., ge=0)
+    star_count_in_window: int = Field(..., ge=0)
+    crossed_threshold_at: datetime | None
+    rank: int = Field(..., ge=1)
+
+
 class TopicBreakdownDTO(BaseModel):
     """Event counts grouped by a single GitHub topic tag.
 

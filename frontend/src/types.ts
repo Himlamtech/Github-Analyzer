@@ -26,6 +26,12 @@ export interface Repository {
   explanationTrace: string[];
 }
 
+export interface TenKMilestoneRepository extends Repository {
+  baselineStars: number;
+  currentStars: number;
+  crossedThresholdAt: string | null;
+}
+
 export interface EcosystemCategory {
   id: string;
   title: string;
@@ -174,6 +180,9 @@ export interface EventSummary {
 export interface DashboardSnapshot {
   topRepos: Repository[];
   trendingRepos: Repository[];
+  topStarredRepos: Repository[];
+  weeklyStarIncreases: Repository[];
+  newTenKRepos: TenKMilestoneRepository[];
   topicRotation: EcosystemCategory[];
   latestEvents: EventSummary[];
   pipelineStatus: PipelineStatus | null;
@@ -218,6 +227,15 @@ export interface TrendingRepoResponse {
   repo: DashboardApiRepo;
   star_count_in_window: number;
   growth_rank: number;
+}
+
+export interface NewTenKRepoResponse {
+  repo: DashboardApiRepo;
+  baseline_stars: number;
+  current_stars: number;
+  star_count_in_window: number;
+  crossed_threshold_at: string | null;
+  rank: number;
 }
 
 export interface TopicRotationResponse {

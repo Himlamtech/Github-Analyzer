@@ -264,6 +264,71 @@ class TestGetTrending:
         assert week_end == now
 
 
+class TestGetNewReposReachingTenK:
+    async def test_get_new_repos_reaching_10k_queries_history(self) -> None:
+        svc = _make_service()
+        client = _mock_client(
+            [(*_repo_row(stars=10_800, star_count_in_window=1_300), 9_500, 10_800, _NOW)]
+        )
+        week_start = datetime(2026, 5, 3, 17, 0, tzinfo=UTC)
+        week_end = datetime(2026, 5, 4, 6, 0, tzinfo=UTC)
+
+        with (
+            patch.object(svc, "_get_client", return_value=client),
+            patch.object(svc, "_current_gmt7_week_bounds", return_value=(week_start, week_end)),
+        ):
+            await svc.get_new_repos_reaching_star_threshold(threshold=10_000, limit=5)
+
+        query_text = str(client.execute.call_args.args[0])
+        params = client.execute.call_args.args[1]
+        assert "FROM repo_metadata_history" in query_text
+        assert "baseline_stars < %(threshold)s" in query_text
+        assert "current_stars >= %(threshold)s" in query_text
+        assert "snapshot_at >= %(week_start)s" in query_text
+        assert "snapshot_at < %(week_end)s" in query_text
+        assert params == {
+            "week_start": week_start,
+            "week_end": week_end,
+            "threshold": 10_000,
+            "limit": 5,
+        }
+
+    async def test_get_new_repos_reaching_10k_returns_ranked_rows(self) -> None:
+        svc = _make_service()
+        crossed_at = datetime(2026, 5, 5, 4, 0, tzinfo=UTC)
+        rows = [
+            (
+                *_repo_row(
+                    full_name="org/milestone",
+                    stars=10_800,
+                    star_count_in_window=1_300,
+                ),
+                9_500,
+                10_800,
+                crossed_at,
+            )
+        ]
+
+        with patch.object(svc, "_get_client", return_value=_mock_client(rows)):
+            result = await svc.get_new_repos_reaching_star_threshold(threshold=10_000, limit=5)
+
+        assert result[0]["repo_full_name"] == "org/milestone"
+        assert result[0]["baseline_stars"] == 9_500
+        assert result[0]["current_stars"] == 10_800
+        assert result[0]["star_count_in_window"] == 1_300
+        assert result[0]["crossed_threshold_at"] == crossed_at
+        assert result[0]["rank"] == 1
+
+    async def test_get_new_repos_reaching_10k_raises_when_history_missing(self) -> None:
+        svc = _make_service()
+
+        with (
+            patch.object(svc, "_repo_metadata_history_table_exists", return_value=False),
+            pytest.raises(DashboardQueryError, match="repo_metadata_history table is required"),
+        ):
+            await svc.get_new_repos_reaching_star_threshold(threshold=10_000, limit=5)
+
+
 class TestGetShockMovers:
     async def test_get_shock_movers_returns_absolute_and_percentage_lists(self) -> None:
         svc = _make_service()

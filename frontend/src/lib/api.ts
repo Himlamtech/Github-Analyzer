@@ -13,11 +13,13 @@ import type {
   NewsImpactEventResponse,
   NewsImpactReadiness,
   NewsImpactReadinessResponse,
+  NewTenKRepoResponse,
   PipelineStatus,
   PipelineStatusResponse,
   RepoTimeseriesPoint,
   RepoTimeseriesResponse,
   Repository,
+  TenKMilestoneRepository,
   RotationCategoryResponse,
   TopRepoResponse,
   TrendingRepoResponse,
@@ -177,6 +179,26 @@ function toBreakoutRepository(item: BreakoutRepositoryResponse, index: number): 
   };
 }
 
+function toTenKMilestoneRepository(
+  item: NewTenKRepoResponse,
+  index: number,
+): TenKMilestoneRepository {
+  const base = toRepository(item.repo, index + 1, item.star_count_in_window, item.rank);
+
+  return {
+    ...base,
+    baselineStars: item.baseline_stars,
+    currentStars: item.current_stars,
+    crossedThresholdAt: item.crossed_threshold_at,
+    starGain7d: item.star_count_in_window,
+    starGainVsPreviousWindow: item.current_stars - item.baseline_stars,
+    explanationTrace: [
+      `${item.repo.repo_full_name} crossed 10k stars this week.`,
+      `Observed baseline: ${item.baseline_stars.toLocaleString()} stars; current: ${item.current_stars.toLocaleString()} stars.`,
+    ],
+  };
+}
+
 function toPipelineStatus(response: PipelineStatusResponse): PipelineStatus {
   return {
     clickhouseReachable: response.clickhouse_reachable,
@@ -320,19 +342,27 @@ export async function fetchRotationCategories(days = 7, limit = 6): Promise<Ecos
 }
 
 export async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
-  const [topRepos, trendingRepos, topicRotation, latestEvents, pipelineStatus] = await Promise.all([
-    requestJson<TopRepoResponse[]>('/dashboard/top-repos', { days: 7, limit: 12 }),
-    requestJson<TrendingRepoResponse[]>('/dashboard/trending', { days: 7, limit: 6 }),
+  const [topStarredRepos, weeklyStarIncreases, newTenKRepos, topicRotation, latestEvents, pipelineStatus] = await Promise.all([
+    requestJson<TopRepoResponse[]>('/dashboard/top-starred-repos', { days: 7, limit: 12 }),
+    requestJson<TrendingRepoResponse[]>('/dashboard/trending', { days: 7, limit: 12 }),
+    requestJson<NewTenKRepoResponse[]>('/dashboard/new-repos-reaching-10k', { limit: 6 }),
     requestJson<RotationCategoryResponse[]>('/intelligence/rotation', { days: 7, limit: 6 }),
     requestJson<EventSummaryResponse[]>('/events/latest', { limit: 6 }),
     requestJson<PipelineStatusResponse>('/pipeline/status'),
   ]);
+  const topStarred = topStarredRepos.map((item, index) =>
+    toRepository(item.repo, index + 1, item.star_count_in_window, index + 1),
+  );
+  const weeklyIncreases = weeklyStarIncreases.map((item, index) =>
+    toRepository(item.repo, index + 1, item.star_count_in_window, item.growth_rank),
+  );
 
   return {
-    topRepos: topRepos.map((item, index) => toRepository(item.repo, index + 1, item.star_count_in_window, index + 1)),
-    trendingRepos: trendingRepos.map((item, index) =>
-      toRepository(item.repo, index + 1, item.star_count_in_window, item.growth_rank),
-    ),
+    topRepos: topStarred,
+    trendingRepos: weeklyIncreases,
+    topStarredRepos: topStarred,
+    weeklyStarIncreases: weeklyIncreases,
+    newTenKRepos: newTenKRepos.map(toTenKMilestoneRepository),
     topicRotation: topicRotation.map(toEcosystemCategory),
     latestEvents: latestEvents.map(toEventSummary),
     pipelineStatus: toPipelineStatus(pipelineStatus),
@@ -380,7 +410,9 @@ export async function fetchNewsImpactEvents(): Promise<NewsImpactEvent[]> {
 }
 
 export async function fetchNewsImpactEventDetail(eventId: string): Promise<NewsImpactEvent> {
-  const row = await requestJson<NewsImpactEventResponse>(`/intelligence/news-impact/${eventId}`);
+  const row = await requestJson<NewsImpactEventResponse>('/intelligence/news-impact/detail', {
+    source_id: eventId,
+  });
 
   return toNewsImpactEvent(row);
 }

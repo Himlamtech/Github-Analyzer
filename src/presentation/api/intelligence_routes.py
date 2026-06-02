@@ -263,11 +263,21 @@ async def get_news_impact_source_health(
     return await use_case.execute()
 
 
-@router.get("/news-impact/{event_id}", response_model=NewsImpactEventDTO)
-async def get_news_impact_event_detail(
-    event_id: str,
-    repository: Annotated[object, Depends(_get_external_news_repository)],
-    svc: Annotated[object, Depends(_get_dashboard_service)],
+def _normalize_news_impact_source_id(source_id: str) -> str:
+    """Normalize legacy URL-shaped source IDs captured from path routes."""
+
+    normalized = source_id.strip()
+    if normalized.startswith("https:/") and not normalized.startswith("https://"):
+        return normalized.replace("https:/", "https://", 1)
+    if normalized.startswith("http:/") and not normalized.startswith("http://"):
+        return normalized.replace("http:/", "http://", 1)
+    return normalized
+
+
+async def _get_news_impact_detail(
+    source_id: str,
+    repository: object,
+    svc: object,
 ) -> NewsImpactEventDTO:
     """Return computed detail for one persisted external news event."""
 
@@ -276,13 +286,47 @@ async def get_news_impact_event_detail(
         reader=cast("ClickHouseDashboardService", svc),
     )
     try:
-        result = await use_case.get_detail(event_id)
+        result = await use_case.get_detail(_normalize_news_impact_source_id(source_id))
     except DashboardQueryError as exc:
-        logger.error("intelligence.news_impact_detail_failed", event_id=event_id, error=str(exc))
+        logger.error("intelligence.news_impact_detail_failed", source_id=source_id, error=str(exc))
         raise HTTPException(status_code=503, detail="News impact detail query failed") from exc
     if result is None:
         raise HTTPException(status_code=404, detail="News impact event not found")
     return result
+
+
+@router.get("/news-impact/detail", response_model=NewsImpactEventDTO)
+async def get_news_impact_event_detail_by_source_id(
+    source_id: Annotated[str, Query(min_length=1)],
+    repository: Annotated[object, Depends(_get_external_news_repository)],
+    svc: Annotated[object, Depends(_get_dashboard_service)],
+) -> NewsImpactEventDTO:
+    """Return computed detail for one persisted external news event by source ID."""
+
+    return await _get_news_impact_detail(source_id, repository, svc)
+
+
+@router.get("/news-impact/{event_id}", response_model=NewsImpactEventDTO)
+async def get_news_impact_event_detail(
+    event_id: str,
+    repository: Annotated[object, Depends(_get_external_news_repository)],
+    svc: Annotated[object, Depends(_get_dashboard_service)],
+) -> NewsImpactEventDTO:
+    """Return computed detail for one persisted external news event."""
+
+    return await _get_news_impact_detail(event_id, repository, svc)
+
+
+@router.get("/news-impact/{source_id:path}", response_model=NewsImpactEventDTO)
+async def get_legacy_news_impact_event_detail(
+    source_id: str,
+    repository: Annotated[object, Depends(_get_external_news_repository)],
+    svc: Annotated[object, Depends(_get_dashboard_service)],
+) -> NewsImpactEventDTO:
+    """Handle stale clients that send URL-shaped source IDs as path segments."""
+
+    logger.warning("intelligence.legacy_news_impact_detail_path_used", source_id=source_id)
+    return await _get_news_impact_detail(source_id, repository, svc)
 
 
 @router.get("/weekly-brief/latest", response_model=WeeklyBriefSnapshotDTO)

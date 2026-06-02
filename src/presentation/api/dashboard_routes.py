@@ -20,6 +20,7 @@ import structlog
 
 from src.application.dtos.repo_metadata_dto import (
     LanguageBreakdownDTO,
+    NewTenKRepoDTO,
     RepoMetadataDTO,
     RepoTimeseriesPointDTO,
     ShockMoverDTO,
@@ -223,6 +224,36 @@ async def get_trending(
             repo=_to_repo_dto(row),
             star_count_in_window=int(row.get("star_count_in_window") or 0),
             growth_rank=int(row.get("growth_rank") or idx + 1),
+        )
+        for idx, row in enumerate(rows)
+    ]
+
+
+@router.get("/new-repos-reaching-10k", response_model=list[NewTenKRepoDTO])
+async def get_new_repos_reaching_10k(
+    svc: Annotated[object, Depends(_get_dashboard_service)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> list[NewTenKRepoDTO]:
+    """Repos whose total stars crossed 10k in the current GMT+7 week."""
+    service = cast("ClickHouseDashboardService", svc)
+
+    try:
+        rows = await service.get_new_repos_reaching_star_threshold(
+            threshold=10_000,
+            limit=limit,
+        )
+    except DashboardQueryError as exc:
+        logger.error("dashboard.new_repos_reaching_10k_failed", error=str(exc))
+        raise HTTPException(status_code=503, detail="Dashboard query failed") from exc
+
+    return [
+        NewTenKRepoDTO(
+            repo=_to_repo_dto(row),
+            baseline_stars=_as_int(row.get("baseline_stars")),
+            current_stars=_as_int(row.get("current_stars")),
+            star_count_in_window=_as_int(row.get("star_count_in_window")),
+            crossed_threshold_at=cast("datetime | None", row.get("crossed_threshold_at")),
+            rank=_as_int(row.get("rank")) or idx + 1,
         )
         for idx, row in enumerate(rows)
     ]

@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { BookOpen, MapPin } from 'lucide-react';
 
+import { SafeChartContainer } from './SafeChartContainer';
 import type { WeeklyBriefArchiveEntry, WeeklyBriefSnapshot } from '../types';
 
 interface WeeklyBriefProps {
@@ -124,18 +125,24 @@ export const WeeklyBrief: React.FC<WeeklyBriefProps> = ({ data, archive, isLoadi
                 </div>
               </div>
 
-              <div className="h-48 w-full pt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.summaryChartData} margin={{ top: 5, right: 5, left: -24, bottom: 5 }}>
-                    <XAxis dataKey="period" stroke="#475569" style={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <YAxis stroke="#475569" style={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.6} />
-                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', fontSize: 11, color: '#0f172a' }} />
-                    <Bar dataKey="standardRAG" name="Standard RAG" fill="#f43f5e" radius={[4, 4, 0, 0]} opacity={0.8} />
-                    <Bar dataKey="agenticLoops" name="Agentic Workflows" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              {data.summaryChartData.length > 0 ? (
+                <SafeChartContainer className="h-48 w-full pt-4" placeholder="Preparing weekly chart...">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1} debounce={50}>
+                    <BarChart data={data.summaryChartData} margin={{ top: 5, right: 5, left: -24, bottom: 5 }}>
+                      <XAxis dataKey="period" stroke="#475569" style={{ fontSize: 10, fontFamily: 'monospace' }} />
+                      <YAxis stroke="#475569" style={{ fontSize: 10, fontFamily: 'monospace' }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.6} />
+                      <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', fontSize: 11, color: '#0f172a' }} />
+                      <Bar dataKey="standardRAG" name="Standard RAG" fill="#f43f5e" radius={[4, 4, 0, 0]} opacity={0.8} />
+                      <Bar dataKey="agenticLoops" name="Agentic Workflows" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </SafeChartContainer>
+              ) : (
+                <div className="flex h-48 w-full items-center justify-center rounded border border-slate-100 bg-slate-50 pt-4 text-[10px] font-mono text-slate-500">
+                  No summary chart data available.
+                </div>
+              )}
             </div>
           </section>
         </div>

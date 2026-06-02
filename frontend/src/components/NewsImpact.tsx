@@ -11,6 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 
+import { SafeChartContainer } from './SafeChartContainer';
 import { fetchNewsImpactEventDetail } from '../lib/api';
 import type { NewsImpactEvent } from '../types';
 import type { NewsImpactReadiness } from '../types';
@@ -276,27 +277,33 @@ export const NewsImpact: React.FC<NewsImpactProps> = ({ events, readiness, isLoa
               {activeEvent.category} TELEMETRY
             </h4>
 
-            <div className="h-40 w-full pt-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <ReLineChart data={activeEvent.codeTrendData} margin={{ top: 5, right: 5, left: -24, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.6} />
-                  <XAxis dataKey="time" stroke="#475569" style={{ fontSize: 9, fontFamily: 'monospace' }} />
-                  <YAxis stroke="#475569" style={{ fontSize: 9, fontFamily: 'monospace' }} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', fontSize: 10, color: '#0f172a' }}
-                    labelStyle={{ color: '#0f172a', fontWeight: 'bold' }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#f59e0b"
-                    strokeWidth={2.5}
-                    dot={{ fill: '#d97706', strokeWidth: 1 }}
-                    activeDot={{ r: 5 }}
-                  />
-                </ReLineChart>
-              </ResponsiveContainer>
-            </div>
+            {activeEvent.codeTrendData.length > 0 ? (
+              <SafeChartContainer className="h-40 w-full pt-2" placeholder="Preparing impact curve...">
+                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1} debounce={50}>
+                  <ReLineChart data={activeEvent.codeTrendData} margin={{ top: 5, right: 5, left: -24, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.6} />
+                    <XAxis dataKey="time" stroke="#475569" style={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <YAxis stroke="#475569" style={{ fontSize: 9, fontFamily: 'monospace' }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', fontSize: 10, color: '#0f172a' }}
+                      labelStyle={{ color: '#0f172a', fontWeight: 'bold' }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#f59e0b"
+                      strokeWidth={2.5}
+                      dot={{ fill: '#d97706', strokeWidth: 1 }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </ReLineChart>
+                </ResponsiveContainer>
+              </SafeChartContainer>
+            ) : (
+              <div className="flex h-40 w-full items-center justify-center rounded border border-slate-100 bg-slate-50 pt-2 text-[10px] font-mono text-slate-500">
+                No impact curve available.
+              </div>
+            )}
 
             <div className="space-y-1.5 select-text text-[11px] leading-relaxed font-mono">
               <span className="block font-bold uppercase text-slate-500">Research Narrative</span>
