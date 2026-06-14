@@ -171,6 +171,7 @@ LIMIT %(limit)s
 _TRENDING_QUERY = """
 WITH
     latest AS (
+        -- Limit to last 30 days to avoid full-history scan on 5M+ rows
         SELECT
             repo_full_name,
             argMax(repo_id, snapshot_at) AS repo_id,
@@ -192,17 +193,18 @@ WITH
             argMax(github_pushed_at, snapshot_at) AS github_pushed_at,
             argMax(rank, snapshot_at) AS rank
         FROM repo_metadata_history
-        FINAL
-        WHERE snapshot_at < %(week_end)s
+        WHERE snapshot_at >= %(week_end)s - INTERVAL 30 DAY
+          AND snapshot_at < %(week_end)s
         GROUP BY repo_full_name
     ),
     before_week AS (
+        -- Look back at most 30 days before week start for baseline stars
         SELECT
             repo_full_name,
             argMax(stargazers_count, snapshot_at) AS baseline_stars
         FROM repo_metadata_history
-        FINAL
-        WHERE snapshot_at < %(week_start)s
+        WHERE snapshot_at >= %(week_start)s - INTERVAL 30 DAY
+          AND snapshot_at < %(week_start)s
         GROUP BY repo_full_name
     ),
     first_week AS (
@@ -210,7 +212,6 @@ WITH
             repo_full_name,
             argMin(stargazers_count, snapshot_at) AS first_week_stars
         FROM repo_metadata_history
-        FINAL
         WHERE snapshot_at >= %(week_start)s
           AND snapshot_at < %(week_end)s
         GROUP BY repo_full_name
@@ -677,10 +678,11 @@ class ClickHouseDashboardService:
         self,
         query: str,
         params: dict[str, Any] | None = None,
+        settings: dict[str, Any] | None = None,
     ) -> list[tuple[Any, ...]]:
         client = self._get_client()
         try:
-            rows = client.execute(query, params or {})
+            rows = client.execute(query, params or {}, settings=settings or {})
             return cast("list[tuple[Any, ...]]", rows)
         except ClickHouseError as exc:
             raise DashboardQueryError(f"Dashboard query failed: {exc}") from exc
@@ -867,8 +869,12 @@ FINAL
             "limit": limit,
         }
 
+        _trending_settings: dict[str, Any] = {
+            "max_bytes_before_external_group_by": 2_000_000_000,
+        }
+
         def _run() -> list[dict[str, Any]]:
-            rows = self._execute_query(_TRENDING_QUERY, params)
+            rows = self._execute_query(_TRENDING_QUERY, params, settings=_trending_settings)
             results = []
             for rank, row in enumerate(rows, start=1):
                 item = self._parse_repo_row(row)
