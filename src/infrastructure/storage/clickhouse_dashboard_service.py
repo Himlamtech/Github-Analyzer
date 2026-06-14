@@ -870,7 +870,8 @@ FINAL
         }
 
         _trending_settings: dict[str, Any] = {
-            "max_bytes_before_external_group_by": 2_000_000_000,
+            "max_memory_usage": 2_500_000_000,
+            "max_bytes_before_external_group_by": 1_500_000_000,
         }
 
         def _run() -> list[dict[str, Any]]:
@@ -900,7 +901,8 @@ FINAL
         }
 
         _threshold_settings: dict[str, Any] = {
-            "max_bytes_before_external_group_by": 2_000_000_000,
+            "max_memory_usage": 2_500_000_000,
+            "max_bytes_before_external_group_by": 1_500_000_000,
         }
 
         def _run() -> list[dict[str, Any]]:
