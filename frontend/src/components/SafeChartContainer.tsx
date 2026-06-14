@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 interface SafeChartContainerProps {
   children: React.ReactNode;
@@ -14,43 +14,39 @@ export const SafeChartContainer: React.FC<SafeChartContainerProps> = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [hasStableSize, setHasStableSize] = useState(false);
 
+  // Measure synchronously on first paint so the placeholder never flashes
+  // on a pre-sized container (e.g. SSR-hydration or static layout).
+  useLayoutEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+    setHasStableSize(element.clientWidth > 0 && element.clientHeight > 0);
+  }, []);
+
   useEffect(() => {
     const element = containerRef.current;
     if (!element) {
       return;
     }
 
-    let animationFrameId: number | null = null;
-
-    const updateSize = (width: number, height: number): void => {
-      if (animationFrameId !== null) {
-        window.cancelAnimationFrame(animationFrameId);
-      }
-      animationFrameId = window.requestAnimationFrame(() => {
-        setHasStableSize(width > 0 && height > 0);
-      });
-    };
-
     const observer = new ResizeObserver(([entry]) => {
       if (!entry) {
         return;
       }
-      updateSize(entry.contentRect.width, entry.contentRect.height);
+      const { width, height } = entry.contentRect;
+      // Update synchronously (no rAF) so the chart unmounts before recharts
+      // can measure a 0-px container and log "width/height=-1" warnings.
+      setHasStableSize(width > 0 && height > 0);
     });
 
     observer.observe(element);
-    updateSize(element.clientWidth, element.clientHeight);
 
     return () => {
       observer.disconnect();
-      if (animationFrameId !== null) {
-        window.cancelAnimationFrame(animationFrameId);
-      }
     };
   }, []);
 
   return (
-    <div ref={containerRef} className={className}>
+    <div ref={containerRef} className={className} style={{ overflow: 'hidden' }}>
       {hasStableSize ? (
         children
       ) : (
