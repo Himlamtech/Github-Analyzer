@@ -107,31 +107,36 @@ class PollGithubEventsUseCase:
         logger.info("poll_github_events.started")
 
         try:
-            async for raw_events in self._client.stream_events():
-                if self._shutdown_event.is_set():
-                    break
-                cycle_start = time.monotonic()
+            while not self._shutdown_event.is_set():
                 try:
-                    await self._process_batch(raw_events)
-                except (KafkaError, ValidationError) as exc:
-                    logger.error("poll_github_events.cycle_error", error=str(exc))
-                finally:
-                    logger.debug(
-                        "poll_github_events.cycle_completed",
-                        duration_seconds=round(time.monotonic() - cycle_start, 3),
-                        raw_event_count=len(raw_events),
+                    async for raw_events in self._client.stream_events():
+                        if self._shutdown_event.is_set():
+                            break
+                        cycle_start = time.monotonic()
+                        try:
+                            await self._process_batch(raw_events)
+                        except (KafkaError, ValidationError) as exc:
+                            logger.error("poll_github_events.cycle_error", error=str(exc))
+                        finally:
+                            logger.debug(
+                                "poll_github_events.cycle_completed",
+                                duration_seconds=round(time.monotonic() - cycle_start, 3),
+                                raw_event_count=len(raw_events),
+                            )
+                        await asyncio.sleep(self._poll_interval)
+                except RateLimitExceededError as exc:
+                    logger.warning(
+                        "poll_github_events.rate_limit_exhausted",
+                        reset_in=exc.reset_at_seconds,
                     )
-                await asyncio.sleep(self._poll_interval)
-        except RateLimitExceededError as exc:
-            logger.warning(
-                "poll_github_events.rate_limit_exhausted",
-                reset_in=exc.reset_at_seconds,
-            )
-            await asyncio.sleep(exc.reset_at_seconds)
-        except GitHubAPIError as exc:
-            logger.error("poll_github_events.github_api_error", error=str(exc))
-        except KafkaError as exc:
-            logger.error("poll_github_events.kafka_error", error=str(exc))
+                    await asyncio.sleep(exc.reset_at_seconds)
+                    # Tiếp tục vòng lặp ngoài — tạo lại stream_events() sau khi hết rate limit
+                except GitHubAPIError as exc:
+                    logger.error("poll_github_events.github_api_error", error=str(exc))
+                    break
+                except KafkaError as exc:
+                    logger.error("poll_github_events.kafka_error", error=str(exc))
+                    break
         finally:
             await self._producer.stop()
             logger.info("poll_github_events.stopped")

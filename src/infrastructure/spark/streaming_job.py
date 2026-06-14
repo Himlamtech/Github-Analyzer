@@ -96,7 +96,7 @@ class GithubStreamingJob:
             .option("subscribe", self._cfg.kafka_topic)
             .option("startingOffsets", "latest")
             .option("failOnDataLoss", "false")
-            .option("maxOffsetsPerTrigger", 50000)
+            .option("maxOffsetsPerTrigger", 5000)
             .option("kafka.max.partition.fetch.bytes", 52428800)
             .load()
             .select(

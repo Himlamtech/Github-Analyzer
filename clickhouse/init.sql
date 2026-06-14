@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS github_analyzer.github_data
 ENGINE = MergeTree()
 PARTITION BY toYYYYMM(created_at)
 ORDER BY (repo_id, created_at)
+TTL created_at + INTERVAL 90 DAY DELETE
 SETTINGS index_granularity = 8192;
 
 -- ── Table: repo_metadata ─────────────────────────────────────────────────────
@@ -151,6 +152,7 @@ CREATE TABLE IF NOT EXISTS github_analyzer.repo_metadata_history
 ENGINE = ReplacingMergeTree(snapshot_at)
 PARTITION BY toYYYYMM(snapshot_at)
 ORDER BY (repo_full_name, snapshot_source, snapshot_at, snapshot_key)
+TTL snapshot_at + INTERVAL 180 DAY DELETE
 SETTINGS index_granularity = 8192;
 
 -- ── Table: repo_star_counts ──────────────────────────────────────────────────
@@ -164,6 +166,7 @@ CREATE TABLE IF NOT EXISTS github_analyzer.repo_star_counts
 ENGINE = SummingMergeTree()
 PARTITION BY toYYYYMM(event_date)
 ORDER BY (repo_name, event_date)
+TTL event_date + INTERVAL 365 DAY DELETE
 SETTINGS index_granularity = 8192;
 
 -- ── Table: repo_activity_summary ─────────────────────────────────────────────
@@ -181,6 +184,7 @@ CREATE TABLE IF NOT EXISTS github_analyzer.repo_activity_summary
 ENGINE = ReplacingMergeTree(computed_at)
 PARTITION BY toYYYYMM(computed_at)
 ORDER BY (repo_name, event_type)
+TTL computed_at + INTERVAL 90 DAY DELETE
 SETTINGS index_granularity = 8192;
 
 -- ── Access: read-only viewer user ───────────────────────────────────────────

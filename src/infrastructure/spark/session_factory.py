@@ -60,7 +60,7 @@ def create_spark_session(settings: object) -> SparkSession:
         .config("spark.sql.adaptive.coalescePartitions.enabled", "true")
         .config("spark.sql.shuffle.partitions", "16")
         # Streaming
-        .config("spark.sql.streaming.checkpointLocation", "./data/checkpoints/default")
+        .config("spark.sql.streaming.checkpointLocation", cfg.checkpoint_base_path + "/default")
         .config("spark.streaming.stopGracefullyOnShutdown", "true")
         # Parquet
         .config("spark.sql.parquet.compression.codec", "snappy")
