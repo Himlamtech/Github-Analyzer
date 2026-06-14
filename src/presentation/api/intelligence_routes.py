@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import TYPE_CHECKING, Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -41,7 +42,7 @@ from src.application.use_cases.preview_external_news_sources import (
     PreviewExternalNewsSourcesUseCase,
 )
 from src.application.use_cases.sync_external_news_sources import SyncExternalNewsSourcesUseCase
-from src.domain.exceptions import DashboardQueryError
+from src.domain.exceptions import DashboardQueryError, ExternalSourceError
 from src.infrastructure.config import Settings, get_settings
 from src.infrastructure.external_sources.rss_news_reader import RssNewsReader
 from src.infrastructure.storage.clickhouse_external_news_repository import (
@@ -83,21 +84,29 @@ def _get_external_news_repository(
     )
 
 
-def _get_dashboard_service(
-    settings: Annotated[Settings, Depends(get_settings)],
+@lru_cache(maxsize=1)
+def _make_dashboard_service(
+    host: str, port: int, user: str, password: str, database: str
 ) -> object:
-    """Construct a ClickHouseDashboardService for intelligence routes."""
-
     from src.infrastructure.storage.clickhouse_dashboard_service import (
         ClickHouseDashboardService,
     )
 
     return ClickHouseDashboardService(
-        host=settings.clickhouse_host,
-        port=settings.clickhouse_port,
-        user=settings.clickhouse_user,
-        password=settings.clickhouse_password,
-        database=settings.clickhouse_database,
+        host=host, port=port, user=user, password=password, database=database
+    )
+
+
+def _get_dashboard_service(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> object:
+    """Return the singleton ClickHouseDashboardService for intelligence routes."""
+    return _make_dashboard_service(
+        settings.clickhouse_host,
+        settings.clickhouse_port,
+        settings.clickhouse_user,
+        settings.clickhouse_password,
+        settings.clickhouse_database,
     )
 
 
@@ -203,7 +212,10 @@ async def get_news_impact_source_preview(
         reader=cast("ExternalNewsReaderABC", reader),
         settings=settings,
     )
-    return await use_case.execute(limit_per_source=limit_per_source)
+    try:
+        return await use_case.execute(limit_per_source=limit_per_source)
+    except ExternalSourceError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.post(

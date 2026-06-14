@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime, timedelta, timezone
+import threading
 from typing import Any, cast
 
 from clickhouse_driver import Client
@@ -20,6 +21,8 @@ from src.domain.services.category_classifier import CategoryClassifier
 from src.domain.value_objects.repo_category import RepoCategory
 
 logger = structlog.get_logger(__name__)
+
+_tls = threading.local()
 
 _GMT7 = timezone(timedelta(hours=7))
 
@@ -645,24 +648,30 @@ class ClickHouseDashboardService:
         self._database = database
         self._classifier = CategoryClassifier()
         self._has_categorized_metadata_cache: bool | None = None
+        self._repo_metadata_exists_cache: bool | None = None
+        self._repo_metadata_history_exists_cache: bool | None = None
 
     def _get_client(self) -> Client:
-        try:
-            return Client(
-                host=self._host,
-                port=self._port,
-                user=self._user,
-                password=self._password,
-                database=self._database,
-                connect_timeout=10,
-                send_receive_timeout=30,
-                sync_request_timeout=5,
-                settings={"use_client_time_zone": True},
-            )
-        except ClickHouseNetworkError as exc:
-            raise ClickHouseConnectionError(
-                f"Cannot connect to ClickHouse at {self._host}:{self._port}: {exc}"
-            ) from exc
+        cache_key = (self._host, self._port, self._user, self._database)
+        if not hasattr(_tls, "client") or getattr(_tls, "client_key", None) != cache_key:
+            try:
+                _tls.client = Client(
+                    host=self._host,
+                    port=self._port,
+                    user=self._user,
+                    password=self._password,
+                    database=self._database,
+                    connect_timeout=10,
+                    send_receive_timeout=30,
+                    sync_request_timeout=5,
+                    settings={"use_client_time_zone": True},
+                )
+                _tls.client_key = cache_key
+            except ClickHouseNetworkError as exc:
+                raise ClickHouseConnectionError(
+                    f"Cannot connect to ClickHouse at {self._host}:{self._port}: {exc}"
+                ) from exc
+        return _tls.client
 
     def _execute_query(
         self,
@@ -677,22 +686,32 @@ class ClickHouseDashboardService:
             raise DashboardQueryError(f"Dashboard query failed: {exc}") from exc
 
     def _repo_metadata_table_exists(self) -> bool:
+        if self._repo_metadata_exists_cache is not None:
+            return self._repo_metadata_exists_cache
         rows = self._execute_query("EXISTS TABLE github_analyzer.repo_metadata")
         if not rows or not rows[0]:
+            self._repo_metadata_exists_cache = False
             return False
         try:
-            return int(rows[0][0]) == 1
-        except TypeError, ValueError:
-            return True
+            result = int(rows[0][0]) == 1
+        except (TypeError, ValueError):
+            result = True
+        self._repo_metadata_exists_cache = result
+        return result
 
     def _repo_metadata_history_table_exists(self) -> bool:
+        if self._repo_metadata_history_exists_cache is not None:
+            return self._repo_metadata_history_exists_cache
         rows = self._execute_query("EXISTS TABLE github_analyzer.repo_metadata_history")
         if not rows or not rows[0]:
+            self._repo_metadata_history_exists_cache = False
             return False
         try:
-            return int(rows[0][0]) == 1
-        except TypeError, ValueError:
-            return True
+            result = int(rows[0][0]) == 1
+        except (TypeError, ValueError):
+            result = True
+        self._repo_metadata_history_exists_cache = result
+        return result
 
     def _require_repo_metadata(self) -> None:
         if not self._repo_metadata_table_exists():
@@ -718,7 +737,7 @@ FINAL
         )
         try:
             self._has_categorized_metadata_cache = int(rows[0][0]) > 0
-        except IndexError, TypeError, ValueError:
+        except (IndexError, TypeError, ValueError):
             self._has_categorized_metadata_cache = True
         return self._has_categorized_metadata_cache
 

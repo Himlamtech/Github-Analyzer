@@ -19,7 +19,7 @@ class RssNewsReader:
 
     def __init__(self) -> None:
         self._client = httpx.AsyncClient(
-            timeout=httpx.Timeout(connect=5.0, read=20.0, write=10.0, pool=5.0),
+            timeout=httpx.Timeout(connect=5.0, read=8.0, write=10.0, pool=5.0),
             follow_redirects=True,
             headers={"User-Agent": "github-analyzer-news-preview/0.1"},
         )
@@ -69,7 +69,7 @@ class RssNewsReader:
             return datetime.now(tz=UTC)
         try:
             parsed = parsedate_to_datetime(value)
-        except TypeError, ValueError:
+        except (TypeError, ValueError):
             try:
                 parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
             except ValueError:

@@ -251,6 +251,7 @@ class ExternalNewsSourcePreviewDTO(BaseModel):
     url: str
     source_type: str
     items: list[ExternalNewsPreviewItemDTO]
+    error: str | None = None
 
 
 class ExternalNewsSourceHealthDTO(BaseModel):

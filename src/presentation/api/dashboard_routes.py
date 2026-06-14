@@ -13,6 +13,7 @@ Tags: ["Dashboard"]
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from functools import lru_cache
 from typing import TYPE_CHECKING, Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -46,20 +47,29 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 # ── Dependency factory ────────────────────────────────────────────────────────
 
 
-def _get_dashboard_service(
-    settings: Annotated[Settings, Depends(get_settings)],
+@lru_cache(maxsize=1)
+def _make_dashboard_service(
+    host: str, port: int, user: str, password: str, database: str
 ) -> object:
-    """Construct a ClickHouseDashboardService for the request."""
     from src.infrastructure.storage.clickhouse_dashboard_service import (
         ClickHouseDashboardService,
     )
 
     return ClickHouseDashboardService(
-        host=settings.clickhouse_host,
-        port=settings.clickhouse_port,
-        user=settings.clickhouse_user,
-        password=settings.clickhouse_password,
-        database=settings.clickhouse_database,
+        host=host, port=port, user=user, password=password, database=database
+    )
+
+
+def _get_dashboard_service(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> object:
+    """Return the singleton ClickHouseDashboardService for the request."""
+    return _make_dashboard_service(
+        settings.clickhouse_host,
+        settings.clickhouse_port,
+        settings.clickhouse_user,
+        settings.clickhouse_password,
+        settings.clickhouse_database,
     )
 
 
