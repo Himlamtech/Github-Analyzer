@@ -37,8 +37,13 @@ class ExternalNewsRepositoryABC(ABC):
         *,
         provider: str | None,
         limit: int,
+        include_quarantined: bool = False,
     ) -> list[dict[str, object]]:
         """Return latest persisted external news items."""
+
+    @abstractmethod
+    async def get_item_by_source_id(self, source_id: str) -> dict[str, object] | None:
+        """Return a single persisted external news item by source ID."""
 
     @abstractmethod
     async def list_latest_source_health(self) -> list[dict[str, object]]:

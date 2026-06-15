@@ -64,6 +64,8 @@ class FrameworkRadarItemDTO(BaseModel):
     commercial_readiness_score: float = Field(..., ge=0.0, le=1.0)
     contributor_energy_score: int = Field(..., ge=0, le=100)
     market_footprint: str
+    matched_repo_count: int = Field(..., ge=0)
+    representative_repos: list[str]
     strategic_insight_summary: str
 
 
@@ -137,6 +139,17 @@ class WeeklyBriefSnapshotDTO(BaseModel):
     disclaimer: str
 
 
+class WeeklyBriefArchiveEntryDTO(BaseModel):
+    """Archive metadata for previously published weekly briefs."""
+
+    model_config = ConfigDict(frozen=True)
+
+    brief_id: str
+    published_at: datetime
+    title: str
+    subtitle: str
+
+
 class NewsImpactCurvePointDTO(BaseModel):
     """Single point on the news-to-code impact curve."""
 
@@ -159,11 +172,17 @@ class NewsImpactEventDTO(BaseModel):
     event_type: str
     linked_entities: list[str]
     linked_categories: list[str]
+    linked_repos: list[str]
+    linked_frameworks: list[str]
+    quality_score: float = Field(..., ge=0.0, le=100.0)
+    source_type: str
     causality_score: float = Field(..., ge=0.0, le=100.0)
     lag_hours: float = Field(..., ge=0.0)
     impact_summary: str
     impact_curve: list[NewsImpactCurvePointDTO]
     top_impacted_repos: list[str]
+    is_quarantined: bool = False
+    quarantine_reason: str | None = None
     explanation_trace: list[str]
     last_computed_at: datetime
 
@@ -177,6 +196,12 @@ class NewsImpactSourceDTO(BaseModel):
     url: str
     source_type: str
     enabled: bool
+    last_status: str | None = None
+    freshness_status: str = "unknown"
+    age_minutes: float | None = None
+    fetched_count: int | None = None
+    error_message: str | None = None
+    checked_at: datetime | None = None
 
 
 class NewsImpactReadinessDTO(BaseModel):
@@ -188,7 +213,10 @@ class NewsImpactReadinessDTO(BaseModel):
     sync_enabled: bool
     configured_source_count: int = Field(..., ge=0)
     enabled_source_count: int = Field(..., ge=0)
+    healthy_source_count: int = Field(..., ge=0)
+    stale_source_count: int = Field(..., ge=0)
     status: str
+    freshness_status: str
     missing_requirements: list[str]
     sources: list[NewsImpactSourceDTO]
 
@@ -204,6 +232,14 @@ class ExternalNewsPreviewItemDTO(BaseModel):
     url: str
     published_at: datetime
     summary: str
+    event_type: str = "news"
+    linked_entities: list[str] = Field(default_factory=list)
+    linked_categories: list[str] = Field(default_factory=list)
+    linked_repos: list[str] = Field(default_factory=list)
+    linked_frameworks: list[str] = Field(default_factory=list)
+    quality_score: float = Field(default=0.0, ge=0.0, le=100.0)
+    is_quarantined: bool = False
+    quarantine_reason: str | None = None
 
 
 class ExternalNewsSourcePreviewDTO(BaseModel):
@@ -215,6 +251,7 @@ class ExternalNewsSourcePreviewDTO(BaseModel):
     url: str
     source_type: str
     items: list[ExternalNewsPreviewItemDTO]
+    error: str | None = None
 
 
 class ExternalNewsSourceHealthDTO(BaseModel):
@@ -236,4 +273,5 @@ class ExternalNewsSyncResultDTO(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     persisted_item_count: int = Field(..., ge=0)
+    quarantined_item_count: int = Field(..., ge=0)
     source_health: list[ExternalNewsSourceHealthDTO]

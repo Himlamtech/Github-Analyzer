@@ -7,18 +7,18 @@ The new frontend keeps a high-contrast editorial dashboard style with strong typ
 ## Design split
 
 - operational surfaces should reflect real backend state
-- research surfaces may stay curated if no trustworthy API exists yet
+- editorial framing may stay lightweight, but the underlying intelligence contract should be backend-owned
 
 ## Current implementation rule
 
 When a panel represents current system state, it should use live backend data.
-When a panel represents macro narrative or editorial framing, it may remain curated until a proper backend model exists.
+When a panel represents macro narrative or editorial framing, it should still be anchored to a named backend contract.
 
 ## Current page-to-data mapping
 
 - `Overview` -> live operational summary from dashboard and pipeline endpoints
 - `BreakoutDetector` -> live repository ranking and repo time series
-- `EcosystemRotation` -> transitional view using `/intelligence/rotation`
-- `NewsImpact` -> curated intelligence payload from backend, with external-source preview/sync operating behind the scenes
-- `CompetitiveRadar` -> curated backend snapshot until framework-level marts exist
-- `WeeklyBrief` -> curated backend snapshot until versioned briefing pipeline exists
+- `EcosystemRotation` -> taxonomy-aware rotation intelligence using `/intelligence/rotation`
+- `NewsImpact` -> computed intelligence payload from persisted official-source items plus sync/health operations
+- `CompetitiveRadar` -> computed backend framework radar using repository analytics inputs
+- `WeeklyBrief` -> versioned backend snapshot from `latest` plus archive metadata

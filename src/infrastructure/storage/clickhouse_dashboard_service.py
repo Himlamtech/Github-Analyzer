@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime, timedelta, timezone
+import threading
 from typing import Any, cast
 
 from clickhouse_driver import Client
@@ -20,6 +21,8 @@ from src.domain.services.category_classifier import CategoryClassifier
 from src.domain.value_objects.repo_category import RepoCategory
 
 logger = structlog.get_logger(__name__)
+
+_tls = threading.local()
 
 _GMT7 = timezone(timedelta(hours=7))
 
@@ -168,6 +171,7 @@ LIMIT %(limit)s
 _TRENDING_QUERY = """
 WITH
     latest AS (
+        -- Limit to last 30 days to avoid full-history scan on 5M+ rows
         SELECT
             repo_full_name,
             argMax(repo_id, snapshot_at) AS repo_id,
@@ -189,17 +193,18 @@ WITH
             argMax(github_pushed_at, snapshot_at) AS github_pushed_at,
             argMax(rank, snapshot_at) AS rank
         FROM repo_metadata_history
-        FINAL
-        WHERE snapshot_at < %(week_end)s
+        WHERE snapshot_at >= %(week_end)s - INTERVAL 30 DAY
+          AND snapshot_at < %(week_end)s
         GROUP BY repo_full_name
     ),
     before_week AS (
+        -- Look back at most 30 days before week start for baseline stars
         SELECT
             repo_full_name,
             argMax(stargazers_count, snapshot_at) AS baseline_stars
         FROM repo_metadata_history
-        FINAL
-        WHERE snapshot_at < %(week_start)s
+        WHERE snapshot_at >= %(week_start)s - INTERVAL 30 DAY
+          AND snapshot_at < %(week_start)s
         GROUP BY repo_full_name
     ),
     first_week AS (
@@ -207,7 +212,6 @@ WITH
             repo_full_name,
             argMin(stargazers_count, snapshot_at) AS first_week_stars
         FROM repo_metadata_history
-        FINAL
         WHERE snapshot_at >= %(week_start)s
           AND snapshot_at < %(week_end)s
         GROUP BY repo_full_name
@@ -235,7 +239,25 @@ SELECT
     star_count_in_window
 FROM (
     SELECT
-        latest.*,
+        latest.repo_id AS repo_id,
+        latest.repo_full_name AS repo_full_name,
+        latest.repo_name AS repo_name,
+        latest.html_url AS html_url,
+        latest.description AS description,
+        latest.primary_language AS primary_language,
+        latest.topics AS topics,
+        latest.category AS category,
+        latest.stargazers_count AS stargazers_count,
+        latest.watchers_count AS watchers_count,
+        latest.forks_count AS forks_count,
+        latest.open_issues_count AS open_issues_count,
+        latest.subscribers_count AS subscribers_count,
+        latest.owner_login AS owner_login,
+        latest.owner_avatar_url AS owner_avatar_url,
+        latest.license_name AS license_name,
+        latest.github_created_at AS github_created_at,
+        latest.github_pushed_at AS github_pushed_at,
+        latest.rank AS rank,
         greatest(
             latest.stargazers_count - coalesce(
                 before_week.baseline_stars,
@@ -250,6 +272,136 @@ FROM (
 ) AS weekly_growth
 WHERE star_count_in_window > 0
 ORDER BY star_count_in_window DESC, stargazers_count DESC
+LIMIT %(limit)s
+"""
+
+_NEW_REPOS_REACHING_THRESHOLD_QUERY = """
+WITH
+    latest AS (
+        -- Limit to last 30 days to avoid full-history scan on 5M+ rows
+        SELECT
+            repo_full_name,
+            argMax(repo_id, snapshot_at) AS repo_id,
+            argMax(repo_name, snapshot_at) AS repo_name,
+            argMax(html_url, snapshot_at) AS html_url,
+            argMax(description, snapshot_at) AS description,
+            argMax(primary_language, snapshot_at) AS primary_language,
+            argMax(topics, snapshot_at) AS topics,
+            argMax(category, snapshot_at) AS category,
+            argMax(stargazers_count, snapshot_at) AS stargazers_count,
+            argMax(watchers_count, snapshot_at) AS watchers_count,
+            argMax(forks_count, snapshot_at) AS forks_count,
+            argMax(open_issues_count, snapshot_at) AS open_issues_count,
+            argMax(subscribers_count, snapshot_at) AS subscribers_count,
+            argMax(owner_login, snapshot_at) AS owner_login,
+            argMax(owner_avatar_url, snapshot_at) AS owner_avatar_url,
+            argMax(license_name, snapshot_at) AS license_name,
+            argMax(github_created_at, snapshot_at) AS github_created_at,
+            argMax(github_pushed_at, snapshot_at) AS github_pushed_at,
+            argMax(rank, snapshot_at) AS rank
+        FROM repo_metadata_history
+        WHERE snapshot_at >= %(week_end)s - INTERVAL 30 DAY
+          AND snapshot_at < %(week_end)s
+        GROUP BY repo_full_name
+    ),
+    before_week AS (
+        -- Look back at most 30 days before week start for baseline stars
+        SELECT
+            repo_full_name,
+            argMax(stargazers_count, snapshot_at) AS baseline_stars
+        FROM repo_metadata_history
+        WHERE snapshot_at >= %(week_start)s - INTERVAL 30 DAY
+          AND snapshot_at < %(week_start)s
+        GROUP BY repo_full_name
+    ),
+    first_week AS (
+        SELECT
+            repo_full_name,
+            argMin(stargazers_count, snapshot_at) AS first_week_stars
+        FROM repo_metadata_history
+        WHERE snapshot_at >= %(week_start)s
+          AND snapshot_at < %(week_end)s
+        GROUP BY repo_full_name
+    ),
+    crossing AS (
+        SELECT
+            repo_full_name,
+            min(snapshot_at) AS crossed_threshold_at
+        FROM repo_metadata_history
+        WHERE snapshot_at >= %(week_start)s
+          AND snapshot_at < %(week_end)s
+          AND stargazers_count >= %(threshold)s
+        GROUP BY repo_full_name
+    )
+SELECT
+    repo_id,
+    repo_full_name,
+    repo_name,
+    html_url,
+    description,
+    primary_language,
+    topics,
+    category,
+    stargazers_count,
+    watchers_count,
+    forks_count,
+    open_issues_count,
+    subscribers_count,
+    owner_login,
+    owner_avatar_url,
+    license_name,
+    github_created_at,
+    github_pushed_at,
+    rank,
+    star_count_in_window,
+    baseline_stars,
+    current_stars,
+    crossed_threshold_at
+FROM (
+    SELECT
+        latest.repo_id AS repo_id,
+        latest.repo_full_name AS repo_full_name,
+        latest.repo_name AS repo_name,
+        latest.html_url AS html_url,
+        latest.description AS description,
+        latest.primary_language AS primary_language,
+        latest.topics AS topics,
+        latest.category AS category,
+        latest.stargazers_count AS stargazers_count,
+        latest.watchers_count AS watchers_count,
+        latest.forks_count AS forks_count,
+        latest.open_issues_count AS open_issues_count,
+        latest.subscribers_count AS subscribers_count,
+        latest.owner_login AS owner_login,
+        latest.owner_avatar_url AS owner_avatar_url,
+        latest.license_name AS license_name,
+        latest.github_created_at AS github_created_at,
+        latest.github_pushed_at AS github_pushed_at,
+        latest.rank AS rank,
+        coalesce(
+            before_week.baseline_stars,
+            first_week.first_week_stars,
+            latest.stargazers_count
+        ) AS baseline_stars,
+        latest.stargazers_count AS current_stars,
+        greatest(
+            latest.stargazers_count - coalesce(
+                before_week.baseline_stars,
+                first_week.first_week_stars,
+                latest.stargazers_count
+            ),
+            0
+        ) AS star_count_in_window,
+        crossing.crossed_threshold_at AS crossed_threshold_at
+    FROM latest
+    LEFT JOIN before_week ON before_week.repo_full_name = latest.repo_full_name
+    LEFT JOIN first_week ON first_week.repo_full_name = latest.repo_full_name
+    LEFT JOIN crossing ON crossing.repo_full_name = latest.repo_full_name
+) AS threshold_crossings
+WHERE baseline_stars < %(threshold)s
+  AND current_stars >= %(threshold)s
+  AND star_count_in_window > 0
+ORDER BY star_count_in_window DESC, current_stars DESC, repo_full_name ASC
 LIMIT %(limit)s
 """
 
@@ -497,54 +649,71 @@ class ClickHouseDashboardService:
         self._database = database
         self._classifier = CategoryClassifier()
         self._has_categorized_metadata_cache: bool | None = None
+        self._repo_metadata_exists_cache: bool | None = None
+        self._repo_metadata_history_exists_cache: bool | None = None
 
     def _get_client(self) -> Client:
-        try:
-            return Client(
-                host=self._host,
-                port=self._port,
-                user=self._user,
-                password=self._password,
-                database=self._database,
-                connect_timeout=10,
-                send_receive_timeout=30,
-                sync_request_timeout=5,
-                settings={"use_client_time_zone": True},
-            )
-        except ClickHouseNetworkError as exc:
-            raise ClickHouseConnectionError(
-                f"Cannot connect to ClickHouse at {self._host}:{self._port}: {exc}"
-            ) from exc
+        cache_key = (self._host, self._port, self._user, self._database)
+        if not hasattr(_tls, "client") or getattr(_tls, "client_key", None) != cache_key:
+            try:
+                _tls.client = Client(
+                    host=self._host,
+                    port=self._port,
+                    user=self._user,
+                    password=self._password,
+                    database=self._database,
+                    connect_timeout=10,
+                    send_receive_timeout=30,
+                    sync_request_timeout=5,
+                    settings={"use_client_time_zone": True},
+                )
+                _tls.client_key = cache_key
+            except ClickHouseNetworkError as exc:
+                raise ClickHouseConnectionError(
+                    f"Cannot connect to ClickHouse at {self._host}:{self._port}: {exc}"
+                ) from exc
+        return _tls.client
 
     def _execute_query(
         self,
         query: str,
         params: dict[str, Any] | None = None,
+        settings: dict[str, Any] | None = None,
     ) -> list[tuple[Any, ...]]:
         client = self._get_client()
         try:
-            rows = client.execute(query, params or {})
+            rows = client.execute(query, params or {}, settings=settings or {})
             return cast("list[tuple[Any, ...]]", rows)
         except ClickHouseError as exc:
             raise DashboardQueryError(f"Dashboard query failed: {exc}") from exc
 
     def _repo_metadata_table_exists(self) -> bool:
+        if self._repo_metadata_exists_cache is not None:
+            return self._repo_metadata_exists_cache
         rows = self._execute_query("EXISTS TABLE github_analyzer.repo_metadata")
         if not rows or not rows[0]:
+            self._repo_metadata_exists_cache = False
             return False
         try:
-            return int(rows[0][0]) == 1
-        except TypeError, ValueError:
-            return True
+            result = int(rows[0][0]) == 1
+        except (TypeError, ValueError):
+            result = True
+        self._repo_metadata_exists_cache = result
+        return result
 
     def _repo_metadata_history_table_exists(self) -> bool:
+        if self._repo_metadata_history_exists_cache is not None:
+            return self._repo_metadata_history_exists_cache
         rows = self._execute_query("EXISTS TABLE github_analyzer.repo_metadata_history")
         if not rows or not rows[0]:
+            self._repo_metadata_history_exists_cache = False
             return False
         try:
-            return int(rows[0][0]) == 1
-        except TypeError, ValueError:
-            return True
+            result = int(rows[0][0]) == 1
+        except (TypeError, ValueError):
+            result = True
+        self._repo_metadata_history_exists_cache = result
+        return result
 
     def _require_repo_metadata(self) -> None:
         if not self._repo_metadata_table_exists():
@@ -570,7 +739,7 @@ FINAL
         )
         try:
             self._has_categorized_metadata_cache = int(rows[0][0]) > 0
-        except IndexError, TypeError, ValueError:
+        except (IndexError, TypeError, ValueError):
             self._has_categorized_metadata_cache = True
         return self._has_categorized_metadata_cache
 
@@ -628,6 +797,15 @@ FINAL
         item["unique_actors_in_window"] = int(row[21])
         item["weekly_percent_gain"] = round(float(row[22]), 2)
         item["window_over_window_ratio"] = round(float(row[23]), 4)
+        item["rank"] = rank
+        return item
+
+    @staticmethod
+    def _parse_threshold_crossing_row(row: tuple[Any, ...], *, rank: int) -> dict[str, Any]:
+        item = ClickHouseDashboardService._parse_repo_row(row)
+        item["baseline_stars"] = int(row[20])
+        item["current_stars"] = int(row[21])
+        item["crossed_threshold_at"] = row[22]
         item["rank"] = rank
         return item
 
@@ -691,14 +869,48 @@ FINAL
             "limit": limit,
         }
 
+        _trending_settings: dict[str, Any] = {
+            "max_bytes_before_external_group_by": 2_000_000_000,
+        }
+
         def _run() -> list[dict[str, Any]]:
-            rows = self._execute_query(_TRENDING_QUERY, params)
+            rows = self._execute_query(_TRENDING_QUERY, params, settings=_trending_settings)
             results = []
             for rank, row in enumerate(rows, start=1):
                 item = self._parse_repo_row(row)
                 item["growth_rank"] = rank
                 results.append(item)
             return results
+
+        return await asyncio.to_thread(_run)
+
+    async def get_new_repos_reaching_star_threshold(
+        self,
+        *,
+        threshold: int = 10_000,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        week_start, week_end = self._current_gmt7_week_bounds()
+        self._require_repo_metadata_history()
+        params: dict[str, Any] = {
+            "week_start": week_start,
+            "week_end": week_end,
+            "threshold": threshold,
+            "limit": limit,
+        }
+
+        _threshold_settings: dict[str, Any] = {
+            "max_bytes_before_external_group_by": 2_000_000_000,
+        }
+
+        def _run() -> list[dict[str, Any]]:
+            rows = self._execute_query(
+                _NEW_REPOS_REACHING_THRESHOLD_QUERY, params, settings=_threshold_settings
+            )
+            return [
+                self._parse_threshold_crossing_row(row, rank=rank)
+                for rank, row in enumerate(rows, start=1)
+            ]
 
         return await asyncio.to_thread(_run)
 

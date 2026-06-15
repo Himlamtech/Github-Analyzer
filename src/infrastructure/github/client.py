@@ -57,9 +57,12 @@ class _TokenState:
     remaining: int = 5000
     reset_at: float = field(default_factory=lambda: time.monotonic() + 3600)
     etag: dict[str, str] = field(default_factory=dict)  # endpoint → ETag value
+    is_invalid: bool = False
 
     def is_exhausted(self) -> bool:
         """Return True if the token should be skipped until its reset window."""
+        if self.is_invalid:
+            return True
         return self.remaining < _RATE_LIMIT_THRESHOLD and time.monotonic() < self.reset_at
 
     def update_from_headers(self, headers: httpx.Headers) -> None:
@@ -161,6 +164,7 @@ class GitHubClient:
             return status, None, response.headers
 
         if status == 401:
+            state.is_invalid = True
             raise GitHubAuthenticationError()
 
         if status == 404:
@@ -404,7 +408,7 @@ class GitHubClient:
             }
             self._repo_cache[repo_full_name] = (bundle, now + _REPO_CACHE_TTL)
             return bundle
-        except GitHubAPIError, GitHubAuthenticationError, GitHubNotFoundError:
+        except (GitHubAPIError, GitHubAuthenticationError, GitHubNotFoundError):
             return {}
 
     async def _enrich_events_with_repo_metadata(self, events: list[dict[str, object]]) -> None:

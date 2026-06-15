@@ -11,8 +11,9 @@ from src.infrastructure.config import ExternalNewsSourceConfig, Settings
 
 
 class FakeExternalNewsReader:
-    def __init__(self, should_fail: bool = False) -> None:
+    def __init__(self, should_fail: bool = False, duplicate: bool = False) -> None:
         self._should_fail = should_fail
+        self._duplicate = duplicate
 
     async def fetch_latest(
         self,
@@ -25,16 +26,28 @@ class FakeExternalNewsReader:
         del url, source_type
         if self._should_fail:
             raise ExternalSourceError(f"{provider} feed unavailable")
-        return [
+        items = [
             ExternalNewsItem(
                 source_id=f"{provider.lower()}-1",
                 provider=provider,
-                title=f"{provider} launch",
+                title=f"{provider} browser agent launch",
                 url="https://example.com/item-1",
                 published_at=datetime(2026, 1, 1, 12, 0, tzinfo=UTC),
-                summary="Launch summary.",
+                summary="Launch summary for browser automation agents.",
             )
-        ][:limit]
+        ]
+        if self._duplicate:
+            items.append(
+                ExternalNewsItem(
+                    source_id=f"{provider.lower()}-2",
+                    provider=provider,
+                    title=f"{provider} browser agent launch",
+                    url="https://example.com/item-1",
+                    published_at=datetime(2026, 1, 1, 13, 0, tzinfo=UTC),
+                    summary="Duplicate launch summary for browser automation agents.",
+                )
+            )
+        return items[:limit]
 
 
 class FakeExternalNewsRepository:
@@ -72,9 +85,14 @@ class FakeExternalNewsRepository:
         *,
         provider: str | None,
         limit: int,
+        include_quarantined: bool = False,
     ) -> list[dict[str, object]]:
-        del provider, limit
+        del provider, limit, include_quarantined
         return []
+
+    async def get_item_by_source_id(self, source_id: str) -> dict[str, object] | None:
+        del source_id
+        return None
 
     async def list_latest_source_health(self) -> list[dict[str, object]]:
         return []
@@ -102,8 +120,40 @@ async def test_execute_persists_items_and_health_for_enabled_sources() -> None:
     ).execute(limit_per_source=5)
 
     assert result.persisted_item_count == 1
+    assert result.quarantined_item_count == 0
     assert repository.saved_items[0].provider == "OpenAI"
+    assert repository.saved_items[0].event_type == "launch"
+    assert repository.saved_items[0].linked_categories[0] == "Coding Agents & Automation"
+    assert repository.saved_items[0].linked_repo_full_names == ("browser-use/browser-use",)
+    assert repository.saved_items[0].linked_framework_ids == ("browser-use", "openai-agents")
     assert result.source_health[0].status == "ok"
+
+
+async def test_execute_marks_duplicate_items_as_quarantined() -> None:
+    repository = FakeExternalNewsRepository()
+    settings = Settings(
+        github_api_tokens="test-token",
+        clickhouse_password="test-password",
+        news_intelligence_sources=[
+            ExternalNewsSourceConfig(
+                provider="OpenAI",
+                url="https://openai.com/news/rss.xml",
+                source_type="rss",
+                enabled=True,
+            )
+        ],
+    )
+
+    result = await SyncExternalNewsSourcesUseCase(
+        reader=FakeExternalNewsReader(duplicate=True),
+        repository=repository,
+        settings=settings,
+    ).execute(limit_per_source=5)
+
+    assert result.persisted_item_count == 2
+    assert result.quarantined_item_count == 1
+    assert repository.saved_items[1].is_quarantined is True
+    assert repository.saved_items[1].quarantine_reason == "duplicate_content"
 
 
 async def test_execute_records_error_health_when_source_fetch_fails() -> None:

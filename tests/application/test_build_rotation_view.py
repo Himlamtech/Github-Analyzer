@@ -32,6 +32,7 @@ class FakeRotationReader:
         return [
             {
                 "repo_full_name": "browser-use/browser-use",
+                "description": "Agentic browser automation workflows.",
                 "topics": ["agentic-frameworks", "agents"],
                 "github_created_at": now,
                 "github_pushed_at": now,
@@ -45,8 +46,9 @@ async def test_execute_returns_rotation_category_with_drivers_and_top_repos() ->
     result = await use_case.execute(days=7, limit=5)
 
     assert len(result) == 1
-    assert result[0].category == "Agentic Frameworks"
+    assert result[0].category == "Coding Agents & Automation"
     assert result[0].repo_count == 14
     assert result[0].top_repos == ["browser-use/browser-use"]
     assert result[0].confidence_score > 0
     assert result[0].rotation_drivers
+    assert any("Registry evidence" in item for item in result[0].rotation_drivers)

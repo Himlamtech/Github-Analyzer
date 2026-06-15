@@ -15,9 +15,10 @@ GitHub Analyzer ingests GitHub event streams, stores them in ClickHouse and Parq
 Current implementation maturity:
 
 - `Overview` and `BreakoutDetector` are live backend-bound views.
-- `EcosystemRotation` is partially live and reads the backend rotation contract.
-- `NewsImpact` has a curated serving contract plus official feed ingestion foundations.
-- `CompetitiveRadar` and `WeeklyBrief` are backend-served curated snapshots waiting for computed models.
+- `EcosystemRotation` is live on the backend rotation contract with taxonomy-aware category labels.
+- `NewsImpact` now reads computed backend intelligence built from persisted official-source items.
+- `CompetitiveRadar` now reads computed backend framework metrics.
+- `WeeklyBrief` is backend-served with versioned latest plus archive metadata.
 
 ## Product direction
 
@@ -58,6 +59,7 @@ The project should avoid shipping UI surfaces that imply strong intelligence fea
 
 - Breakout scoring with a real mart and confidence model
 - Ecosystem rotation with category-aware data rather than generic fallback labels
+- Computed framework radar from repository analytics inputs
 
 ### Phase 2: add source control and external intelligence
 

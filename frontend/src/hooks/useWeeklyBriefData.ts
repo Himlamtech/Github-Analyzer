@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
 
-import { fetchWeeklyBriefSnapshot } from '../lib/api';
-import type { WeeklyBriefSnapshot } from '../types';
+import { fetchWeeklyBriefArchive, fetchWeeklyBriefSnapshot } from '../lib/api';
+import type { WeeklyBriefArchiveEntry, WeeklyBriefSnapshot } from '../types';
 
 interface WeeklyBriefDataState {
   data: WeeklyBriefSnapshot | null;
+  archive: WeeklyBriefArchiveEntry[];
   isLoading: boolean;
   error: string | null;
 }
 
 export function useWeeklyBriefData(): WeeklyBriefDataState {
   const [data, setData] = useState<WeeklyBriefSnapshot | null>(null);
+  const [archive, setArchive] = useState<WeeklyBriefArchiveEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,11 +22,15 @@ export function useWeeklyBriefData(): WeeklyBriefDataState {
     async function loadWeeklyBrief(): Promise<void> {
       try {
         setIsLoading(true);
-        const snapshot = await fetchWeeklyBriefSnapshot();
+        const [snapshot, archiveEntries] = await Promise.all([
+          fetchWeeklyBriefSnapshot(),
+          fetchWeeklyBriefArchive(),
+        ]);
         if (!isMounted) {
           return;
         }
         setData(snapshot);
+        setArchive(archiveEntries);
         setError(null);
       } catch (loadError) {
         if (!isMounted) {
@@ -49,5 +55,5 @@ export function useWeeklyBriefData(): WeeklyBriefDataState {
     };
   }, []);
 
-  return { data, isLoading, error };
+  return { data, archive, isLoading, error };
 }

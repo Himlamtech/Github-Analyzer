@@ -20,28 +20,28 @@ The frontend is intentionally split into two groups:
 
 These views fetch backend data through `frontend/src/lib/api.ts` and hooks under `frontend/src/hooks/`.
 
-### Curated presentation views
+### Intelligence views
 
 - `EcosystemRotation`
 - `NewsImpact`
 - `WeeklyBrief`
 - `CompetitiveRadar`
 
-These views remain useful for storytelling and design presentation, but they are not all at the same maturity level anymore.
+These views now read backend intelligence contracts, but they are not all at the same maturity level yet.
 
 Current maturity split:
 
-- `EcosystemRotation`: partial backend binding
-- `NewsImpact`: backend snapshot + external-source preview/sync foundation
-- `CompetitiveRadar`: backend snapshot
-- `WeeklyBrief`: backend snapshot
+- `EcosystemRotation`: live backend rotation intelligence with taxonomy-aware categories
+- `NewsImpact`: computed backend intelligence + external-source operations
+- `CompetitiveRadar`: computed backend framework radar
+- `WeeklyBrief`: backend latest snapshot + archive metadata
 
 ## Binding rule
 
 The frontend should follow this rule strictly:
 
 - if a panel represents current system state, it must read live backend data
-- if a panel is exploratory or editorial, it may remain curated until a backend contract exists
+- if a panel is exploratory or editorial, it should still surface that status clearly even when backed by a lightweight backend contract
 
 This keeps the UI honest while still allowing the new visual direction to move ahead of future data products.
 
@@ -50,9 +50,9 @@ This keeps the UI honest while still allowing the new visual direction to move a
 - `Overview`: pipeline status, latest events, top movers
 - `BreakoutDetector`: top repos and repo time series
 - `EcosystemRotation`: category rotation contract from `/intelligence/rotation`
-- `NewsImpact`: curated main narrative from `/intelligence/news-impact`; external source operations exist in backend but are not surfaced in the main UI yet
-- `CompetitiveRadar`: backend snapshot from `/intelligence/framework-radar`
-- `WeeklyBrief`: backend snapshot from `/intelligence/weekly-brief/latest`
+- `NewsImpact`: computed news-to-code analysis from `/intelligence/news-impact` plus detail drill-down from `/intelligence/news-impact/{event_id}`
+- `CompetitiveRadar`: computed framework radar from `/intelligence/framework-radar`
+- `WeeklyBrief`: versioned latest snapshot from `/intelligence/weekly-brief/latest` and archive metadata from `/intelligence/weekly-brief/archive`
 
 ## Runtime configuration
 

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__ide__getDiagnostics",
+      "Bash(uv run *)",
+      "Bash(wget *)",
+      "Bash(python *)",
+      "Bash(GITHUB_API_TOKENS=dummy CLICKHOUSE_PASSWORD=dummy uv run *)"
+    ]
+  }
+}

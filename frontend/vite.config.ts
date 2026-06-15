@@ -1,7 +1,10 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
 import path from 'path';
 import { defineConfig } from 'vite';
+
+const projectDir = path.dirname(fileURLToPath(import.meta.url));
 
 const defaultAllowedHosts = ['github.chipthoc.com'];
 
@@ -16,9 +19,22 @@ const allowedHosts = Array.from(new Set([...defaultAllowedHosts, ...configuredAl
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    outDir: 'build',
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          charts: ['recharts'],
+          motion: ['motion'],
+          icons: ['lucide-react'],
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, '.'),
+      '@': path.resolve(projectDir, '.'),
     },
   },
   server: {
@@ -27,6 +43,13 @@ export default defineConfig({
     allowedHosts,
     hmr: process.env.DISABLE_HMR !== 'true',
     watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    proxy: {
+      '/api': {
+        target: process.env.API_PROXY_TARGET ?? 'http://api:8000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
   },
   preview: {
     host: '0.0.0.0',

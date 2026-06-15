@@ -207,6 +207,22 @@ export const CompetitiveRadar: React.FC<CompetitiveRadarProps> = ({
                   {selectedItem.strategicInsight}
                 </p>
               </div>
+
+              <div className="space-y-2 pt-2">
+                <span className="block text-[10px] font-bold uppercase text-slate-500 font-mono">
+                  Representative Repositories
+                </span>
+                <div className="space-y-2 text-[11px] font-mono">
+                  {selectedItem.representativeRepos.map((repo) => (
+                    <div
+                      key={repo}
+                      className="rounded border border-slate-150 bg-slate-50 px-3 py-2 text-slate-700"
+                    >
+                      {repo}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2 border-t border-slate-100 pt-4 text-xs text-slate-600 font-mono">
@@ -218,6 +234,16 @@ export const CompetitiveRadar: React.FC<CompetitiveRadarProps> = ({
                 <span className="text-slate-500">Market deployment footprint</span>
                 <strong className="font-bold text-slate-900">
                   {selectedItem.marketFootprint}
+                </strong>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-slate-500">Matched repositories</span>
+                <strong className="font-bold text-slate-900">{selectedItem.matchedRepoCount}</strong>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-slate-500">Velocity / readiness</span>
+                <strong className="font-bold text-slate-900">
+                  {selectedItem.developerVelocity.toFixed(2)} / {selectedItem.commercialReadiness.toFixed(2)}
                 </strong>
               </div>
             </div>

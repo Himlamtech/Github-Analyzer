@@ -51,6 +51,14 @@ process: ## Start Spark Structured Streaming job (Kafka → Parquet + ClickHouse
 	@echo "▶ Starting Spark Structured Streaming job..."
 	$(PYTHON) -m src.application.use_cases.process_event_stream
 
+cleanup: ## Xoá Parquet partitions cũ hơn 90 ngày (dùng --dry-run để preview)
+	@echo "▶ Cleaning up old Parquet partitions..."
+	$(PYTHON) -m src.application.use_cases.cleanup_parquet $(ARGS)
+
+cleanup-dry: ## Preview Parquet partitions sẽ bị xoá (không xoá thực tế)
+	@echo "▶ Dry run: preview partitions to be deleted..."
+	$(PYTHON) -m src.application.use_cases.cleanup_parquet --dry-run $(ARGS)
+
 ## ── Phase 2 ─────────────────────────────────────────────────────────────────
 
 discover-repos: ## Build or refresh the high-star repository catalog from GitHub Search

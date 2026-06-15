@@ -11,22 +11,35 @@ import type {
   FrameworkRadarSnapshotResponse,
   NewsImpactEvent,
   NewsImpactEventResponse,
+  NewsImpactReadiness,
+  NewsImpactReadinessResponse,
+  NewTenKRepoResponse,
   PipelineStatus,
   PipelineStatusResponse,
   RepoTimeseriesPoint,
   RepoTimeseriesResponse,
   Repository,
+  TenKMilestoneRepository,
   RotationCategoryResponse,
   TopRepoResponse,
   TrendingRepoResponse,
+  WeeklyBriefArchiveEntry,
+  WeeklyBriefArchiveEntryResponse,
   WeeklyBriefChartPoint,
   WeeklyBriefChartPointResponse,
   WeeklyBriefSnapshot,
   WeeklyBriefSnapshotResponse,
 } from '../types';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '')
-  ?? 'http://localhost:8000';
+function resolveApiBaseUrl(): string {
+  const configured = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '');
+  if (configured) {
+    return configured;
+  }
+  return '/api';
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 const DEFAULT_REPOSITORY_SPARKLINE = [18, 24, 30, 38, 49, 60, 74, 88];
 
@@ -35,7 +48,7 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
 };
 
 function buildUrl(path: string, params?: Record<string, string | number | undefined>): string {
-  const url = new URL(`${API_BASE_URL}${path}`);
+  const url = new URL(`${API_BASE_URL}${path}`, window.location.origin);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -166,6 +179,26 @@ function toBreakoutRepository(item: BreakoutRepositoryResponse, index: number): 
   };
 }
 
+function toTenKMilestoneRepository(
+  item: NewTenKRepoResponse,
+  index: number,
+): TenKMilestoneRepository {
+  const base = toRepository(item.repo, index + 1, item.star_count_in_window, item.rank);
+
+  return {
+    ...base,
+    baselineStars: item.baseline_stars,
+    currentStars: item.current_stars,
+    crossedThresholdAt: item.crossed_threshold_at,
+    starGain7d: item.star_count_in_window,
+    starGainVsPreviousWindow: item.current_stars - item.baseline_stars,
+    explanationTrace: [
+      `${item.repo.repo_full_name} crossed 10k stars this week.`,
+      `Observed baseline: ${item.baseline_stars.toLocaleString()} stars; current: ${item.current_stars.toLocaleString()} stars.`,
+    ],
+  };
+}
+
 function toPipelineStatus(response: PipelineStatusResponse): PipelineStatus {
   return {
     clickhouseReachable: response.clickhouse_reachable,
@@ -222,14 +255,46 @@ function toNewsImpactEvent(row: NewsImpactEventResponse): NewsImpactEvent {
     headline: row.headline,
     category: row.linked_categories[0] ?? row.event_type,
     summary: row.explanation_trace[0] ?? row.impact_summary,
+    provider: row.provider,
+    sourceType: row.source_type,
     causalityScore: Math.round(row.causality_score),
+    qualityScore: row.quality_score,
     codeImpactMetric: row.impact_summary,
     narrativeText: row.explanation_trace.join(' '),
     linkedEntities: row.linked_entities,
+    linkedFrameworks: row.linked_frameworks,
     topImpactedRepos: row.top_impacted_repos,
+    explanationTrace: row.explanation_trace,
+    lastComputedAt: row.last_computed_at,
     codeTrendData: row.impact_curve.map((point) => ({
       time: point.time_bucket,
       value: point.value,
+    })),
+  };
+}
+
+function toNewsImpactReadiness(response: NewsImpactReadinessResponse): NewsImpactReadiness {
+  return {
+    mode: response.mode,
+    syncEnabled: response.sync_enabled,
+    configuredSourceCount: response.configured_source_count,
+    enabledSourceCount: response.enabled_source_count,
+    healthySourceCount: response.healthy_source_count,
+    staleSourceCount: response.stale_source_count,
+    status: response.status,
+    freshnessStatus: response.freshness_status,
+    missingRequirements: response.missing_requirements,
+    sources: response.sources.map((source) => ({
+      provider: source.provider,
+      url: source.url,
+      sourceType: source.source_type,
+      enabled: source.enabled,
+      lastStatus: source.last_status,
+      freshnessStatus: source.freshness_status,
+      ageMinutes: source.age_minutes,
+      fetchedCount: source.fetched_count,
+      errorMessage: source.error_message,
+      checkedAt: source.checked_at,
     })),
   };
 }
@@ -242,6 +307,8 @@ function toFrameworkRadarItem(row: FrameworkRadarItemResponse): FrameworkRadarIt
     commercialReadiness: row.commercial_readiness_score,
     contributorEnergy: row.contributor_energy_score,
     marketFootprint: row.market_footprint,
+    matchedRepoCount: row.matched_repo_count,
+    representativeRepos: row.representative_repos,
     strategicInsight: row.strategic_insight_summary,
   };
 }
@@ -254,20 +321,48 @@ function toWeeklyBriefChartPoint(row: WeeklyBriefChartPointResponse): WeeklyBrie
   };
 }
 
+function toWeeklyBriefArchiveEntry(
+  row: WeeklyBriefArchiveEntryResponse,
+): WeeklyBriefArchiveEntry {
+  return {
+    briefId: row.brief_id,
+    publishedAt: row.published_at,
+    title: row.title,
+    subtitle: row.subtitle,
+  };
+}
+
+export async function fetchRotationCategories(days = 7, limit = 6): Promise<EcosystemCategory[]> {
+  const rows = await requestJson<RotationCategoryResponse[]>('/intelligence/rotation', {
+    days,
+    limit,
+  });
+
+  return rows.map(toEcosystemCategory);
+}
+
 export async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
-  const [topRepos, trendingRepos, topicRotation, latestEvents, pipelineStatus] = await Promise.all([
-    requestJson<TopRepoResponse[]>('/dashboard/top-repos', { days: 7, limit: 12 }),
-    requestJson<TrendingRepoResponse[]>('/dashboard/trending', { days: 7, limit: 6 }),
+  const [topStarredRepos, weeklyStarIncreases, newTenKRepos, topicRotation, latestEvents, pipelineStatus] = await Promise.all([
+    requestJson<TopRepoResponse[]>('/dashboard/top-starred-repos', { days: 7, limit: 12 }),
+    requestJson<TrendingRepoResponse[]>('/dashboard/trending', { days: 7, limit: 12 }),
+    requestJson<NewTenKRepoResponse[]>('/dashboard/new-repos-reaching-10k', { limit: 6 }),
     requestJson<RotationCategoryResponse[]>('/intelligence/rotation', { days: 7, limit: 6 }),
     requestJson<EventSummaryResponse[]>('/events/latest', { limit: 6 }),
     requestJson<PipelineStatusResponse>('/pipeline/status'),
   ]);
+  const topStarred = topStarredRepos.map((item, index) =>
+    toRepository(item.repo, index + 1, item.star_count_in_window, index + 1),
+  );
+  const weeklyIncreases = weeklyStarIncreases.map((item, index) =>
+    toRepository(item.repo, index + 1, item.star_count_in_window, item.growth_rank),
+  );
 
   return {
-    topRepos: topRepos.map((item, index) => toRepository(item.repo, index + 1, item.star_count_in_window, index + 1)),
-    trendingRepos: trendingRepos.map((item, index) =>
-      toRepository(item.repo, index + 1, item.star_count_in_window, item.growth_rank),
-    ),
+    topRepos: topStarred,
+    trendingRepos: weeklyIncreases,
+    topStarredRepos: topStarred,
+    weeklyStarIncreases: weeklyIncreases,
+    newTenKRepos: newTenKRepos.map(toTenKMilestoneRepository),
     topicRotation: topicRotation.map(toEcosystemCategory),
     latestEvents: latestEvents.map(toEventSummary),
     pipelineStatus: toPipelineStatus(pipelineStatus),
@@ -314,6 +409,22 @@ export async function fetchNewsImpactEvents(): Promise<NewsImpactEvent[]> {
   return rows.map(toNewsImpactEvent);
 }
 
+export async function fetchNewsImpactEventDetail(eventId: string): Promise<NewsImpactEvent> {
+  const row = await requestJson<NewsImpactEventResponse>('/intelligence/news-impact/detail', {
+    source_id: eventId,
+  });
+
+  return toNewsImpactEvent(row);
+}
+
+export async function fetchNewsImpactReadiness(): Promise<NewsImpactReadiness> {
+  const response = await requestJson<NewsImpactReadinessResponse>(
+    '/intelligence/news-impact/readiness',
+  );
+
+  return toNewsImpactReadiness(response);
+}
+
 export async function fetchWeeklyBriefSnapshot(): Promise<WeeklyBriefSnapshot> {
   const snapshot = await requestJson<WeeklyBriefSnapshotResponse>('/intelligence/weekly-brief/latest');
 
@@ -339,6 +450,14 @@ export async function fetchWeeklyBriefSnapshot(): Promise<WeeklyBriefSnapshot> {
     authors: snapshot.authors,
     disclaimer: snapshot.disclaimer,
   };
+}
+
+export async function fetchWeeklyBriefArchive(): Promise<WeeklyBriefArchiveEntry[]> {
+  const rows = await requestJson<WeeklyBriefArchiveEntryResponse[]>(
+    '/intelligence/weekly-brief/archive',
+  );
+
+  return rows.map(toWeeklyBriefArchiveEntry);
 }
 
 export { API_BASE_URL };

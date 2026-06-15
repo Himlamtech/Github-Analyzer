@@ -12,17 +12,37 @@ import {
   Zap 
 } from 'lucide-react';
 
-import { ECOSYSTEM_CATEGORIES } from '../data';
 import type { EcosystemCategory } from '../types';
 
 interface EcosystemRotationProps {
   categories: EcosystemCategory[];
+  isLoading: boolean;
+  error: string | null;
 }
 
-export const EcosystemRotation: React.FC<EcosystemRotationProps> = ({ categories }) => {
+export const EcosystemRotation: React.FC<EcosystemRotationProps> = ({
+  categories,
+  isLoading,
+  error,
+}) => {
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
-  const liveCategories = categories.length > 0 ? categories : ECOSYSTEM_CATEGORIES;
-  const leadingCategory = liveCategories[0] ?? null;
+  const leadingCategory = categories[0] ?? null;
+
+  if (isLoading && categories.length === 0) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-sm text-slate-600 shadow-sm">
+        Loading ecosystem rotation snapshot...
+      </div>
+    );
+  }
+
+  if (categories.length === 0) {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-sm text-amber-800 shadow-sm">
+        Ecosystem rotation is currently unavailable{error ? `: ${error}` : '.'}
+      </div>
+    );
+  }
 
   // SVG Nodes coordinates and metadata for Attention Flow Map
   const NODES = [
@@ -185,7 +205,7 @@ export const EcosystemRotation: React.FC<EcosystemRotationProps> = ({ categories
                   {hoveredNode 
                     ? `${NODES.find(n => n.id === hoveredNode)?.label}: ${NODES.find(n => n.id === hoveredNode)?.desc}`
                     : leadingCategory?.rotationDrivers?.[0]
-                      ?? 'The integration window for simple, static Retrieval (RAG) is closing fast. Developer momentum has fully rotated towards stateful orchestrations and logic loops capable of self-healing.'
+                      ?? 'Live ecosystem rotation evidence is waiting for the next telemetry refresh.'
                   }
                 </p>
               </div>
@@ -206,7 +226,7 @@ export const EcosystemRotation: React.FC<EcosystemRotationProps> = ({ categories
             <p className="text-slate-900 text-sm font-semibold font-display">Why the Shift?</p>
             <p className="text-slate-655 text-slate-600 text-xs leading-relaxed font-normal">
               {leadingCategory?.rotationDrivers?.[1]
-                ?? 'Standard single-query API interfaces hit severe logical walls. Developers are now converting their entire latency budget into dense logic budgets — running multiple reinforcement reasoning steps in the background.'}
+                ?? 'The current lead category will expose its top backend evidence here once the latest snapshot is available.'}
             </p>
           </div>
 
@@ -264,7 +284,7 @@ export const EcosystemRotation: React.FC<EcosystemRotationProps> = ({ categories
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {liveCategories.map((cat, idx) => {
+          {categories.map((cat, idx) => {
             const hoverBorder = idx === 0 
               ? 'hover:border-emerald-500/50' 
               : idx === 1 

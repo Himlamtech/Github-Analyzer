@@ -11,10 +11,12 @@ import {
 } from 'recharts';
 import { BookOpen, MapPin } from 'lucide-react';
 
-import type { WeeklyBriefSnapshot } from '../types';
+import { SafeChartContainer } from './SafeChartContainer';
+import type { WeeklyBriefArchiveEntry, WeeklyBriefSnapshot } from '../types';
 
 interface WeeklyBriefProps {
   data: WeeklyBriefSnapshot | null;
+  archive: WeeklyBriefArchiveEntry[];
   isLoading: boolean;
 }
 
@@ -29,7 +31,16 @@ function regionTone(status: string): string {
   return 'text-amber-700 bg-amber-500';
 }
 
-export const WeeklyBrief: React.FC<WeeklyBriefProps> = ({ data, isLoading }) => {
+function formatPublishDate(value: string): string {
+  return new Date(value).toLocaleDateString('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+export const WeeklyBrief: React.FC<WeeklyBriefProps> = ({ data, archive, isLoading }) => {
   if (isLoading && !data) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-8 text-sm text-slate-600 shadow-sm">
@@ -51,7 +62,7 @@ export const WeeklyBrief: React.FC<WeeklyBriefProps> = ({ data, isLoading }) => 
       <div className="space-y-2 border-b border-slate-200 pb-6">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 font-mono">
           <BookOpen className="h-3.5 w-3.5" />
-          <span>Macro Research Division • Published Weekly</span>
+          <span>Macro Research Division • Published {formatPublishDate(data.publishedAt)}</span>
         </div>
         <h1 className="text-3xl font-display font-medium tracking-tight text-slate-950 sm:text-4xl">
           {data.title}
@@ -114,18 +125,24 @@ export const WeeklyBrief: React.FC<WeeklyBriefProps> = ({ data, isLoading }) => 
                 </div>
               </div>
 
-              <div className="h-48 w-full pt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.summaryChartData} margin={{ top: 5, right: 5, left: -24, bottom: 5 }}>
-                    <XAxis dataKey="period" stroke="#475569" style={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <YAxis stroke="#475569" style={{ fontSize: 10, fontFamily: 'monospace' }} />
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.6} />
-                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', fontSize: 11, color: '#0f172a' }} />
-                    <Bar dataKey="standardRAG" name="Standard RAG" fill="#f43f5e" radius={[4, 4, 0, 0]} opacity={0.8} />
-                    <Bar dataKey="agenticLoops" name="Agentic Workflows" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              {data.summaryChartData.length > 0 ? (
+                <SafeChartContainer className="h-48 w-full pt-4" placeholder="Preparing weekly chart...">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1} debounce={50}>
+                    <BarChart data={data.summaryChartData} margin={{ top: 5, right: 5, left: -24, bottom: 5 }}>
+                      <XAxis dataKey="period" stroke="#475569" style={{ fontSize: 10, fontFamily: 'monospace' }} />
+                      <YAxis stroke="#475569" style={{ fontSize: 10, fontFamily: 'monospace' }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.6} />
+                      <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', fontSize: 11, color: '#0f172a' }} />
+                      <Bar dataKey="standardRAG" name="Standard RAG" fill="#f43f5e" radius={[4, 4, 0, 0]} opacity={0.8} />
+                      <Bar dataKey="agenticLoops" name="Agentic Workflows" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </SafeChartContainer>
+              ) : (
+                <div className="flex h-48 w-full items-center justify-center rounded border border-slate-100 bg-slate-50 pt-4 text-[10px] font-mono text-slate-500">
+                  No summary chart data available.
+                </div>
+              )}
             </div>
           </section>
         </div>
@@ -209,6 +226,40 @@ export const WeeklyBrief: React.FC<WeeklyBriefProps> = ({ data, isLoading }) => 
             <p className="border-t border-slate-150 pt-2.5 text-[10px] leading-relaxed text-slate-500 font-mono">
               Disclaimer: {data.disclaimer}
             </p>
+          </div>
+
+          <div className="space-y-4 rounded-xl border border-slate-205 bg-white p-5 shadow-sm">
+            <div className="space-y-1">
+              <h3 className="block text-xs font-bold uppercase tracking-widest text-slate-500 font-mono">
+                Archive Timeline
+              </h3>
+              <p className="text-xs font-display font-semibold text-slate-900">
+                Versioned brief history from the backend archive route
+              </p>
+            </div>
+
+            <div className="space-y-3 text-[11px] font-mono">
+              {archive.map((entry) => {
+                const isCurrent = entry.briefId === data.briefId;
+
+                return (
+                  <div
+                    key={entry.briefId}
+                    className={`rounded border px-3 py-2 ${
+                      isCurrent
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                        : 'border-slate-150 bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <strong className="font-sans text-xs font-bold">{entry.title}</strong>
+                      <span>{formatPublishDate(entry.publishedAt)}</span>
+                    </div>
+                    <p className="mt-1 text-[10px] leading-relaxed opacity-80">{entry.subtitle}</p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

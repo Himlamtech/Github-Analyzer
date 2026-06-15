@@ -13,6 +13,7 @@ Tags: ["Dashboard"]
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from functools import lru_cache
 from typing import TYPE_CHECKING, Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -20,6 +21,7 @@ import structlog
 
 from src.application.dtos.repo_metadata_dto import (
     LanguageBreakdownDTO,
+    NewTenKRepoDTO,
     RepoMetadataDTO,
     RepoTimeseriesPointDTO,
     ShockMoverDTO,
@@ -45,20 +47,29 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 # ── Dependency factory ────────────────────────────────────────────────────────
 
 
-def _get_dashboard_service(
-    settings: Annotated[Settings, Depends(get_settings)],
+@lru_cache(maxsize=1)
+def _make_dashboard_service(
+    host: str, port: int, user: str, password: str, database: str
 ) -> object:
-    """Construct a ClickHouseDashboardService for the request."""
     from src.infrastructure.storage.clickhouse_dashboard_service import (
         ClickHouseDashboardService,
     )
 
     return ClickHouseDashboardService(
-        host=settings.clickhouse_host,
-        port=settings.clickhouse_port,
-        user=settings.clickhouse_user,
-        password=settings.clickhouse_password,
-        database=settings.clickhouse_database,
+        host=host, port=port, user=user, password=password, database=database
+    )
+
+
+def _get_dashboard_service(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> object:
+    """Return the singleton ClickHouseDashboardService for the request."""
+    return _make_dashboard_service(
+        settings.clickhouse_host,
+        settings.clickhouse_port,
+        settings.clickhouse_user,
+        settings.clickhouse_password,
+        settings.clickhouse_database,
     )
 
 
@@ -223,6 +234,36 @@ async def get_trending(
             repo=_to_repo_dto(row),
             star_count_in_window=int(row.get("star_count_in_window") or 0),
             growth_rank=int(row.get("growth_rank") or idx + 1),
+        )
+        for idx, row in enumerate(rows)
+    ]
+
+
+@router.get("/new-repos-reaching-10k", response_model=list[NewTenKRepoDTO])
+async def get_new_repos_reaching_10k(
+    svc: Annotated[object, Depends(_get_dashboard_service)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> list[NewTenKRepoDTO]:
+    """Repos whose total stars crossed 10k in the current GMT+7 week."""
+    service = cast("ClickHouseDashboardService", svc)
+
+    try:
+        rows = await service.get_new_repos_reaching_star_threshold(
+            threshold=10_000,
+            limit=limit,
+        )
+    except DashboardQueryError as exc:
+        logger.error("dashboard.new_repos_reaching_10k_failed", error=str(exc))
+        raise HTTPException(status_code=503, detail="Dashboard query failed") from exc
+
+    return [
+        NewTenKRepoDTO(
+            repo=_to_repo_dto(row),
+            baseline_stars=_as_int(row.get("baseline_stars")),
+            current_stars=_as_int(row.get("current_stars")),
+            star_count_in_window=_as_int(row.get("star_count_in_window")),
+            crossed_threshold_at=cast("datetime | None", row.get("crossed_threshold_at")),
+            rank=_as_int(row.get("rank")) or idx + 1,
         )
         for idx, row in enumerate(rows)
     ]

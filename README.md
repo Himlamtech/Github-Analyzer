@@ -118,6 +118,6 @@ npm run build
 - [Frontend](docs/frontend.md)
 - [Database](docs/database.md)
 - [Technique](docs/technique.md)
-- [Use cases](docs/use-cases.md)
+- [Use cases](docs/usecases.md)
 - [Design](docs/design.md)
 - [Integration](docs/integration.md)

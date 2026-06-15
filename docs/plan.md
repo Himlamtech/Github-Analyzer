@@ -14,16 +14,25 @@ The immediate goal is not to build every intelligence surface at once. The goal 
 - FastAPI exposes health and dashboard analytics routes.
 - The new Vite/React frontend is the active frontend.
 - `Overview` and `BreakoutDetector` already consume live backend data.
-- `EcosystemRotation` uses the backend rotation intelligence contract partially.
-- `CompetitiveRadar`, `WeeklyBrief`, and `NewsImpact` now have curated backend snapshot contracts.
+- `EcosystemRotation` now serves taxonomy-aware backend rotation intelligence.
+- `NewsImpact` now serves computed backend intelligence from persisted official-source items.
+- `CompetitiveRadar` now serves computed backend framework metrics.
+- `WeeklyBrief` now serves a versioned latest snapshot plus archive metadata.
 
 ### Missing today
 
-- `NewsImpact` now has external-source ingestion foundations, but not a trusted end-to-end causality pipeline yet.
-- `CompetitiveRadar` is still a curated backend snapshot, not a computed framework model.
-- `WeeklyBrief` is still a curated backend snapshot, not a generated/versioned editorial pipeline.
-- Category logic is still too neutral for real AI ecosystem intelligence.
-- Most advanced frontend metrics are still derived or curated rather than computed from named server-side models.
+- `NewsImpact` still relies on heuristic linking and scoring rather than a stronger entity registry and causality mart.
+- `WeeklyBrief` is versioned, but it is still an editorial snapshot pipeline rather than a generated briefing workflow.
+- Core ingestion-layer category logic is still neutral; current intelligence routes compensate with taxonomy mapping at serving time.
+- Some advanced frontend narratives still need deeper drill-down binding to expose all backend evidence fields.
+
+### Completed in this phase
+
+- `GET /intelligence/news-impact` now reads computed outputs from persisted official-source items.
+- `GET /intelligence/news-impact/{event_id}` now returns a detailed event dossier.
+- `POST /intelligence/news-impact/sources/sync` now enriches items with event type, category inference, quality score, and quarantine flags.
+- `GET /intelligence/framework-radar` now computes framework metrics from live repository analytics.
+- `GET /intelligence/weekly-brief/archive` now exposes weekly brief history.
 
 ### Guiding rule
 
@@ -194,17 +203,18 @@ Move `EcosystemRotation` from generic topic rotation toward category-level intel
 
 Turn `NewsImpact` into a real product feature backed by external-source ingestion and causality scoring.
 
-### Missing dependency
+### Current status
 
-The project now has external news/launch ingestion foundations, but it still lacks trusted end-to-end linking, quarantine, and causality scoring.
+The project now has end-to-end official-source sync, persistence, quarantine flags, computed impact payloads, and an event detail route. The remaining gap is to replace heuristic linking/scoring with stronger entity registries and causality marts.
 
 ### Implemented foundation now
 
-- `GET /intelligence/news-impact` exists as a curated backend snapshot contract.
+- `GET /intelligence/news-impact` now serves computed backend intelligence from persisted official-source items.
 - `GET /intelligence/news-impact/readiness` now exposes configured mode, source count, and missing prerequisites for live ingestion.
 - `GET /intelligence/news-impact/sources/preview` now fetches latest items from enabled official RSS/Atom feeds.
-- `POST /intelligence/news-impact/sources/sync` now persists official feed items and source health snapshots into ClickHouse.
+- `POST /intelligence/news-impact/sources/sync` now enriches, quarantines, and persists official feed items plus source health snapshots into ClickHouse.
 - `GET /intelligence/news-impact/sources/latest` and `GET /intelligence/news-impact/sources/health` now read persisted sync outputs.
+- `GET /intelligence/news-impact/{event_id}` now exposes a detailed dossier route.
 
 ### Proposed backend scope
 
@@ -250,6 +260,10 @@ The project now has external news/launch ingestion foundations, but it still lac
 
 Back `CompetitiveRadar` with real framework-level metrics rather than curated coordinates.
 
+### Current status
+
+This phase now computes a first framework radar directly from live repository analytics using a stable framework registry and scoring heuristics.
+
 ### Proposed backend scope
 
 - define framework entities
@@ -289,6 +303,10 @@ Back `CompetitiveRadar` with real framework-level metrics rather than curated co
 ### Goal
 
 Provide a real backend-backed briefing snapshot while preserving editorial quality.
+
+### Current status
+
+This phase now exposes `latest` plus `archive`. The remaining gap is automated brief generation, not API coverage.
 
 ### Proposed backend scope
 

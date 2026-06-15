@@ -5,6 +5,7 @@ COPY --from=ghcr.io/astral-sh/uv:0.7.13 /uv /uvx /bin/
 # Install Java for PySpark.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     openjdk-17-jre-headless \
+    procps \
     wget \
     && rm -rf /var/lib/apt/lists/*
 

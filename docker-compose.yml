@@ -7,10 +7,6 @@ networks:
 volumes:
   kafka_data:
     name: github-kafka-data
-  frontend_node_modules:
-    name: github-frontend-node-modules
-  frontend_vite_cache:
-    name: github-frontend-vite-cache
   clickhouse_data:
     external: true
     name: github-clickhouse-data
@@ -26,6 +22,9 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
       ZOOKEEPER_LOG4J_ROOT_LOGLEVEL: WARN
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: "0.5"
     healthcheck:
       test: ["CMD", "bash", "-c", "echo ruok | timeout 2 bash -c 'cat > /dev/tcp/localhost/2181' && echo imok || exit 1"]
       interval: 10s
@@ -65,6 +64,9 @@ services:
       KAFKA_LOG4J_ROOT_LOGLEVEL: WARN
       KAFKA_JMX_PORT: 9101
       KAFKA_JMX_HOSTNAME: localhost
+    mem_limit: 2g
+    memswap_limit: 2g
+    cpus: "1"
     healthcheck:
       test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
       interval: 15s
@@ -90,6 +92,9 @@ services:
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-github_analyzer}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-github_analyzer}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    mem_limit: 6g
+    memswap_limit: 6g
+    cpus: "2"
     ulimits:
       nofile:
         soft: 262144
@@ -108,29 +113,26 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    command:
-      ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     hostname: frontend
     networks:
       - github-networks
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
-    volumes:
-      - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
-      - frontend_vite_cache:/app/node_modules/.vite
-    environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://api:8000}
     depends_on:
       api:
         condition: service_healthy
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: "0.5"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => process.exit(r.statusCode < 400 ? 0 : 1))"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 20s
 
   api:
     image: gha-api
@@ -161,6 +163,7 @@ services:
       - ./src:/app/src
       - ./data:/app/data:ro
     environment:
+      PYTHONPATH: /app
       GITHUB_API_TOKENS: ${GITHUB_API_TOKENS}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       CLICKHOUSE_HOST: clickhouse
@@ -170,13 +173,19 @@ services:
       CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-github_analyzer}
       PARQUET_BASE_PATH: /app/data/raw
       REPO_METADATA_PATH: /app/data/repos
+      NEWS_INTELLIGENCE_MODE: ${NEWS_INTELLIGENCE_MODE:-curated}
+      NEWS_INTELLIGENCE_SYNC_ENABLED: ${NEWS_INTELLIGENCE_SYNC_ENABLED:-false}
+      NEWS_INTELLIGENCE_SOURCES: ${NEWS_INTELLIGENCE_SOURCES:-[]}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    mem_limit: 1g
+    memswap_limit: 1g
+    cpus: "1"
     depends_on:
       kafka:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
-    restart: unless-stopped
+    restart: on-failure
     healthcheck:
       test:
         [
@@ -203,6 +212,7 @@ services:
     volumes:
       - ./src:/app/src
     environment:
+      PYTHONPATH: /app
       GITHUB_API_TOKENS: ${GITHUB_API_TOKENS}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       KAFKA_TOPIC: github_raw_events
@@ -210,10 +220,13 @@ services:
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-github_analyzer}
       METRICS_PORT: 9091
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: "0.5"
     depends_on:
       kafka:
         condition: service_healthy
-    restart: unless-stopped
+    restart: on-failure
 
   processor:
     image: gha-processor
@@ -222,12 +235,14 @@ services:
       context: .
       dockerfile: Dockerfile
     hostname: processor
-    command: ["python", "-m", "src.application.use_cases.process_event_stream"]
+    command: ["uv", "run", "python", "-m", "src.application.use_cases.process_event_stream"]
     networks:
       - github-networks
     volumes:
+      - ./src:/app/src
       - ./data:/app/data
     environment:
+      PYTHONPATH: /app
       GITHUB_API_TOKENS: ${GITHUB_API_TOKENS}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       KAFKA_TOPIC: github_raw_events
@@ -239,13 +254,16 @@ services:
       PARQUET_BASE_PATH: /app/data/raw
       CHECKPOINT_BASE_PATH: /app/data/checkpoints
       SPARK_MASTER: local[4]
-      SPARK_DRIVER_MEMORY: 2g
-      SPARK_EXECUTOR_MEMORY: 2g
+      SPARK_DRIVER_MEMORY: 4g
+      SPARK_EXECUTOR_MEMORY: 4g
       METRICS_PORT: 9091
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    mem_limit: 14g
+    memswap_limit: 14g
+    cpus: "4"
     depends_on:
       kafka:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
-    restart: unless-stopped
+    restart: on-failure

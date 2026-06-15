@@ -28,6 +28,15 @@ CREATE TABLE IF NOT EXISTS external_news_items
     url String,
     published_at DateTime('UTC'),
     summary String,
+    source_type LowCardinality(String),
+    event_type LowCardinality(String),
+    linked_entities Array(String),
+    linked_categories Array(String),
+    linked_repo_full_names Array(String),
+    linked_framework_ids Array(String),
+    quality_score Float64,
+    is_quarantined UInt8,
+    quarantine_reason Nullable(String),
     ingested_at DateTime('UTC')
 )
 ENGINE = ReplacingMergeTree(ingested_at)
@@ -38,7 +47,24 @@ SETTINGS index_granularity = 8192
 
 _INSERT_EXTERNAL_NEWS_ITEMS_QUERY = """
 INSERT INTO external_news_items
-(source_id, provider, title, url, published_at, summary, ingested_at)
+(
+    source_id,
+    provider,
+    title,
+    url,
+    published_at,
+    summary,
+    source_type,
+    event_type,
+    linked_entities,
+    linked_categories,
+    linked_repo_full_names,
+    linked_framework_ids,
+    quality_score,
+    is_quarantined,
+    quarantine_reason,
+    ingested_at
+)
 VALUES
 """
 
@@ -65,7 +91,22 @@ VALUES
 """
 
 _SELECT_LATEST_ITEMS_QUERY = """
-SELECT source_id, provider, title, url, published_at, summary
+SELECT
+    source_id,
+    provider,
+    title,
+    url,
+    published_at,
+    summary,
+    source_type,
+    event_type,
+    linked_entities,
+    linked_categories,
+    linked_repo_full_names,
+    linked_framework_ids,
+    quality_score,
+    is_quarantined,
+    quarantine_reason
 FROM external_news_items
 FINAL
 {where_clause}
@@ -73,16 +114,50 @@ ORDER BY published_at DESC, provider ASC
 LIMIT %(limit)s
 """
 
+_SELECT_ITEM_BY_SOURCE_ID_QUERY = """
+SELECT
+    source_id,
+    provider,
+    title,
+    url,
+    published_at,
+    summary,
+    source_type,
+    event_type,
+    linked_entities,
+    linked_categories,
+    linked_repo_full_names,
+    linked_framework_ids,
+    quality_score,
+    is_quarantined,
+    quarantine_reason
+FROM external_news_items
+FINAL
+WHERE source_id = %(source_id)s
+ORDER BY published_at DESC
+LIMIT 1
+"""
+
 _SELECT_LATEST_SOURCE_HEALTH_QUERY = """
 SELECT
     provider,
     source_url,
-    argMax(status, checked_at) AS status,
-    argMax(fetched_count, checked_at) AS fetched_count,
-    argMax(error_message, checked_at) AS error_message,
-    max(checked_at) AS checked_at
-FROM source_health_snapshots
-GROUP BY provider, source_url
+    status,
+    fetched_count,
+    error_message,
+    latest_checked_at AS checked_at
+FROM
+(
+    SELECT
+        provider,
+        source_url,
+        argMax(status, checked_at) AS status,
+        argMax(fetched_count, checked_at) AS fetched_count,
+        argMax(error_message, checked_at) AS error_message,
+        max(checked_at) AS latest_checked_at
+    FROM source_health_snapshots
+    GROUP BY provider, source_url
+)
 ORDER BY provider ASC, source_url ASC
 """
 
@@ -137,6 +212,15 @@ class ClickHouseExternalNewsRepository(ExternalNewsRepositoryABC):
             item.url,
             item.published_at,
             item.summary,
+            item.source_type,
+            item.event_type,
+            list(item.linked_entities),
+            list(item.linked_categories),
+            list(item.linked_repo_full_names),
+            list(item.linked_framework_ids),
+            item.quality_score,
+            int(item.is_quarantined),
+            item.quarantine_reason,
             ingested_at,
         )
 
@@ -184,8 +268,14 @@ class ClickHouseExternalNewsRepository(ExternalNewsRepositoryABC):
         *,
         provider: str | None,
         limit: int,
+        include_quarantined: bool = False,
     ) -> list[dict[str, object]]:
-        where_clause = "WHERE provider = %(provider)s" if provider else ""
+        where_parts: list[str] = []
+        if provider:
+            where_parts.append("provider = %(provider)s")
+        if not include_quarantined:
+            where_parts.append("is_quarantined = 0")
+        where_clause = f"WHERE {' AND '.join(where_parts)}" if where_parts else ""
         query = _SELECT_LATEST_ITEMS_QUERY.format(where_clause=where_clause)
         params: dict[str, object] = {"limit": limit}
         if provider:
@@ -205,9 +295,50 @@ class ClickHouseExternalNewsRepository(ExternalNewsRepositoryABC):
                 "url": row[3],
                 "published_at": row[4],
                 "summary": row[5],
+                "source_type": row[6],
+                "event_type": row[7],
+                "linked_entities": row[8],
+                "linked_categories": row[9],
+                "linked_repo_full_names": row[10],
+                "linked_framework_ids": row[11],
+                "quality_score": row[12],
+                "is_quarantined": bool(row[13]),
+                "quarantine_reason": row[14],
             }
             for row in rows
         ]
+
+    async def get_item_by_source_id(self, source_id: str) -> dict[str, object] | None:
+        def _query() -> list[tuple[object, ...]]:
+            client = self._get_client()
+            self._ensure_tables(client)
+            return cast(
+                "list[tuple[object, ...]]",
+                client.execute(_SELECT_ITEM_BY_SOURCE_ID_QUERY, {"source_id": source_id}),
+            )
+
+        rows = await asyncio.to_thread(_query)
+        if not rows:
+            return None
+
+        row = rows[0]
+        return {
+            "source_id": row[0],
+            "provider": row[1],
+            "title": row[2],
+            "url": row[3],
+            "published_at": row[4],
+            "summary": row[5],
+            "source_type": row[6],
+            "event_type": row[7],
+            "linked_entities": row[8],
+            "linked_categories": row[9],
+            "linked_repo_full_names": row[10],
+            "linked_framework_ids": row[11],
+            "quality_score": row[12],
+            "is_quarantined": bool(row[13]),
+            "quarantine_reason": row[14],
+        }
 
     async def list_latest_source_health(self) -> list[dict[str, object]]:
         def _query() -> list[tuple[object, ...]]:
