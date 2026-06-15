@@ -69,7 +69,6 @@ export const Overview: React.FC<OverviewProps> = ({ data, isLoading, onNavigate 
         ? `Topic rotation shows ${rotationTopic.title} at ${rotationTopic.growth}`
         : 'Topic rotation data is still compiling...',
       `Pipeline status classified as ${pipelineStatus}`,
-      'Weekly brief remains curated while core dashboard uses live API data.',
     ];
 
     const interval = setInterval(() => {
@@ -144,13 +143,6 @@ export const Overview: React.FC<OverviewProps> = ({ data, isLoading, onNavigate 
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 text-slate-950" />
           </button>
           
-          <button 
-            onClick={() => onNavigate('weeklyBrief')}
-            className="px-8 py-4 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold transition-all backdrop-blur-sm cursor-pointer active:scale-[0.98] shadow-md"
-            id="hero-cta-secondary"
-          >
-            Read Q3 Briefing
-          </button>
         </motion.div>
       </section>
 
@@ -499,33 +491,6 @@ export const Overview: React.FC<OverviewProps> = ({ data, isLoading, onNavigate 
                 className="text-amber-600 hover:text-amber-705 group-hover:translate-x-0.5 transition-transform flex items-center gap-1 cursor-pointer font-semibold font-mono"
               >
                 View Timeline <ArrowRight className="w-3 h-3 text-amber-600" />
-              </button>
-            </div>
-          </div>
-
-          {/* Bento Card 4 */}
-          <div className="col-span-1 md:col-span-2 bg-white border border-slate-200 hover:border-slate-350 hover:shadow-md p-6 rounded-2xl flex flex-col justify-between transition-all group relative overflow-hidden shadow-sm">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/8 transition-all" />
-            <div className="space-y-4">
-              <div className="p-3 bg-emerald-50 border border-emerald-200/60 text-emerald-600 rounded-lg w-fit">
-                <ShieldAlert className="w-6 h-6" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-lg font-display font-semibold text-slate-900 group-hover:text-emerald-700 transition-colors">
-                  The Weekly Brief: "The Silence of the Transformers"
-                </h3>
-                <p className="text-slate-600 text-sm leading-relaxed max-w-lg">
-                  Read curated technical summaries analyzing state management ecosystems and infrastructural shifts in the AI economy, backed by Dr. Alistair Vance.
-                </p>
-              </div>
-            </div>
-            <div className="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-mono">
-              <span className="text-slate-500">Editorial research report</span>
-              <button 
-                onClick={() => onNavigate('weeklyBrief')}
-                className="text-emerald-600 hover:text-emerald-750 group-hover:translate-x-0.5 transition-transform flex items-center gap-1 cursor-pointer font-semibold font-mono"
-              >
-                Read Briefing <ArrowRight className="w-3 h-3 text-emerald-600" />
               </button>
             </div>
           </div>

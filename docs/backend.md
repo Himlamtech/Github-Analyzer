@@ -37,15 +37,12 @@
 - `GET /intelligence/news-impact/sources/latest`
 - `GET /intelligence/news-impact/sources/health`
 - `GET /intelligence/framework-radar`
-- `GET /intelligence/weekly-brief/latest`
-- `GET /intelligence/weekly-brief/archive`
 
 ## Current backend constraints
 
 - Core repository category logic is still simplified in the ingestion path, but intelligence routes now map raw topics into product-facing taxonomy labels.
 - `NewsImpact` now computes serving payloads from persisted official-source items, with duplicate and low-confidence quarantine flags stored at ingestion time.
 - `FrameworkRadar` now computes framework metrics from live repository analytics inputs instead of a fixed snapshot.
-- `WeeklyBrief` now exposes versioned `latest` plus `archive` metadata, but it is still an editorial snapshot pipeline rather than a generated briefing workflow.
 - CORS now allows both `localhost:3000` and `localhost:5173` dev origins.
 
 ## Target backend direction
@@ -63,7 +60,6 @@ Examples of the next meaningful backend additions:
 - causality scoring between external launch/news items and GitHub telemetry
 - deeper entity-linking between external news items and repo/framework registries
 - richer framework/category marts replacing heuristic matching in the current phase
-- generated briefing snapshots on top of the current versioned weekly brief archive
 
 ## Guardrails
 

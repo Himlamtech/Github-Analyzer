@@ -21,4 +21,3 @@ When a panel represents macro narrative or editorial framing, it should still be
 - `EcosystemRotation` -> taxonomy-aware rotation intelligence using `/intelligence/rotation`
 - `NewsImpact` -> computed intelligence payload from persisted official-source items plus sync/health operations
 - `CompetitiveRadar` -> computed backend framework radar using repository analytics inputs
-- `WeeklyBrief` -> versioned backend snapshot from `latest` plus archive metadata

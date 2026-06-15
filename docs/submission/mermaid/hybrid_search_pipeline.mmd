@@ -1,9 +1,0 @@
-flowchart LR
-    Q["User query<br/>'LLM fine-tuning framework'"]
-    LEX["Lexical Scoring<br/>ClickHouse candidates<br/>full-text trên<br/>description + topics"]
-    RANK["Lexical Ranking<br/>term matching + popularity"]
-    RETURN["Kết quả trả về<br/>ranked list"]
-
-    Q --> LEX
-    LEX --> RANK
-    RANK --> RETURN

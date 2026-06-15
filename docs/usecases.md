@@ -42,7 +42,7 @@ GitHub Events API
 3. **Streaming:** Spark Structured Streaming đọc từ Kafka.
 4. **Storage:** dữ liệu được ghi vào ClickHouse để query nhanh và Parquet để archive/backfill.
 5. **Serving:** FastAPI đọc ClickHouse và các repository liên quan để tạo dashboard/intelligence payload.
-6. **Presentation:** React dashboard hiển thị trạng thái pipeline, repo trending, breakout, rotation, news impact, radar và weekly brief.
+6. **Presentation:** React dashboard hiển thị trạng thái pipeline, repo trending, breakout, rotation, news impact, và radar.
 
 ## 3. Actor chính trong hệ thống
 
@@ -77,7 +77,6 @@ Có thể chia use case của dự án thành 4 nhóm lớn:
    - Ecosystem Rotation.
    - News Impact.
    - Framework/Competitive Radar.
-   - Weekly Brief.
 
 4. **External Data Control**
    - Preview external news sources.
@@ -690,74 +689,7 @@ Use case này phù hợp cho slide so sánh công nghệ. Thay vì chỉ nói �
 
 ---
 
-# 14. Use Case 10 — Weekly Brief
-
-## Mục tiêu
-
-Cung cấp bản tóm tắt định kỳ về tình hình GitHub telemetry/intelligence để người dùng nhanh chóng nắm ý chính mà không cần tự đọc toàn bộ dashboard.
-
-## Actor
-
-- Dashboard user.
-- Analyst.
-- Stakeholder cần báo cáo định kỳ.
-
-## Endpoint/API liên quan
-
-- `GET /intelligence/weekly-brief/latest`
-- `GET /intelligence/weekly-brief/archive`
-
-## Application use cases
-
-- `GetWeeklyBriefSnapshotUseCase`
-- `ListWeeklyBriefArchiveUseCase`
-
-## Luồng chính
-
-```text
-Frontend WeeklyBrief
-  -> GET /intelligence/weekly-brief/latest
-  -> Backend trả latest versioned snapshot
-  -> Frontend hiển thị headline, summary, highlights
-
-User muốn xem lịch sử
-  -> GET /intelligence/weekly-brief/archive
-  -> Backend trả metadata archive
-  -> Frontend hiển thị danh sách brief cũ
-```
-
-## Ý nghĩa nghiệp vụ
-
-Weekly Brief là lớp “narrative” phía trên analytics. Nó giúp biến dữ liệu thành câu chuyện để báo cáo, rất phù hợp cho slide tổng kết tuần hoặc báo cáo dự án.
-
-## Dữ liệu đầu vào
-
-- Latest snapshot đã lưu/versioned.
-- Archive metadata.
-- Trong tương lai có thể lấy từ pipeline generated briefing.
-
-## Dữ liệu đầu ra
-
-- Brief title/headline.
-- Key highlights.
-- Supporting metrics.
-- Archive list/version metadata.
-
-## Mức độ hiện tại
-
-Đã có latest snapshot và archive metadata. Theo docs backend, đây vẫn là editorial snapshot pipeline, chưa phải generated briefing workflow đầy đủ.
-
-## File liên quan
-
-- `src/application/use_cases/get_weekly_brief_snapshot.py`
-- `src/presentation/api/intelligence_routes.py`
-- `frontend/src/components/WeeklyBrief.tsx`
-- `frontend/src/hooks/useWeeklyBriefData.ts`
-- `tests/application/test_get_weekly_brief_snapshot.py`
-
----
-
-# 15. Use Case 11 — Discover Repository Catalog
+# 14. Use Case 11 — Discover Repository Catalog
 
 ## Mục tiêu
 
@@ -1022,21 +954,6 @@ Component/hook chính:
 - `frontend/src/components/CompetitiveRadar.tsx`
 - `frontend/src/hooks/useFrameworkRadarData.ts`
 
-## 18.6 Journey: Người dùng lấy summary để báo cáo
-
-```text
-Mở Weekly Brief
-  -> Frontend gọi latest brief
-  -> User đọc highlights
-  -> Nếu cần, xem archive metadata
-  -> Dùng nội dung làm slide tổng kết
-```
-
-Component/hook chính:
-
-- `frontend/src/components/WeeklyBrief.tsx`
-- `frontend/src/hooks/useWeeklyBriefData.ts`
-
 ---
 
 # 19. Mapping use case sang API và frontend
@@ -1052,7 +969,6 @@ Component/hook chính:
 | Breakout Detector | `/intelligence/breakout` | BreakoutDetector |
 | News Impact | `/intelligence/news-impact`, detail/readiness/source endpoints | NewsImpact |
 | Framework Radar | `/intelligence/framework-radar` | CompetitiveRadar |
-| Weekly Brief | `/intelligence/weekly-brief/latest`, `/archive` | WeeklyBrief |
 | External source control | preview/sync/latest/health endpoints | NewsImpact operations/data readiness |
 
 ---
@@ -1070,7 +986,6 @@ Component/hook chính:
 | Ecosystem Rotation | Live intelligence | Có taxonomy-aware categories |
 | News Impact | Computed intelligence | Có source operations, persisted official-source items |
 | Framework Radar | Computed intelligence | Dựa trên live repo analytics, không còn fixed snapshot đơn thuần |
-| Weekly Brief | Versioned snapshot | Có latest/archive, vẫn thiên về editorial snapshot |
 | Repo catalog discovery | Backend/operator use case | Hỗ trợ metadata enrichment |
 | Repo metadata sync | Backend/operator use case | Hỗ trợ category/framework/topic analytics |
 
@@ -1130,7 +1045,6 @@ Thông điệp: biến dữ liệu thô thành số liệu quan sát được.
 - Ecosystem Rotation.
 - News Impact.
 - Framework Radar.
-- Weekly Brief.
 
 Thông điệp: không chỉ hiển thị số liệu, mà còn diễn giải xu hướng.
 
@@ -1158,14 +1072,12 @@ Hiện trạng:
 
 - Core pipeline và nhiều endpoint live đã có.
 - Intelligence routes đã bắt đầu computed từ backend.
-- Weekly Brief vẫn là versioned/editorial snapshot.
 
 Hướng phát triển:
 
 - Entity linking sâu hơn cho News Impact.
 - Causality scoring tốt hơn.
 - Framework/category marts thay heuristic matching.
-- Generated weekly briefing workflow.
 - Guardrails và confidence scoring rõ hơn.
 
 ---

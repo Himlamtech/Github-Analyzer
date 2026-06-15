@@ -18,8 +18,6 @@ from src.application.dtos.intelligence_dto import (
     NewsImpactEventDTO,
     NewsImpactReadinessDTO,
     RotationCategoryDTO,
-    WeeklyBriefArchiveEntryDTO,
-    WeeklyBriefSnapshotDTO,
 )
 from src.application.use_cases.build_breakout_view import BuildBreakoutViewUseCase
 from src.application.use_cases.build_rotation_view import BuildRotationViewUseCase
@@ -30,10 +28,6 @@ from src.application.use_cases.get_news_impact_readiness import (
     GetNewsImpactReadinessUseCase,
 )
 from src.application.use_cases.get_news_impact_snapshot import GetNewsImpactSnapshotUseCase
-from src.application.use_cases.get_weekly_brief_snapshot import (
-    GetWeeklyBriefSnapshotUseCase,
-    ListWeeklyBriefArchiveUseCase,
-)
 from src.application.use_cases.list_persisted_external_news import (
     ListExternalNewsSourceHealthUseCase,
     ListPersistedExternalNewsItemsUseCase,
@@ -341,15 +335,3 @@ async def get_legacy_news_impact_event_detail(
     return await _get_news_impact_detail(source_id, repository, svc)
 
 
-@router.get("/weekly-brief/latest", response_model=WeeklyBriefSnapshotDTO)
-async def get_weekly_brief_latest() -> WeeklyBriefSnapshotDTO:
-    """Return the latest versioned weekly brief snapshot."""
-
-    return GetWeeklyBriefSnapshotUseCase().execute()
-
-
-@router.get("/weekly-brief/archive", response_model=list[WeeklyBriefArchiveEntryDTO])
-async def get_weekly_brief_archive() -> list[WeeklyBriefArchiveEntryDTO]:
-    """Return archive metadata for weekly brief history."""
-
-    return ListWeeklyBriefArchiveUseCase().execute()

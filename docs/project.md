@@ -18,7 +18,6 @@ Current implementation maturity:
 - `EcosystemRotation` is live on the backend rotation contract with taxonomy-aware category labels.
 - `NewsImpact` now reads computed backend intelligence built from persisted official-source items.
 - `CompetitiveRadar` now reads computed backend framework metrics.
-- `WeeklyBrief` is backend-served with versioned latest plus archive metadata.
 
 ## Product direction
 

@@ -42,4 +42,4 @@ The frontend consumes these backend endpoints directly:
 - `GET /dashboard/topic-rotation`
 - `GET /dashboard/repo-timeseries`
 
-The `News Impact`, `Weekly Brief`, and `Competitive Radar` views currently remain curated presentation views. The `Overview`, `Breakout Detector`, and top-bar runtime status use live backend data.
+The `News Impact` and `Competitive Radar` views currently remain curated presentation views. The `Overview`, `Breakout Detector`, and top-bar runtime status use live backend data.

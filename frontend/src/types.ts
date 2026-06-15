@@ -92,12 +92,6 @@ export interface NewsImpactReadiness {
   sources: NewsImpactReadinessSource[];
 }
 
-export interface WeeklyBriefPillar {
-  pillarNumber: string;
-  title: string;
-  description: string;
-}
-
 export interface FrameworkRadarItem {
   id: string;
   name: string;
@@ -120,46 +114,6 @@ export interface FrameworkRadarSnapshot {
   frameworks: FrameworkRadarItem[];
   winners: RadarSummaryItem[];
   warnings: RadarSummaryItem[];
-}
-
-export interface WeeklyBriefRegion {
-  region: string;
-  status: string;
-  activePercentage: number;
-}
-
-export interface WeeklyBriefAuthor {
-  initials: string;
-  name: string;
-  role: string;
-}
-
-export interface WeeklyBriefChartPoint {
-  period: string;
-  standardRAG: number;
-  agenticLoops: number;
-}
-
-export interface WeeklyBriefSnapshot {
-  briefId: string;
-  publishedAt: string;
-  title: string;
-  subtitle: string;
-  pillars: WeeklyBriefPillar[];
-  summaryChartData: WeeklyBriefChartPoint[];
-  evidenceSpotlightTitle: string;
-  evidenceSpotlightBody: string;
-  evidenceSpotlightBadge: string;
-  regionalIndicators: WeeklyBriefRegion[];
-  authors: WeeklyBriefAuthor[];
-  disclaimer: string;
-}
-
-export interface WeeklyBriefArchiveEntry {
-  briefId: string;
-  publishedAt: string;
-  title: string;
-  subtitle: string;
 }
 
 export interface PipelineStatus {
@@ -374,48 +328,3 @@ export interface FrameworkRadarSnapshotResponse {
   warnings: RadarSummaryResponse[];
 }
 
-export interface WeeklyBriefPillarResponse {
-  pillar_number: string;
-  title: string;
-  description: string;
-}
-
-export interface WeeklyBriefChartPointResponse {
-  period: string;
-  standard_rag: number;
-  agentic_loops: number;
-}
-
-export interface WeeklyBriefRegionResponse {
-  region: string;
-  status: string;
-  active_percentage: number;
-}
-
-export interface WeeklyBriefAuthorResponse {
-  initials: string;
-  name: string;
-  role: string;
-}
-
-export interface WeeklyBriefSnapshotResponse {
-  brief_id: string;
-  published_at: string;
-  title: string;
-  subtitle: string;
-  pillars: WeeklyBriefPillarResponse[];
-  summary_chart_data: WeeklyBriefChartPointResponse[];
-  evidence_spotlight_title: string;
-  evidence_spotlight_body: string;
-  evidence_spotlight_badge: string;
-  regional_indicators: WeeklyBriefRegionResponse[];
-  authors: WeeklyBriefAuthorResponse[];
-  disclaimer: string;
-}
-
-export interface WeeklyBriefArchiveEntryResponse {
-  brief_id: string;
-  published_at: string;
-  title: string;
-  subtitle: string;
-}

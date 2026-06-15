@@ -19,8 +19,6 @@ The frontend now calls the backend directly for the core dashboard path.
 - `/intelligence/news-impact/sources/latest`: latest persisted official external news items
 - `/intelligence/news-impact/sources/health`: latest persisted source health snapshot per official source
 - `/intelligence/framework-radar`: computed backend framework radar
-- `/intelligence/weekly-brief/latest`: latest versioned weekly brief snapshot
-- `/intelligence/weekly-brief/archive`: weekly brief archive metadata
 - `/dashboard/repo-timeseries`: breakout detail drawer
 
 ## Current page contract map
@@ -32,7 +30,6 @@ The frontend now calls the backend directly for the core dashboard path.
 | `EcosystemRotation` | `/intelligence/rotation` | Live |
 | `NewsImpact` | `/intelligence/news-impact` | Partial |
 | `CompetitiveRadar` | `/intelligence/framework-radar` | Live |
-| `WeeklyBrief` | `/intelligence/weekly-brief/latest` | Partial |
 
 ## Env contract
 

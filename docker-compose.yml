@@ -92,8 +92,8 @@ services:
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-github_analyzer}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-github_analyzer}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
-    mem_limit: 6g
-    memswap_limit: 6g
+    mem_limit: 10g
+    memswap_limit: 10g
     cpus: "2"
     ulimits:
       nofile:

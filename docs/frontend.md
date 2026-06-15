@@ -24,7 +24,6 @@ These views fetch backend data through `frontend/src/lib/api.ts` and hooks under
 
 - `EcosystemRotation`
 - `NewsImpact`
-- `WeeklyBrief`
 - `CompetitiveRadar`
 
 These views now read backend intelligence contracts, but they are not all at the same maturity level yet.
@@ -34,7 +33,6 @@ Current maturity split:
 - `EcosystemRotation`: live backend rotation intelligence with taxonomy-aware categories
 - `NewsImpact`: computed backend intelligence + external-source operations
 - `CompetitiveRadar`: computed backend framework radar
-- `WeeklyBrief`: backend latest snapshot + archive metadata
 
 ## Binding rule
 
@@ -52,7 +50,6 @@ This keeps the UI honest while still allowing the new visual direction to move a
 - `EcosystemRotation`: category rotation contract from `/intelligence/rotation`
 - `NewsImpact`: computed news-to-code analysis from `/intelligence/news-impact` plus detail drill-down from `/intelligence/news-impact/{event_id}`
 - `CompetitiveRadar`: computed framework radar from `/intelligence/framework-radar`
-- `WeeklyBrief`: versioned latest snapshot from `/intelligence/weekly-brief/latest` and archive metadata from `/intelligence/weekly-brief/archive`
 
 ## Runtime configuration
 

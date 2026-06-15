@@ -17,12 +17,10 @@ The immediate goal is not to build every intelligence surface at once. The goal 
 - `EcosystemRotation` now serves taxonomy-aware backend rotation intelligence.
 - `NewsImpact` now serves computed backend intelligence from persisted official-source items.
 - `CompetitiveRadar` now serves computed backend framework metrics.
-- `WeeklyBrief` now serves a versioned latest snapshot plus archive metadata.
 
 ### Missing today
 
 - `NewsImpact` still relies on heuristic linking and scoring rather than a stronger entity registry and causality mart.
-- `WeeklyBrief` is versioned, but it is still an editorial snapshot pipeline rather than a generated briefing workflow.
 - Core ingestion-layer category logic is still neutral; current intelligence routes compensate with taxonomy mapping at serving time.
 - Some advanced frontend narratives still need deeper drill-down binding to expose all backend evidence fields.
 
@@ -32,7 +30,6 @@ The immediate goal is not to build every intelligence surface at once. The goal 
 - `GET /intelligence/news-impact/{event_id}` now returns a detailed event dossier.
 - `POST /intelligence/news-impact/sources/sync` now enriches items with event type, category inference, quality score, and quarantine flags.
 - `GET /intelligence/framework-radar` now computes framework metrics from live repository analytics.
-- `GET /intelligence/weekly-brief/archive` now exposes weekly brief history.
 
 ### Guiding rule
 
@@ -298,48 +295,6 @@ This phase now computes a first framework radar directly from live repository an
 - Selecting a framework in the radar reads real returned values.
 - Sidebar winners/warnings can be sourced from backend outputs or backend-ready summaries.
 
-## Phase 5. Ship weekly brief snapshots
-
-### Goal
-
-Provide a real backend-backed briefing snapshot while preserving editorial quality.
-
-### Current status
-
-This phase now exposes `latest` plus `archive`. The remaining gap is automated brief generation, not API coverage.
-
-### Proposed backend scope
-
-- create a periodic briefing snapshot
-- aggregate top signals into a stable read model
-- optionally support manual editorial curation on top of generated data
-
-### Proposed API
-
-- `GET /intelligence/weekly-brief/latest`
-- optional: `GET /intelligence/weekly-brief/archive`
-
-### Suggested response fields
-
-- `brief_id`, `published_at`, `title`
-- `pillars`
-- `summary_chart_data`
-- `evidence_spotlights`
-- `regional_indicators`
-- `disclaimer`
-
-### Acceptance criteria
-
-#### AC-5.1 Snapshot integrity
-
-- The weekly brief is versioned or timestamped.
-- The page shows when the snapshot was produced.
-
-#### AC-5.2 Data support
-
-- Visualizations and evidence blocks can be sourced from backend-provided snapshot fields.
-- Manual editorial text remains possible without changing frontend code structure.
-
 ## 5. Cross-cutting platform work
 
 ### Stability and guardrails
@@ -388,7 +343,6 @@ To finish the project beyond the current live core, we need these new backend co
 2. `GET /intelligence/rotation`
 3. `GET /intelligence/news-impact`
 4. `GET /intelligence/framework-radar`
-5. `GET /intelligence/weekly-brief/latest`
 
 ## External APIs or data sources still needed
 
@@ -402,10 +356,7 @@ These are the additional upstream sources you need to provide, approve, or choos
    - A maintained mapping of repositories -> framework/model/provider/category
    - Needed for `CompetitiveRadar`, `Rotation`, and `NewsImpact`
 
-3. Optional editorial source or manual curation path
-   - Needed if `WeeklyBrief` should include human-reviewed text rather than only generated summaries
-
-4. Optional repo catalog enrichment inputs
+3. Optional repo catalog enrichment inputs
    - More complete repo metadata or curated repo sets if you want stronger category segmentation than current event-driven coverage
 
 ## 7. What you need to provide me next
@@ -415,8 +366,7 @@ To keep implementation moving without guessing, these are the concrete things I 
 ### Required decisions
 
 1. Confirm whether we should create a new `/intelligence/*` route family now.
-2. Confirm whether `WeeklyBrief` should stay curated for a while or become backend-driven in this phase.
-3. Confirm whether `CompetitiveRadar` should be based on frameworks, repo groups, or manually curated named entities.
+2. Confirm whether `CompetitiveRadar` should be based on frameworks, repo groups, or manually curated named entities.
 
 ### Required inputs for external-data features
 
@@ -431,7 +381,6 @@ To keep implementation moving without guessing, these are the concrete things I 
 3. Phase 2: category-aware ecosystem rotation.
 4. Phase 3: news-to-code impact tracking.
 5. Phase 4: competitive radar.
-6. Phase 5: weekly brief snapshot.
 
 ## 9. Definition of success
 
@@ -451,7 +400,6 @@ The project is in a healthy implementation state when:
 - breakout intelligence contract
 - ecosystem rotation contract
 - backend-served framework radar snapshot
-- backend-served weekly brief snapshot
 - backend-served curated news-impact snapshot
 - official external feed preview, sync, persisted latest-item reads, and source health reads
 
@@ -463,8 +411,7 @@ The project is in a healthy implementation state when:
 4. Source freshness guard surfaced for `NewsImpact`
 5. Framework registry/model catalog sync
 6. Computed framework radar marts replacing curated framework coordinates
-7. Versioned weekly brief snapshot archive and publish workflow
-8. Meaningful AI taxonomy replacing the current neutral category fallback
+7. Meaningful AI taxonomy replacing the current neutral category fallback
 
 ## 11. Recommended completion order from here
 
@@ -504,12 +451,3 @@ Acceptance criteria:
 - `CompetitiveRadar` no longer depends on curated framework coordinates
 - `EcosystemRotation` explanations can cite taxonomy-backed evidence
 
-### Step D. Finish briefing workflow
-
-1. Add versioned weekly brief snapshots with archive support.
-2. Add an editorial publish flow or version tag for release cadence.
-
-Acceptance criteria:
-
-- latest brief and archived briefs are both addressable from backend
-- each brief is timestamped/versioned and can be traced to a generation or publish run

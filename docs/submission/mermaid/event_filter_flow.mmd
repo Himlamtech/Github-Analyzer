@@ -1,9 +1,0 @@
-flowchart LR
-    RAW["Raw GitHub Event<br/>JSON payload"]
-    VALID{"Structurally<br/>valid?"}
-    KAFKA["Kafka<br/>github_raw_events"]
-    DROP["Drop<br/>log + metric"]
-
-    RAW --> VALID
-    VALID -->|"Không"| DROP
-    VALID -->|"Có"| KAFKA

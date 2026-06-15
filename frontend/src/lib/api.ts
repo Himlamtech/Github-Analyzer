@@ -23,12 +23,6 @@ import type {
   RotationCategoryResponse,
   TopRepoResponse,
   TrendingRepoResponse,
-  WeeklyBriefArchiveEntry,
-  WeeklyBriefArchiveEntryResponse,
-  WeeklyBriefChartPoint,
-  WeeklyBriefChartPointResponse,
-  WeeklyBriefSnapshot,
-  WeeklyBriefSnapshotResponse,
 } from '../types';
 
 function resolveApiBaseUrl(): string {
@@ -313,25 +307,6 @@ function toFrameworkRadarItem(row: FrameworkRadarItemResponse): FrameworkRadarIt
   };
 }
 
-function toWeeklyBriefChartPoint(row: WeeklyBriefChartPointResponse): WeeklyBriefChartPoint {
-  return {
-    period: row.period,
-    standardRAG: row.standard_rag,
-    agenticLoops: row.agentic_loops,
-  };
-}
-
-function toWeeklyBriefArchiveEntry(
-  row: WeeklyBriefArchiveEntryResponse,
-): WeeklyBriefArchiveEntry {
-  return {
-    briefId: row.brief_id,
-    publishedAt: row.published_at,
-    title: row.title,
-    subtitle: row.subtitle,
-  };
-}
-
 export async function fetchRotationCategories(days = 7, limit = 6): Promise<EcosystemCategory[]> {
   const rows = await requestJson<RotationCategoryResponse[]>('/intelligence/rotation', {
     days,
@@ -423,41 +398,6 @@ export async function fetchNewsImpactReadiness(): Promise<NewsImpactReadiness> {
   );
 
   return toNewsImpactReadiness(response);
-}
-
-export async function fetchWeeklyBriefSnapshot(): Promise<WeeklyBriefSnapshot> {
-  const snapshot = await requestJson<WeeklyBriefSnapshotResponse>('/intelligence/weekly-brief/latest');
-
-  return {
-    briefId: snapshot.brief_id,
-    publishedAt: snapshot.published_at,
-    title: snapshot.title,
-    subtitle: snapshot.subtitle,
-    pillars: snapshot.pillars.map((pillar) => ({
-      pillarNumber: pillar.pillar_number,
-      title: pillar.title,
-      description: pillar.description,
-    })),
-    summaryChartData: snapshot.summary_chart_data.map(toWeeklyBriefChartPoint),
-    evidenceSpotlightTitle: snapshot.evidence_spotlight_title,
-    evidenceSpotlightBody: snapshot.evidence_spotlight_body,
-    evidenceSpotlightBadge: snapshot.evidence_spotlight_badge,
-    regionalIndicators: snapshot.regional_indicators.map((indicator) => ({
-      region: indicator.region,
-      status: indicator.status,
-      activePercentage: indicator.active_percentage,
-    })),
-    authors: snapshot.authors,
-    disclaimer: snapshot.disclaimer,
-  };
-}
-
-export async function fetchWeeklyBriefArchive(): Promise<WeeklyBriefArchiveEntry[]> {
-  const rows = await requestJson<WeeklyBriefArchiveEntryResponse[]>(
-    '/intelligence/weekly-brief/archive',
-  );
-
-  return rows.map(toWeeklyBriefArchiveEntry);
 }
 
 export { API_BASE_URL };

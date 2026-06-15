@@ -7,7 +7,7 @@ GitHub Analyzer is a real-time GitHub telemetry pipeline with a FastAPI analytic
 - Backend focus: ingestion flow, storage, and dashboard-serving APIs
 - Frontend focus: new Vite dashboard under `frontend/`
 - Integration status: `Overview`, `Breakout Detector`, and runtime status banner are connected to the backend
-- Curated views: `News Impact`, `Weekly Brief`, and `Competitive Radar` remain presentation-oriented research views
+- Curated views: `News Impact` and `Competitive Radar` remain presentation-oriented research views
 
 ## Architecture
 

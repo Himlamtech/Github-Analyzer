@@ -504,26 +504,6 @@ def test_news_impact_source_health_route_returns_latest_snapshots(client: TestCl
     assert payload[0]["status"] == "ok"
 
 
-def test_weekly_brief_route_returns_snapshot(client: TestClient) -> None:
-    response = client.get("/intelligence/weekly-brief/latest")
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["brief_id"] == "weekly-signal-vol-14"
-    assert payload["pillars"]
-    assert payload["summary_chart_data"]
-    assert payload["regional_indicators"]
-
-
-def test_weekly_brief_archive_route_returns_history(client: TestClient) -> None:
-    response = client.get("/intelligence/weekly-brief/archive")
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload[0]["brief_id"] == "weekly-signal-vol-14"
-    assert len(payload) >= 2
-
-
 def test_shock_movers_route_returns_market_lists(client: TestClient) -> None:
     response = client.get("/dashboard/shock-movers", params={"days": 7})
 

@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   Activity,
   Bell,
-  BookOpen,
   Clock,
   Command,
   Compass,
@@ -20,14 +19,12 @@ import { useBreakoutData } from './hooks/useBreakoutData';
 import { useFrameworkRadarData } from './hooks/useFrameworkRadarData';
 import { useNewsImpactData } from './hooks/useNewsImpactData';
 import { useRotationData } from './hooks/useRotationData';
-import { useWeeklyBriefData } from './hooks/useWeeklyBriefData';
 import { API_BASE_URL } from './lib/api';
 import { BreakoutDetector } from './components/BreakoutDetector';
 import { CompetitiveRadar } from './components/CompetitiveRadar';
 import { EcosystemRotation } from './components/EcosystemRotation';
 import { NewsImpact } from './components/NewsImpact';
 import { Overview } from './components/Overview';
-import { WeeklyBrief } from './components/WeeklyBrief';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('overview');
@@ -45,12 +42,6 @@ export default function App() {
     isLoading: isFrameworkRadarLoading,
     error: frameworkRadarError,
   } = useFrameworkRadarData();
-  const {
-    data: weeklyBrief,
-    archive: weeklyBriefArchive,
-    isLoading: isWeeklyBriefLoading,
-    error: weeklyBriefError,
-  } = useWeeklyBriefData();
   const {
     events: newsImpactEvents,
     readiness: newsImpactReadiness,
@@ -87,7 +78,6 @@ export default function App() {
       { id: 'ecosystems', label: 'Ecosystem shifts', icon: Layers },
       { id: 'newsImpact', label: 'News Impact', icon: Activity },
       { id: 'radar', label: 'Framework Radar', icon: Compass },
-      { id: 'weeklyBrief', label: 'Weekly briefing', icon: BookOpen },
     ],
     [],
   );
@@ -224,9 +214,9 @@ export default function App() {
       </AnimatePresence>
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
-        {(error || breakoutError || frameworkRadarError || weeklyBriefError || newsImpactError || rotationError) && (
+        {(error || breakoutError || frameworkRadarError || newsImpactError || rotationError) && (
           <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Live dashboard data is temporarily unavailable for one or more surfaces. Curated research views still render when snapshots are available, and the app will retry automatically. Error: {error ?? breakoutError ?? frameworkRadarError ?? weeklyBriefError ?? newsImpactError ?? rotationError}
+            Live dashboard data is temporarily unavailable for one or more surfaces. The app will retry automatically. Error: {error ?? breakoutError ?? frameworkRadarError ?? newsImpactError ?? rotationError}
           </div>
         )}
 
@@ -271,13 +261,6 @@ export default function App() {
                 winners={frameworkRadar?.winners ?? []}
                 warnings={frameworkRadar?.warnings ?? []}
                 isLoading={isFrameworkRadarLoading}
-              />
-            )}
-            {activeTab === 'weeklyBrief' && (
-              <WeeklyBrief
-                data={weeklyBrief}
-                archive={weeklyBriefArchive}
-                isLoading={isWeeklyBriefLoading}
               />
             )}
           </motion.div>
