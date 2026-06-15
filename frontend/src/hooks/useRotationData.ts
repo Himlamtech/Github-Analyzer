@@ -9,12 +9,17 @@ interface RotationDataState {
   error: string | null;
 }
 
-export function useRotationData(): RotationDataState {
+export function useRotationData(enabled = true): RotationDataState {
   const [categories, setCategories] = useState<EcosystemCategory[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(enabled);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled || categories.length > 0) {
+      setIsLoading(false);
+      return undefined;
+    }
+
     let isMounted = true;
 
     async function loadRotation(): Promise<void> {
@@ -45,7 +50,7 @@ export function useRotationData(): RotationDataState {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [categories.length, enabled]);
 
   return { categories, isLoading, error };
 }

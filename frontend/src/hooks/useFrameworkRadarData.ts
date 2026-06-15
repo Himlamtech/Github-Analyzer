@@ -9,12 +9,17 @@ interface FrameworkRadarDataState {
   error: string | null;
 }
 
-export function useFrameworkRadarData(): FrameworkRadarDataState {
+export function useFrameworkRadarData(enabled = true): FrameworkRadarDataState {
   const [data, setData] = useState<FrameworkRadarSnapshot | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(enabled);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled || data) {
+      setIsLoading(false);
+      return undefined;
+    }
+
     let isMounted = true;
 
     async function loadFrameworkRadar(): Promise<void> {
@@ -47,8 +52,7 @@ export function useFrameworkRadarData(): FrameworkRadarDataState {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [data, enabled]);
 
   return { data, isLoading, error };
 }
-

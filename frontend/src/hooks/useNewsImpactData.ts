@@ -10,13 +10,18 @@ interface NewsImpactDataState {
   error: string | null;
 }
 
-export function useNewsImpactData(): NewsImpactDataState {
+export function useNewsImpactData(enabled = true): NewsImpactDataState {
   const [events, setEvents] = useState<NewsImpactEvent[]>([]);
   const [readiness, setReadiness] = useState<NewsImpactReadiness | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(enabled);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled || events.length > 0 || readiness) {
+      setIsLoading(false);
+      return undefined;
+    }
+
     let isMounted = true;
 
     async function loadNewsImpact(): Promise<void> {
@@ -53,7 +58,7 @@ export function useNewsImpactData(): NewsImpactDataState {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [enabled, events.length, readiness]);
 
   return { events, readiness, isLoading, error };
 }

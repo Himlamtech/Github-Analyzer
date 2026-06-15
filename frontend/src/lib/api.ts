@@ -53,18 +53,35 @@ function buildUrl(path: string, params?: Record<string, string | number | undefi
   return url.toString();
 }
 
-async function requestJson<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
-  const response = await fetch(buildUrl(path, params), {
-    headers: {
-      Accept: 'application/json',
-    },
-  });
+async function requestJson<T>(
+  path: string,
+  params?: Record<string, string | number | undefined>,
+  timeoutMs = 15_000,
+): Promise<T> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch(buildUrl(path, params), {
+      headers: {
+        Accept: 'application/json',
+      },
+      signal: controller.signal,
+    });
+  } finally {
+    window.clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     throw new Error(`Request failed for ${path}: ${response.status}`);
   }
 
   return response.json() as Promise<T>;
+}
+
+function settledValue<T>(result: PromiseSettledResult<T>, fallback: T): T {
+  return result.status === 'fulfilled' ? result.value : fallback;
 }
 
 function toTitleCase(value: string): string {
@@ -340,14 +357,20 @@ export async function fetchRotationCategories(days = 7, limit = 6): Promise<Ecos
 }
 
 export async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
-  const [topStarredRepos, weeklyStarIncreases, newTenKRepos, topicRotation, latestEvents, pipelineStatus] = await Promise.all([
-    requestJson<TopRepoResponse[]>('/dashboard/top-starred-repos', { days: 7, limit: 12 }),
-    requestJson<TrendingRepoResponse[]>('/dashboard/trending', { days: 7, limit: 12 }),
-    requestJson<NewTenKRepoResponse[]>('/dashboard/new-repos-reaching-10k', { limit: 12 }),
-    requestJson<RotationCategoryResponse[]>('/intelligence/rotation', { days: 7, limit: 6 }),
-    requestJson<EventSummaryResponse[]>('/events/latest', { limit: 6 }),
-    requestJson<PipelineStatusResponse>('/pipeline/status'),
+  const [topStarredResult, weeklyIncreasesResult, tenKResult, rotationResult, eventsResult, statusResult] = await Promise.allSettled([
+    requestJson<TopRepoResponse[]>('/dashboard/top-starred-repos', { days: 7, limit: 5 }, 8_000),
+    requestJson<TrendingRepoResponse[]>('/dashboard/trending', { days: 7, limit: 5 }, 8_000),
+    requestJson<NewTenKRepoResponse[]>('/dashboard/new-repos-reaching-10k', { limit: 5 }, 8_000),
+    requestJson<RotationCategoryResponse[]>('/intelligence/rotation', { days: 7, limit: 6 }, 8_000),
+    requestJson<EventSummaryResponse[]>('/events/latest', { limit: 6 }, 8_000),
+    requestJson<PipelineStatusResponse>('/pipeline/status', undefined, 5_000),
   ]);
+  const topStarredRepos = settledValue<TopRepoResponse[]>(topStarredResult, []);
+  const weeklyStarIncreases = settledValue<TrendingRepoResponse[]>(weeklyIncreasesResult, []);
+  const newTenKRepos = settledValue<NewTenKRepoResponse[]>(tenKResult, []);
+  const topicRotation = settledValue<RotationCategoryResponse[]>(rotationResult, []);
+  const latestEvents = settledValue<EventSummaryResponse[]>(eventsResult, []);
+  const pipelineStatus = settledValue<PipelineStatusResponse | null>(statusResult, null);
   const topStarred = topStarredRepos.map((item, index) =>
     toRepository(item.repo, index + 1, item.star_count_in_window, index + 1),
   );
@@ -370,7 +393,7 @@ export async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
     newTenKRepos: distinctTenKMilestones,
     topicRotation: topicRotation.map(toEcosystemCategory),
     latestEvents: latestEvents.map(toEventSummary),
-    pipelineStatus: toPipelineStatus(pipelineStatus),
+    pipelineStatus: pipelineStatus ? toPipelineStatus(pipelineStatus) : null,
     refreshedAt: new Date().toISOString(),
   };
 }

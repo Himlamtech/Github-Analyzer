@@ -41,18 +41,18 @@ export default function App() {
     data: frameworkRadar,
     isLoading: isFrameworkRadarLoading,
     error: frameworkRadarError,
-  } = useFrameworkRadarData();
+  } = useFrameworkRadarData(activeTab === 'radar');
   const {
     events: newsImpactEvents,
     readiness: newsImpactReadiness,
     isLoading: isNewsImpactLoading,
     error: newsImpactError,
-  } = useNewsImpactData();
+  } = useNewsImpactData(activeTab === 'newsImpact');
   const {
     categories: rotationCategories,
     isLoading: isRotationLoading,
     error: rotationError,
-  } = useRotationData();
+  } = useRotationData(activeTab === 'overview' || activeTab === 'ecosystems');
 
   useEffect(() => {
     window.alert = (message: string) => {
@@ -92,6 +92,18 @@ export default function App() {
   const topRepoName = data?.trendingRepos[0]?.fullName ?? 'Awaiting live data';
   const topRepoVelocity = data?.trendingRepos[0]?.velocityChange ?? '--';
   const latestEvent = data?.latestEvents[0];
+  const activeSurfaceError =
+    activeTab === 'overview'
+      ? error
+      : activeTab === 'breakout'
+        ? breakoutError
+        : activeTab === 'ecosystems'
+          ? rotationError
+          : activeTab === 'newsImpact'
+            ? newsImpactError
+            : activeTab === 'radar'
+              ? frameworkRadarError
+              : null;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col selection:bg-emerald-100 selection:text-emerald-950 font-sans">
@@ -214,9 +226,9 @@ export default function App() {
       </AnimatePresence>
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
-        {(error || breakoutError || frameworkRadarError || newsImpactError || rotationError) && (
+        {activeSurfaceError && (
           <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Live dashboard data is temporarily unavailable for one or more surfaces. The app will retry automatically. Error: {error ?? breakoutError ?? frameworkRadarError ?? newsImpactError ?? rotationError}
+            Live dashboard data is temporarily unavailable for this surface. The app will retry automatically. Error: {activeSurfaceError}
           </div>
         )}
 
