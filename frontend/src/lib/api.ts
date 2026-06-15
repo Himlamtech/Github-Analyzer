@@ -88,6 +88,29 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
+function resolveGitHubRepoUrl(repo: DashboardApiRepo): string {
+  const trimmedUrl = repo.html_url?.trim();
+  if (trimmedUrl) {
+    try {
+      const parsedUrl = new URL(trimmedUrl);
+      const [, owner, repoName] = parsedUrl.pathname.split('/');
+
+      if (parsedUrl.hostname === 'github.com' && owner && repoName) {
+        return `https://github.com/${owner}/${repoName}`;
+      }
+    } catch {
+      // Fall back to repo_full_name below when persisted metadata has a malformed URL.
+    }
+  }
+
+  const [owner, repoName] = repo.repo_full_name.split('/');
+  if (owner && repoName) {
+    return `https://github.com/${owner}/${repoName}`;
+  }
+
+  return 'https://github.com';
+}
+
 function inferHypeRisk(starDelta: number): Repository['hypeRisk'] {
   if (starDelta >= 250) {
     return 'Extreme';
@@ -145,7 +168,7 @@ function toRepository(
     topics: repo.topics,
     rank: velocityRank || rank,
     lastPushedAt: repo.github_pushed_at,
-    repoUrl: repo.html_url,
+    repoUrl: resolveGitHubRepoUrl(repo),
     breakoutScore: velocityIndex * 10,
     confidenceScore: durableMomentum,
     hypeRiskScore: starCountInWindow,
@@ -320,7 +343,7 @@ export async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
   const [topStarredRepos, weeklyStarIncreases, newTenKRepos, topicRotation, latestEvents, pipelineStatus] = await Promise.all([
     requestJson<TopRepoResponse[]>('/dashboard/top-starred-repos', { days: 7, limit: 12 }),
     requestJson<TrendingRepoResponse[]>('/dashboard/trending', { days: 7, limit: 12 }),
-    requestJson<NewTenKRepoResponse[]>('/dashboard/new-repos-reaching-10k', { limit: 6 }),
+    requestJson<NewTenKRepoResponse[]>('/dashboard/new-repos-reaching-10k', { limit: 12 }),
     requestJson<RotationCategoryResponse[]>('/intelligence/rotation', { days: 7, limit: 6 }),
     requestJson<EventSummaryResponse[]>('/events/latest', { limit: 6 }),
     requestJson<PipelineStatusResponse>('/pipeline/status'),
@@ -331,13 +354,20 @@ export async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
   const weeklyIncreases = weeklyStarIncreases.map((item, index) =>
     toRepository(item.repo, index + 1, item.star_count_in_window, item.growth_rank),
   );
+  const visibleWeeklyIncreaseNames = new Set(
+    weeklyIncreases.slice(0, 5).map((repo) => repo.fullName),
+  );
+  const distinctTenKMilestones = newTenKRepos
+    .filter((item) => item.baseline_stars < 10_000 && item.current_stars >= 10_000)
+    .map(toTenKMilestoneRepository)
+    .filter((repo) => !visibleWeeklyIncreaseNames.has(repo.fullName));
 
   return {
     topRepos: topStarred,
     trendingRepos: weeklyIncreases,
     topStarredRepos: topStarred,
     weeklyStarIncreases: weeklyIncreases,
-    newTenKRepos: newTenKRepos.map(toTenKMilestoneRepository),
+    newTenKRepos: distinctTenKMilestones,
     topicRotation: topicRotation.map(toEcosystemCategory),
     latestEvents: latestEvents.map(toEventSummary),
     pipelineStatus: toPipelineStatus(pipelineStatus),

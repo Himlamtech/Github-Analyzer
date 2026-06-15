@@ -150,9 +150,6 @@ services:
         "0.0.0.0",
         "--port",
         "8000",
-        "--reload",
-        "--reload-dir",
-        "/app/src",
       ]
     hostname: api
     networks:
@@ -160,7 +157,7 @@ services:
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
-      - ./src:/app/src
+      - ./src:/app/src:ro
       - ./data:/app/data:ro
     environment:
       PYTHONPATH: /app
