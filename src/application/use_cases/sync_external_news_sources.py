@@ -26,7 +26,7 @@ from src.domain.exceptions import ExternalSourceError
 if TYPE_CHECKING:
     from src.domain.repositories.external_news_reader import ExternalNewsReaderABC
     from src.domain.repositories.external_news_repository import ExternalNewsRepositoryABC
-    from src.infrastructure.config import Settings
+    from src.infrastructure.config import ExternalNewsSourceConfig, Settings
 
 
 class SyncExternalNewsSourcesUseCase:
@@ -43,17 +43,19 @@ class SyncExternalNewsSourcesUseCase:
         self._settings = settings
 
     async def execute(self, limit_per_source: int = 10) -> ExternalNewsSyncResultDTO:
-        enabled_sources = [
-            s for s in self._settings.news_intelligence_sources if s.enabled
+        enabled_sources: list[ExternalNewsSourceConfig] = [
+            source for source in self._settings.news_intelligence_sources if source.enabled
         ]
 
-        async def _fetch_one(source: object) -> tuple[object, list, datetime, str | None]:
+        async def _fetch_one(
+            source: ExternalNewsSourceConfig,
+        ) -> tuple[ExternalNewsSourceConfig, list[ExternalNewsItem], datetime, str | None]:
             checked_at = datetime.now(tz=UTC)
             try:
                 raw_items = await self._reader.fetch_latest(
-                    provider=source.provider,  # type: ignore[union-attr]
-                    url=str(source.url),  # type: ignore[union-attr]
-                    source_type=source.source_type,  # type: ignore[union-attr]
+                    provider=source.provider,
+                    url=str(source.url),
+                    source_type=source.source_type,
                     limit=limit_per_source,
                 )
                 return source, raw_items, checked_at, None
@@ -70,8 +72,8 @@ class SyncExternalNewsSourcesUseCase:
         for source, raw_items, checked_at, error in fetch_results:
             if error is not None:
                 health = ExternalNewsSourceHealthDTO(
-                    provider=source.provider,  # type: ignore[union-attr]
-                    source_url=str(source.url),  # type: ignore[union-attr]
+                    provider=source.provider,
+                    source_url=str(source.url),
                     status="error",
                     fetched_count=0,
                     error_message=error,
@@ -80,16 +82,16 @@ class SyncExternalNewsSourcesUseCase:
             else:
                 items = self._enrich_items(
                     raw_items,
-                    provider=source.provider,  # type: ignore[union-attr]
-                    source_type=source.source_type,  # type: ignore[union-attr]
+                    provider=source.provider,
+                    source_type=source.source_type,
                     seen_keys=seen_keys,
                 )
                 persisted_count = await self._repository.upsert_items(items)
                 persisted_total += persisted_count
                 quarantined_total += sum(1 for item in items if item.is_quarantined)
                 health = ExternalNewsSourceHealthDTO(
-                    provider=source.provider,  # type: ignore[union-attr]
-                    source_url=str(source.url),  # type: ignore[union-attr]
+                    provider=source.provider,
+                    source_url=str(source.url),
                     status="ok",
                     fetched_count=len(items),
                     error_message=None,

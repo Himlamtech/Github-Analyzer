@@ -696,7 +696,7 @@ class ClickHouseDashboardService:
             return False
         try:
             result = int(rows[0][0]) == 1
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             result = True
         self._repo_metadata_exists_cache = result
         return result
@@ -710,7 +710,7 @@ class ClickHouseDashboardService:
             return False
         try:
             result = int(rows[0][0]) == 1
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             result = True
         self._repo_metadata_history_exists_cache = result
         return result
@@ -739,7 +739,7 @@ FINAL
         )
         try:
             self._has_categorized_metadata_cache = int(rows[0][0]) > 0
-        except (IndexError, TypeError, ValueError):
+        except IndexError, TypeError, ValueError:
             self._has_categorized_metadata_cache = True
         return self._has_categorized_metadata_cache
 

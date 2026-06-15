@@ -181,8 +181,6 @@ services:
     memswap_limit: 1g
     cpus: "1"
     depends_on:
-      kafka:
-        condition: service_healthy
       clickhouse:
         condition: service_healthy
     restart: on-failure
@@ -206,6 +204,8 @@ services:
       context: .
       dockerfile: Dockerfile
     hostname: poller
+    profiles:
+      - ingestion
     command: ["uv", "run", "python", "-m", "src.application.use_cases.poll_github_events"]
     networks:
       - github-networks
@@ -235,6 +235,8 @@ services:
       context: .
       dockerfile: Dockerfile
     hostname: processor
+    profiles:
+      - ingestion
     command: ["uv", "run", "python", "-m", "src.application.use_cases.process_event_stream"]
     networks:
       - github-networks

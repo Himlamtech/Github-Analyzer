@@ -69,7 +69,7 @@ class RssNewsReader:
             return datetime.now(tz=UTC)
         try:
             parsed = parsedate_to_datetime(value)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             try:
                 parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
             except ValueError:

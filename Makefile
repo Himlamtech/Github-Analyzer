@@ -1,4 +1,4 @@
-.PHONY: setup bootstrap-clickhouse stream process discover-repos sync-repos frontend-dev frontend-build frontend-type-check test lint format clean help
+.PHONY: setup demo ingestion bootstrap-clickhouse stream process discover-repos sync-repos frontend-dev frontend-build frontend-type-check test lint format clean help
 
 PYTHON := uv run python
 PYTEST := uv run pytest
@@ -37,9 +37,19 @@ setup: ## Bring up Docker stack, create Kafka topic, init ClickHouse tables
 	@echo "▶ ClickHouse tables initialized via init.sql (auto on container start)"
 	@echo "✓ Setup complete."
 
+demo: ## Start lightweight demo stack: ClickHouse + API + frontend, no ingestion
+	@mkdir -p $(DATA_DIR) $(PARQUET_DIR)
+	@echo "▶ Starting demo services without GitHub polling or Spark processing..."
+	docker compose up -d clickhouse api frontend
+	@echo "✓ Demo stack started at http://localhost:$${FRONTEND_PORT:-3000}"
+
+ingestion: ## Start data ingestion workers when fresh collection is needed
+	@echo "▶ Starting ingestion workers..."
+	docker compose --profile ingestion up -d poller processor
+
 bootstrap-clickhouse: ## Backfill ClickHouse github_data from local Parquet archive
 	@echo "▶ Bootstrapping ClickHouse github_data from Parquet..."
-	$(PYTHON) scripts/backfill_clickhouse_from_parquet.py
+	$(PYTHON) -m src.application.use_cases.backfill_clickhouse_from_parquet
 
 ## ── Pipeline ────────────────────────────────────────────────────────────────
 
@@ -68,14 +78,6 @@ discover-repos: ## Build or refresh the high-star repository catalog from GitHub
 sync-repos: ## Sync data/repos/*.json → ClickHouse repo_metadata + history tables
 	@echo "▶ Syncing repo metadata to ClickHouse..."
 	$(PYTHON) -m src.application.use_cases.sync_repo_metadata
-
-sync-events-repos: ## Enrich repo_metadata from top repos in github_data (calls GitHub API)
-	@echo "▶ Enriching repo_metadata from active event stream..."
-	$(PYTHON) scripts/enrich_repos_from_events.py --limit 200
-
-enrich-repos: ## One-shot enrichment script: top repos from events → repo_metadata (standalone)
-	@echo "▶ Running standalone repo enrichment script..."
-	$(PYTHON) scripts/enrich_repos_from_events.py --limit 100
 
 frontend-dev: ## Start Vite dev server on http://localhost:3000
 	@echo "▶ Starting Vite dev server..."

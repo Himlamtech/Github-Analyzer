@@ -333,5 +333,3 @@ async def get_legacy_news_impact_event_detail(
 
     logger.warning("intelligence.legacy_news_impact_detail_path_used", source_id=source_id)
     return await _get_news_impact_detail(source_id, repository, svc)
-
-

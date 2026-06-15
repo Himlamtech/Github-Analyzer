@@ -1,23 +1,16 @@
-"""Bootstrap ClickHouse github_data from the local Parquet archive."""
+"""CLI entry point for bootstrapping ClickHouse from the Parquet archive."""
 
 from __future__ import annotations
 
 import argparse
 from datetime import date
-from pathlib import Path
-import sys
 
 import structlog
 
-PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-from src.domain.exceptions import ClickHouseBackfillError  # noqa: E402
-from src.infrastructure.config import get_settings  # noqa: E402
-from src.infrastructure.logging_config import configure_logging  # noqa: E402
-from src.infrastructure.storage.clickhouse_backfill_service import (  # noqa: E402
-    ClickHouseBackfillService,
-)
+from src.domain.exceptions import ClickHouseBackfillError
+from src.infrastructure.config import get_settings
+from src.infrastructure.logging_config import configure_logging
+from src.infrastructure.storage.clickhouse_backfill_service import ClickHouseBackfillService
 
 logger = structlog.get_logger(__name__)
 

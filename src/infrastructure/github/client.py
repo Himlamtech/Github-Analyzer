@@ -408,7 +408,7 @@ class GitHubClient:
             }
             self._repo_cache[repo_full_name] = (bundle, now + _REPO_CACHE_TTL)
             return bundle
-        except (GitHubAPIError, GitHubAuthenticationError, GitHubNotFoundError):
+        except GitHubAPIError, GitHubAuthenticationError, GitHubNotFoundError:
             return {}
 
     async def _enrich_events_with_repo_metadata(self, events: list[dict[str, object]]) -> None:

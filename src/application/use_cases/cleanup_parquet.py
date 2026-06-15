@@ -6,9 +6,9 @@ Entry point: ``make cleanup`` hoặc chạy trực tiếp:
 
 from __future__ import annotations
 
-import shutil
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
+import shutil
 
 import structlog
 
@@ -51,7 +51,12 @@ class CleanupParquetUseCase:
 
         if not self._base_path.exists():
             logger.warning("cleanup_parquet.base_path_missing", path=str(self._base_path))
-            return {"deleted_partitions": [], "deleted_bytes": 0, "skipped_partitions": [], "errors": []}
+            return {
+                "deleted_partitions": [],
+                "deleted_bytes": 0,
+                "skipped_partitions": [],
+                "errors": [],
+            }
 
         for partition_dir in sorted(self._base_path.iterdir()):
             if not partition_dir.is_dir():
@@ -71,7 +76,9 @@ class CleanupParquetUseCase:
                 continue
 
             # Tính dung lượng trước khi xoá
-            partition_bytes = sum(f.stat().st_size for f in partition_dir.rglob("*") if f.is_file())
+            partition_bytes = sum(
+                f.stat().st_size for f in partition_dir.rglob("*") if f.is_file()
+            )
 
             if self._dry_run:
                 logger.info(
@@ -150,7 +157,8 @@ def _main() -> None:
 
     deleted = len(result["deleted_partitions"])  # type: ignore[arg-type]
     freed_mb = round(result["deleted_bytes"] / 1024 / 1024, 1)  # type: ignore[operator]
-    print(f"\n{'[DRY RUN] ' if args.dry_run else ''}Đã xoá {deleted} partition, giải phóng {freed_mb} MB")
+    prefix = "[DRY RUN] " if args.dry_run else ""
+    print(f"\n{prefix}Đã xoá {deleted} partition, giải phóng {freed_mb} MB")
 
 
 if __name__ == "__main__":
